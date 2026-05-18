@@ -347,6 +347,20 @@ input[type="checkbox"] {
   font-size: 0.88rem;
 }
 
+.scenario-basis {
+  display: grid;
+  gap: 5px;
+  margin: 6px 0 0;
+  padding-left: 16px;
+  color: var(--body-soft);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.scenario-basis li::marker {
+  color: var(--teal);
+}
+
 .icon-button {
   display: inline-flex;
   align-items: center;
@@ -766,7 +780,7 @@ input[type="checkbox"] {
 .criteria-table-head,
 .criterion-row {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(110px, 0.45fr) minmax(100px, 0.38fr) 92px;
+  grid-template-columns: minmax(260px, 1fr) minmax(160px, 0.55fr) minmax(100px, 0.38fr) 92px;
   gap: 12px;
   align-items: center;
 }
@@ -984,6 +998,39 @@ input[type="checkbox"] {
 .input-with-unit span {
   color: var(--muted);
   font-size: 0.8rem;
+}
+
+.quantity-input-panel {
+  display: grid;
+  gap: 9px;
+}
+
+.quantity-input-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.calculated-value {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--control-bg);
+  padding: 8px 10px;
+  font-size: 0.78rem;
+}
+
+.calculated-value span {
+  color: var(--muted);
+  font-weight: 720;
+}
+
+.calculated-value strong {
+  color: var(--score-text);
+  font-variant-numeric: tabular-nums;
 }
 
 .segmented {
@@ -1453,6 +1500,7 @@ input[type="checkbox"] {
   }
 
   .identity-grid,
+  .quantity-input-grid,
   .tradeoff-grid,
   .tradeoff-preview,
   .metric-grid,

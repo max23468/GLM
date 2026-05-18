@@ -14,10 +14,12 @@ Apri `http://127.0.0.1:4173/`.
 ## Perimetro
 
 - Scenari demo già compilati con operatori e profili ispirati a dati pubblici reperibili sul web.
+- Basi operative degli scenari demo ricavate dagli allegati locali di gara: mezzi, fermate e corse annue stimate per lotto.
 - Inserimento di più offerenti.
 - Scelta, per ciascun operatore, dei lotti singoli L1-L4 a cui partecipa.
 - Scelta delle offerte combinatorie ammesse: 1+2, 2+3, 3+4, 1+4.
 - Simulazione dei sub-criteri tecnici Q/T/D, con raggruppamento per criterio padre e ambito A-G.
+- Input operativi per i tassi derivati: l'utente inserisce numeratori e basi tecniche, per esempio autobus attrezzati e autobus totali, e il simulatore calcola il rapporto usato nel punteggio.
 - Calcolo di soglia Q/T, riparametrazione per ambito, offerta economica singola e combinatoria, classifica e scenario vincente.
 - Pannello di suggerimenti prioritizzati e criticità documentali.
 - Tradeoff tecnico/economico per sub-criterio: delta operativo, costo unitario/totale, variazione del punteggio tecnico, economico e totale.
@@ -41,6 +43,7 @@ Per rendere l'app più realistica, gli scenari demo usano anche segnali pubblici
 
 - Agenzia TPL Milano, Monza Brianza, Lodi e Pavia: pubblicazione gara TPL MLMP 2026.
 - ARIA Lombardia / Sintel: procedura aperta ID 218044617.
-- Autoguidovie: dati pubblici di sostenibilità e flotta.
+- Autoguidovie: dati pubblici di flotta, AVM, accessibilità, videosorveglianza e ADAS.
+- Arriva Italia: dati pubblici su scala del gruppo e investimenti di rinnovo flotta.
 - Gruppo ATM: pagine pubbliche NET e Movibus.
-- STAR Mobility: presidio pubblico nell'area di Lodi.
+- STAR Mobility: presidio pubblico nell'area di Lodi e bigliettazione elettronica urbana.

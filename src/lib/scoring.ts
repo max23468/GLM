@@ -13,10 +13,16 @@ import {
 export type LotOffer = {
   enabled: boolean;
   qValues: Record<string, number>;
+  quantityInputs: Record<string, QuantityInputValue>;
   tValues: Record<string, boolean>;
   dValues: Record<string, number>;
   tradeoffs: Record<string, TradeoffPlan>;
   phaseDiscounts: [number, number, number];
+};
+
+export type QuantityInputValue = {
+  numerator: number;
+  denominator: number;
 };
 
 export type TradeoffPlan = {
@@ -125,9 +131,15 @@ export type SimulationResult = {
   suggestions: Suggestion[];
 };
 
+export const emptyQuantityInputs = () =>
+  Object.fromEntries(
+    CRITERIA.filter((criterion) => criterion.quantityInput).map((criterion) => [criterion.id, { numerator: 0, denominator: 0 } satisfies QuantityInputValue]),
+  );
+
 export const emptyLotOffer = (): LotOffer => ({
   enabled: false,
   qValues: Object.fromEntries(CRITERIA.filter((criterion) => criterion.kind === "Q").map((criterion) => [criterion.id, 0])),
+  quantityInputs: emptyQuantityInputs(),
   tValues: Object.fromEntries(CRITERIA.filter((criterion) => criterion.kind === "T").map((criterion) => [criterion.id, false])),
   dValues: Object.fromEntries(CRITERIA.filter((criterion) => criterion.kind === "D").map((criterion) => [criterion.id, 0.6])),
   tradeoffs: emptyTradeoffs(),
@@ -164,6 +176,23 @@ export const formatPoints = (value: number) => round2(value).toLocaleString("it-
 export const formatPercent = (value: number) => (value * 100).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+export const computeQuantityInputValue = (criterion: Criterion, input?: QuantityInputValue) => {
+  if (!criterion.quantityInput || !input) return 0;
+  const denominator = Math.max(0, Number(input.denominator) || 0);
+  if (denominator <= 0) return 0;
+  const numerator = Math.max(0, Number(input.numerator) || 0);
+  const ratio = clamp(numerator / denominator, 0, 1);
+  return criterion.quantityInput.kind === "percent" ? round4(ratio * 100) : round4(ratio);
+};
+
+export const getQuantitativeCriterionValue = (offer: LotOffer, criterion: Criterion) => {
+  if (criterion.quantityInput) {
+    const input = offer.quantityInputs?.[criterion.id];
+    if (input && input.denominator > 0) return computeQuantityInputValue(criterion, input);
+  }
+  return offer.qValues[criterion.id] ?? 0;
+};
 
 const getLot = (lotId: LotId) => {
   const lot = LOTS.find((item) => item.id === lotId);
@@ -228,7 +257,7 @@ const computeTechnicalRawScores = (bidders: Bidder[], settings: Settings): Recor
       const enabledOffers = bidders.filter((bidder) => bidder.lots[lot.id].enabled);
       const values = enabledOffers.map((bidder) => {
         const offer = bidder.lots[lot.id];
-        if (criterion.kind === "Q") return offer.qValues[criterion.id] ?? 0;
+        if (criterion.kind === "Q") return getQuantitativeCriterionValue(offer, criterion);
         if (criterion.kind === "T") return offer.tValues[criterion.id] ?? false;
         return offer.dValues[criterion.id] ?? 0;
       });
@@ -257,7 +286,7 @@ const computeTechnicalRawScores = (bidders: Bidder[], settings: Settings): Recor
         let note: string | undefined;
 
         if (criterion.kind === "Q") {
-          value = lotOffer.qValues[criterion.id] ?? 0;
+          value = getQuantitativeCriterionValue(lotOffer, criterion);
           if (criterion.formula === "higher") {
             rawScore = maxValue > 0 ? criterion.maxPoints * (Number(value) / maxValue) : 0;
           }
@@ -276,7 +305,8 @@ const computeTechnicalRawScores = (bidders: Bidder[], settings: Settings): Recor
         if (criterion.kind === "T") {
           value = Boolean(lotOffer.tValues[criterion.id]);
           if (criterion.dependency) {
-            const dependencyValue = lotOffer.qValues[criterion.dependency.criterionId] ?? 0;
+            const dependencyCriterion = CRITERIA.find((item) => item.id === criterion.dependency?.criterionId);
+            const dependencyValue = dependencyCriterion ? getQuantitativeCriterionValue(lotOffer, dependencyCriterion) : 0;
             dependencyBlocked = dependencyValue < criterion.dependency.value;
             if (dependencyBlocked && value) {
               note = criterion.dependency.message;
@@ -657,10 +687,10 @@ const buildSuggestions = (
           ? `${criterion.id}: prima risolvi la dipendenza indicata, poi il sì assegna ${formatPoints(criterion.maxPoints)} punti tabellari.`
           : `${criterion.id}: portare il selettore a sì assegna ${formatPoints(criterion.maxPoints)} punti tabellari se l'impegno è documentabile.`;
       } else if (criterion.formula === "higher") {
-        const bestValue = Math.max(...bidders.filter((item) => item.lots[lot.id].enabled).map((item) => item.lots[lot.id].qValues[criterion.id] ?? 0));
+        const bestValue = Math.max(...bidders.filter((item) => item.lots[lot.id].enabled).map((item) => getQuantitativeCriterionValue(item.lots[lot.id], criterion)));
         body = `${criterion.id}: per allinearti al migliore scenario corrente il valore deve raggiungere ${bestValue.toLocaleString("it-IT")} ${criterion.unit}.`;
       } else if (criterion.formula === "lower") {
-        const bestValue = Math.min(...bidders.filter((item) => item.lots[lot.id].enabled).map((item) => item.lots[lot.id].qValues[criterion.id] ?? Infinity));
+        const bestValue = Math.min(...bidders.filter((item) => item.lots[lot.id].enabled).map((item) => getQuantitativeCriterionValue(item.lots[lot.id], criterion) || Infinity));
         body = `${criterion.id}: il punteggio cresce riducendo l'indice verso ${bestValue.toLocaleString("it-IT")} ${criterion.unit}.`;
       } else if (criterion.formula === "soil") {
         body = `${criterion.id}: consumo di suolo netto <= 0 assegna direttamente il massimo previsto.`;

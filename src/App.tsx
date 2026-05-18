@@ -30,11 +30,13 @@ import {
   type PairId,
 } from "./data/tender";
 import {
+  computeQuantityInputValue,
   createBidder,
   criteriaByParent,
   emptyTradeoffs,
   formatPercent,
   formatPoints,
+  getQuantitativeCriterionValue,
   maxQtPoints,
   round4,
   simulate,
@@ -42,6 +44,7 @@ import {
   type ComboScore,
   type LotScore,
   type LotOffer,
+  type QuantityInputValue,
   type Settings,
   type SimulationResult,
   type TradeoffPlan,
@@ -95,16 +98,32 @@ type DemoOfferProfile = {
   discounts: [number, number, number];
 };
 
+type LotDemoBaseline = {
+  busBase: number;
+  annualRuns: number;
+  stops: number;
+  notableStops: number;
+  railStops: number;
+  lines: number;
+};
+
+const LOT_DEMO_BASELINES: Record<LotId, LotDemoBaseline> = {
+  L1: { busBase: 100, annualRuns: 227005, stops: 520, notableStops: 124, railStops: 19, lines: 24 },
+  L2: { busBase: 158, annualRuns: 548216, stops: 1373, notableStops: 343, railStops: 54, lines: 98 },
+  L3: { busBase: 102, annualRuns: 565632, stops: 1243, notableStops: 260, railStops: 29, lines: 36 },
+  L4: { busBase: 124, annualRuns: 528783, stops: 1546, notableStops: 324, railStops: 55, lines: 53 },
+};
+
 const DEMO_PROFILES: Record<string, DemoOfferProfile> = {
   autoguidovie: {
-    quality: 0.84,
+    quality: 0.88,
     service: 1.06,
-    tech: 0.78,
-    digital: 0.76,
-    safety: 0.81,
+    tech: 0.84,
+    digital: 0.82,
+    safety: 0.88,
     stopFocus: 0.78,
-    environmental: 0.74,
-    discretionary: 0.78,
+    environmental: 0.8,
+    discretionary: 0.82,
     discounts: [4.4, 4.65, 4.9],
   },
   movibusWest: {
@@ -125,7 +144,7 @@ const DEMO_PROFILES: Record<string, DemoOfferProfile> = {
     digital: 0.7,
     safety: 0.76,
     stopFocus: 0.68,
-    environmental: 0.66,
+    environmental: 0.72,
     discretionary: 0.74,
     discounts: [5.15, 5.35, 5.55],
   },
@@ -141,14 +160,14 @@ const DEMO_PROFILES: Record<string, DemoOfferProfile> = {
     discounts: [4.1, 4.35, 4.55],
   },
   starLocal: {
-    quality: 0.69,
-    service: 0.96,
-    tech: 0.62,
-    digital: 0.72,
-    safety: 0.7,
-    stopFocus: 0.66,
-    environmental: 0.58,
-    discretionary: 0.66,
+    quality: 0.76,
+    service: 1.0,
+    tech: 0.74,
+    digital: 0.82,
+    safety: 0.78,
+    stopFocus: 0.74,
+    environmental: 0.68,
+    discretionary: 0.74,
     discounts: [3.8, 4.05, 4.15],
   },
 };
@@ -163,6 +182,16 @@ const lotScale: Record<LotId, number> = {
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 const rounded = (value: number, digits = 2) => Number(value.toFixed(digits));
 
+const quantityInputFromComputedValue = (criterion: Criterion, value: number, lotId: LotId): QuantityInputValue => {
+  const baseline = LOT_DEMO_BASELINES[lotId];
+  const denominator = criterion.quantityInput?.kind === "percent" ? baseline.annualRuns : baseline.busBase;
+  const ratio = criterion.quantityInput?.kind === "percent" ? clamp01(value / 100) : clamp01(value);
+  return {
+    numerator: Math.round(ratio * denominator),
+    denominator,
+  };
+};
+
 const withProfile = (base: DemoOfferProfile, patch: Partial<DemoOfferProfile>): DemoOfferProfile => ({
   ...base,
   ...patch,
@@ -173,6 +202,7 @@ const realisticOffer = (lotId: LotId, profile: DemoOfferProfile): LotOffer => {
   const lot = LOTS.find((item) => item.id === lotId);
   if (!lot) throw new Error(`Unknown lot ${lotId}`);
   const scale = lotScale[lotId];
+  const baseline = LOT_DEMO_BASELINES[lotId];
 
   const qValue = (criterion: Criterion) => {
     switch (criterion.id) {
@@ -183,9 +213,9 @@ const realisticOffer = (lotId: LotId, profile: DemoOfferProfile): LotOffer => {
       case "B.1.1":
         return Math.round(lot.minProductionYears3to7 * 0.035 * profile.service * scale);
       case "B.2.1":
-        return Math.round(680 * profile.service * scale);
+        return Math.round(baseline.annualRuns * 0.002 * profile.service);
       case "B.3.1":
-        return Math.round(210 * profile.service * (0.88 + profile.digital * 0.25) * scale);
+        return Math.round(baseline.annualRuns * 0.00075 * profile.service * (0.88 + profile.digital * 0.25));
       case "B.4.1":
         return Math.round(lot.minProductionYears3to7 * 0.018 * profile.service);
       case "C.1.1":
@@ -199,13 +229,13 @@ const realisticOffer = (lotId: LotId, profile: DemoOfferProfile): LotOffer => {
       case "C.3.1":
         return rounded(clamp01(profile.digital), 3);
       case "D.1.1":
-        return Math.round(42 * profile.stopFocus * scale);
+        return Math.round(baseline.notableStops * 0.28 * profile.stopFocus);
       case "D.1.2":
-        return Math.round(74 * profile.stopFocus * scale);
+        return Math.round(baseline.stops * 0.08 * profile.stopFocus);
       case "D.1.3":
-        return Math.round(28 * profile.digital * scale);
+        return Math.round((baseline.railStops * 1.2 + baseline.notableStops * 0.08) * profile.digital);
       case "D.2.1":
-        return Math.round(34 * profile.stopFocus * scale);
+        return Math.round(baseline.notableStops * 0.2 * profile.stopFocus);
       case "F.1.1":
         return Math.round(126 - profile.environmental * 58);
       case "F.2.1":
@@ -223,6 +253,12 @@ const realisticOffer = (lotId: LotId, profile: DemoOfferProfile): LotOffer => {
   };
 
   const qValues = Object.fromEntries(CRITERIA.filter((criterion) => criterion.kind === "Q").map((criterion) => [criterion.id, qValue(criterion)]));
+  const quantityInputs = Object.fromEntries(
+    CRITERIA.filter((criterion) => criterion.quantityInput).map((criterion) => [
+      criterion.id,
+      quantityInputFromComputedValue(criterion, qValues[criterion.id] ?? 0, lotId),
+    ]),
+  );
   const tValues = Object.fromEntries(
     CRITERIA.filter((criterion) => criterion.kind === "T").map((criterion) => {
       const value =
@@ -251,6 +287,7 @@ const realisticOffer = (lotId: LotId, profile: DemoOfferProfile): LotOffer => {
   return {
     enabled: true,
     qValues,
+    quantityInputs,
     tValues,
     dValues,
     tradeoffs: emptyTradeoffs(),
@@ -337,6 +374,7 @@ type DemoScenario = {
   id: DemoScenarioId;
   title: string;
   body: string;
+  basis: string[];
   defaultBidderId: string;
   defaultLotId: LotId;
   defaultPairId: PairId;
@@ -349,6 +387,11 @@ const DEMO_SCENARIOS: DemoScenario[] = [
     id: "market",
     title: "Mercato realistico",
     body: "Operatori noti del bacino, combinatorie plausibili e profili tecnici differenziati.",
+    basis: [
+      "Basi di lotto da All. 04, All. 05 e All. 09: mezzi, fermate e corse annue stimate.",
+      "Profili operatori calibrati su segnali pubblici: flotta, tecnologie, presidio territoriale.",
+      "Combinatorie coerenti con adiacenze e strategie industriali plausibili, non con offerte ufficiali.",
+    ],
     defaultBidderId: "autoguidovie-demo",
     defaultLotId: "L1",
     defaultPairId: "L1+L4",
@@ -359,6 +402,11 @@ const DEMO_SCENARIOS: DemoScenario[] = [
     id: "tech",
     title: "Tecnologia e flotta",
     body: "Scenario in cui pesano copertura di bordo, informazione dinamica e performance ambientali.",
+    basis: [
+      "Autoguidovie: flotta 777 mezzi, AVM, accessibilità, videosorveglianza e ADAS su fonti ufficiali.",
+      "NET/ATM: presidio nord-est milanese e traiettoria dichiarata verso flotta bus elettrica.",
+      "Le coperture C e F partono da input elementari: autobus attrezzati su autobus totali di lotto.",
+    ],
     defaultBidderId: "net-atm-demo",
     defaultLotId: "L3",
     defaultPairId: "L3+L4",
@@ -369,6 +417,11 @@ const DEMO_SCENARIOS: DemoScenario[] = [
     id: "discount",
     title: "Ribasso aggressivo",
     body: "Scenario economico con maggiore spinta sui ribassi e qualche compromesso tecnico.",
+    basis: [
+      "Ribassi più alti per stressare soglia Q/T, riparametrazione e convenienza delle combinatorie.",
+      "Arriva: benchmark su scala nazionale e piano di rinnovo flotta, senza trasformarlo in offerta tecnica reale.",
+      "Le metriche operative restano ancorate alle basi documentali dei singoli lotti.",
+    ],
     defaultBidderId: "arriva-demo",
     defaultLotId: "L2",
     defaultPairId: "L2+L3",
@@ -379,6 +432,11 @@ const DEMO_SCENARIOS: DemoScenario[] = [
     id: "local",
     title: "Presidio locale",
     body: "Scenario in cui il lotto 4 premia conoscenza territoriale e continuità operativa.",
+    basis: [
+      "Lotto 4 tarato sulle grandezze locali ricavate dagli allegati: 124 mezzi e 1.546 fermate.",
+      "STAR: segnali pubblici su Lodi/Casalpusterlengo, bigliettazione elettronica e pagamento a bordo.",
+      "Il presidio locale migliora alcune leve di fermata e informazione, ma non sostituisce la comparazione economica.",
+    ],
     defaultBidderId: "star-lodi-demo",
     defaultLotId: "L4",
     defaultPairId: "L3+L4",
@@ -402,11 +460,38 @@ type TradeoffPreview = {
 
 const defaultTradeoff = (): TradeoffPlan => ({ deltaUnits: 0, unitCost: 0, denominator: 0 });
 
-const computeTradeoffValue = (criterion: Criterion, currentValue: number | boolean, plan: TradeoffPlan) => {
+const effectiveTradeoffDenominator = (criterion: Criterion, quantityInput: QuantityInputValue | undefined, plan: TradeoffPlan) => {
+  if (!criterion.quantityInput) return plan.denominator;
+  return plan.denominator > 0 ? plan.denominator : quantityInput?.denominator ?? 0;
+};
+
+const quantityInputAfterTradeoff = (
+  criterion: Criterion,
+  currentValue: number | boolean,
+  quantityInput: QuantityInputValue | undefined,
+  plan: TradeoffPlan,
+): QuantityInputValue | undefined => {
+  if (!criterion.quantityInput) return undefined;
+  const denominator = effectiveTradeoffDenominator(criterion, quantityInput, plan);
+  if (denominator <= 0) return undefined;
+  const currentNumeric = Number(currentValue) || 0;
+  const currentRatio = criterion.quantityInput.kind === "percent" ? currentNumeric / 100 : currentNumeric;
+  const numerator = quantityInput?.denominator === denominator ? quantityInput.numerator : Math.round(clamp01(currentRatio) * denominator);
+  return {
+    numerator: Math.max(0, numerator + Math.max(0, plan.deltaUnits)),
+    denominator,
+  };
+};
+
+const computeTradeoffValue = (criterion: Criterion, currentValue: number | boolean, plan: TradeoffPlan, quantityInput?: QuantityInputValue) => {
   if (criterion.kind === "T") return true;
   if (criterion.kind === "D") return currentValue;
 
   const current = Number(currentValue) || 0;
+  if (criterion.quantityInput) {
+    const nextInput = quantityInputAfterTradeoff(criterion, currentValue, quantityInput, plan);
+    return nextInput ? computeQuantityInputValue(criterion, nextInput) : current;
+  }
   if (criterion.input === "ratio") {
     if (plan.denominator <= 0) return current;
     return Math.min(1, Math.max(0, current + plan.deltaUnits / plan.denominator));
@@ -439,6 +524,13 @@ const formatCriterionValue = (criterion: Criterion, value: number | boolean | un
   if (criterion.input === "judgement") return `coeff. ${formatted}`;
   if (criterion.unit === "0-1" || !criterion.unit) return formatted;
   return `${formatted} ${criterion.unit}`.trim();
+};
+
+const formatPlainNumber = (value: number) => value.toLocaleString("it-IT", { maximumFractionDigits: 0 });
+
+const formatCriterionRowValue = (criterion: Criterion, value: number | boolean | undefined, quantityInput?: QuantityInputValue) => {
+  if (!criterion.quantityInput || !quantityInput?.denominator) return formatCriterionValue(criterion, value);
+  return `${formatPlainNumber(quantityInput.numerator)}/${formatPlainNumber(quantityInput.denominator)} -> ${formatCriterionValue(criterion, value)}`;
 };
 
 const criterionStatus = (criterion: Criterion, score: number, note?: string) => {
@@ -513,8 +605,17 @@ function App() {
     const nextBidder = nextBidders.find((bidder) => bidder.id === selectedBidder.id);
     if (!nextBidder) return undefined;
     const nextOffer = nextBidder.lots[selectedLotId];
-    const nextValue = computeTradeoffValue(criterion, currentSubScore.value, plan);
-    if (criterion.kind === "Q") nextOffer.qValues[criterion.id] = Number(nextValue);
+    const quantityInput = offer.quantityInputs?.[criterion.id];
+    const nextValue = computeTradeoffValue(criterion, currentSubScore.value, plan, quantityInput);
+    if (criterion.kind === "Q") {
+      const nextInput = quantityInputAfterTradeoff(criterion, currentSubScore.value, quantityInput, plan);
+      if (nextInput) {
+        nextOffer.quantityInputs = { ...nextOffer.quantityInputs, [criterion.id]: nextInput };
+        nextOffer.qValues[criterion.id] = computeQuantityInputValue(criterion, nextInput);
+      } else {
+        nextOffer.qValues[criterion.id] = Number(nextValue);
+      }
+    }
     if (criterion.kind === "T") nextOffer.tValues[criterion.id] = Boolean(nextValue);
 
     const lot = LOTS.find((item) => item.id === selectedLotId);
@@ -536,7 +637,11 @@ function App() {
       afterTechnical: after.technical,
       afterEconomic: after.singleEconomic,
       afterTotal: after.singleTotal,
-      missingDenominator: criterion.kind === "Q" && criterion.input === "ratio" && plan.denominator <= 0 && plan.deltaUnits > 0,
+      missingDenominator:
+        criterion.kind === "Q" &&
+        (criterion.input === "ratio" || Boolean(criterion.quantityInput)) &&
+        effectiveTradeoffDenominator(criterion, quantityInput, plan) <= 0 &&
+        plan.deltaUnits > 0,
     };
   };
 
@@ -566,9 +671,18 @@ function App() {
     updateLotOffer(selectedLotId, (offer) => {
       const plan = offer.tradeoffs[criterion.id] ?? defaultTradeoff();
       const currentValue =
-        criterion.kind === "Q" ? offer.qValues[criterion.id] : criterion.kind === "T" ? offer.tValues[criterion.id] : offer.dValues[criterion.id];
-      const nextValue = computeTradeoffValue(criterion, currentValue, plan);
-      if (criterion.kind === "Q") offer.qValues[criterion.id] = Number(nextValue);
+        criterion.kind === "Q" ? getQuantitativeCriterionValue(offer, criterion) : criterion.kind === "T" ? offer.tValues[criterion.id] : offer.dValues[criterion.id];
+      const quantityInput = offer.quantityInputs?.[criterion.id];
+      const nextValue = computeTradeoffValue(criterion, currentValue, plan, quantityInput);
+      if (criterion.kind === "Q") {
+        const nextInput = quantityInputAfterTradeoff(criterion, currentValue, quantityInput, plan);
+        if (nextInput) {
+          offer.quantityInputs = { ...offer.quantityInputs, [criterion.id]: nextInput };
+          offer.qValues[criterion.id] = computeQuantityInputValue(criterion, nextInput);
+        } else {
+          offer.qValues[criterion.id] = Number(nextValue);
+        }
+      }
       if (criterion.kind === "T") offer.tValues[criterion.id] = Boolean(nextValue);
 
       const lot = LOTS.find((item) => item.id === selectedLotId);
@@ -659,6 +773,11 @@ function App() {
             <div className="active-scenario">
               <span>Scenario attivo</span>
               <strong>{selectedDemoScenario.title}</strong>
+              <ul className="scenario-basis" aria-label="Base scenario demo">
+                {selectedDemoScenario.basis.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
             </div>
             <label className="field">
               <span>Soglia Q/T</span>
@@ -893,6 +1012,23 @@ function App() {
                             return { ...offer };
                           })
                         }
+                        onQuantityInputChange={(criterion, patch) =>
+                          updateLotOffer(selectedLotId, (offer) => {
+                            const current = offer.quantityInputs[criterion.id] ?? { numerator: 0, denominator: 0 };
+                            const nextInput = { ...current, ...patch };
+                            return {
+                              ...offer,
+                              qValues: {
+                                ...offer.qValues,
+                                [criterion.id]: computeQuantityInputValue(criterion, nextInput),
+                              },
+                              quantityInputs: {
+                                ...offer.quantityInputs,
+                                [criterion.id]: nextInput,
+                              },
+                            };
+                          })
+                        }
                         tradeoff={selectedBidder.lots[selectedLotId].tradeoffs[selectedCriterion.id] ?? defaultTradeoff()}
                         preview={buildTradeoffPreview(selectedCriterion)}
                         onTradeoffChange={(patch) =>
@@ -1029,7 +1165,7 @@ function App() {
           <section className="panel">
             <div className="section-title">
               <ClipboardList size={18} />
-              Fonti web usate
+              Fonti e basi usate
             </div>
             <div className="source-list">
               {PUBLIC_SOURCE_NOTES.map((note) => (
@@ -1082,6 +1218,7 @@ function TechnicalWorkbench({
   onAmbitSelect,
   onCriterionSelect,
   onCriterionChange,
+  onQuantityInputChange,
   tradeoff,
   preview,
   onTradeoffChange,
@@ -1095,6 +1232,7 @@ function TechnicalWorkbench({
   onAmbitSelect: (ambitId: string) => void;
   onCriterionSelect: (criterionId: string) => void;
   onCriterionChange: (criterion: Criterion, value: number | boolean) => void;
+  onQuantityInputChange: (criterion: Criterion, patch: Partial<QuantityInputValue>) => void;
   tradeoff: TradeoffPlan;
   preview?: TradeoffPreview;
   onTradeoffChange: (patch: Partial<TradeoffPlan>) => void;
@@ -1146,6 +1284,7 @@ function TechnicalWorkbench({
                       key={criterion.id}
                       criterion={criterion}
                       value={subScore?.value}
+                      quantityInput={bidder.lots[lotId].quantityInputs?.[criterion.id]}
                       score={subScore?.rawScore ?? 0}
                       note={subScore?.note}
                       selected={criterion.id === selectedCriterion.id}
@@ -1168,6 +1307,7 @@ function TechnicalWorkbench({
         tradeoff={tradeoff}
         preview={preview}
         onChange={(value) => onCriterionChange(selectedCriterion, value)}
+        onQuantityInputChange={(patch) => onQuantityInputChange(selectedCriterion, patch)}
         onTradeoffChange={onTradeoffChange}
         onApplyTradeoff={onApplyTradeoff}
       />
@@ -1178,6 +1318,7 @@ function TechnicalWorkbench({
 function CriterionRow({
   criterion,
   value,
+  quantityInput,
   score,
   note,
   selected,
@@ -1185,6 +1326,7 @@ function CriterionRow({
 }: {
   criterion: Criterion;
   value?: number | boolean;
+  quantityInput?: QuantityInputValue;
   score: number;
   note?: string;
   selected: boolean;
@@ -1197,7 +1339,7 @@ function CriterionRow({
         <strong>{criterion.id}</strong>
         <span>{criterion.label}</span>
       </span>
-      <span className="criterion-row-value">{formatCriterionValue(criterion, value)}</span>
+      <span className="criterion-row-value">{formatCriterionRowValue(criterion, value, quantityInput)}</span>
       <span className="criterion-row-points">{formatPoints(score)} / {formatPoints(criterion.maxPoints)}</span>
       <span className={`row-status ${status.tone}`}>{status.label}</span>
     </button>
@@ -1213,6 +1355,7 @@ function CriterionInspector({
   tradeoff,
   preview,
   onChange,
+  onQuantityInputChange,
   onTradeoffChange,
   onApplyTradeoff,
 }: {
@@ -1224,12 +1367,15 @@ function CriterionInspector({
   tradeoff: TradeoffPlan;
   preview?: TradeoffPreview;
   onChange: (value: number | boolean) => void;
+  onQuantityInputChange: (patch: Partial<QuantityInputValue>) => void;
   onTradeoffChange: (patch: Partial<TradeoffPlan>) => void;
   onApplyTradeoff: () => void;
 }) {
   const offer = bidder.lots[lotId];
-  const value = criterion.kind === "Q" ? offer.qValues[criterion.id] : criterion.kind === "T" ? offer.tValues[criterion.id] : offer.dValues[criterion.id];
+  const quantityInput = offer.quantityInputs?.[criterion.id] ?? { numerator: 0, denominator: 0 };
+  const value = criterion.kind === "Q" ? getQuantitativeCriterionValue(offer, criterion) : criterion.kind === "T" ? offer.tValues[criterion.id] : offer.dValues[criterion.id];
   const status = criterionStatus(criterion, score, note);
+  const tradeoffDenominatorValue = effectiveTradeoffDenominator(criterion, quantityInput, tradeoff);
 
   return (
     <aside className="criterion-inspector">
@@ -1247,8 +1393,41 @@ function CriterionInspector({
       </div>
 
       <div className="inspector-section">
-        <div className="inspector-section-title">Valore offerta</div>
-      {criterion.kind === "Q" && (
+        <div className="inspector-section-title">Dati proposta tecnica</div>
+      {criterion.kind === "Q" && criterion.quantityInput && (
+        <div className="quantity-input-panel">
+          <div className="quantity-input-grid">
+            <label className="field compact">
+              <span>{criterion.quantityInput.numeratorLabel}</span>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={quantityInput.numerator}
+                onChange={(event) => onQuantityInputChange({ numerator: Number(event.target.value) })}
+              />
+            </label>
+            <label className="field compact">
+              <span>{criterion.quantityInput.denominatorLabel}</span>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={quantityInput.denominator}
+                onChange={(event) => onQuantityInputChange({ denominator: Number(event.target.value) })}
+              />
+            </label>
+          </div>
+          <div className="calculated-value">
+            <span>{criterion.quantityInput.resultLabel} calcolato</span>
+            <strong>{quantityInput.denominator > 0 ? formatCriterionValue(criterion, value) : "Base mancante"}</strong>
+          </div>
+          {quantityInput.denominator > 0 && quantityInput.numerator > quantityInput.denominator && (
+            <span className="note-warning">Il valore per il punteggio viene limitato alla copertura massima pari a 1.</span>
+          )}
+        </div>
+      )}
+      {criterion.kind === "Q" && !criterion.quantityInput && (
         <div className="input-with-unit">
           <input
             type="number"
@@ -1300,21 +1479,21 @@ function CriterionInspector({
                 <span>Delta {criterion.tradeoffUnit}</span>
                 <input
                   type="number"
-                  step={criterion.input === "ratio" ? 1 : criterion.input === "percent" ? 0.01 : 1}
+                  step={criterion.quantityInput || criterion.input === "ratio" ? 1 : criterion.input === "percent" ? 0.01 : 1}
                   min={0}
                   value={tradeoff.deltaUnits}
                   onChange={(event) => onTradeoffChange({ deltaUnits: Number(event.target.value) })}
                 />
               </label>
             )}
-            {criterion.kind === "Q" && criterion.input === "ratio" && (
+            {criterion.kind === "Q" && (criterion.input === "ratio" || criterion.quantityInput) && (
               <label className="field compact">
-                <span>Base Nbus/fermate</span>
+                <span>{criterion.quantityInput ? "Base di calcolo tradeoff" : "Base Nbus/fermate"}</span>
                 <input
                   type="number"
                   min={0}
                   step={1}
-                  value={tradeoff.denominator}
+                  value={tradeoffDenominatorValue}
                   onChange={(event) => onTradeoffChange({ denominator: Number(event.target.value) })}
                 />
               </label>
@@ -1333,7 +1512,7 @@ function CriterionInspector({
           {preview && (
             <div className="tradeoff-preview">
               {preview.missingDenominator ? (
-                <span className="note-warning">Inserisci la base di calcolo per trasformare i mezzi/fermate aggiunti in tasso di copertura.</span>
+                <span className="note-warning">Inserisci la base di calcolo per trasformare le unità aggiunte nel valore usato dal punteggio.</span>
               ) : (
                 <>
                   <span>Costo {euroFormatter.format(preview.totalCost)}</span>
