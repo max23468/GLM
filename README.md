@@ -24,8 +24,8 @@ Apri `http://127.0.0.1:4173/`.
 
 ## Fonti
 
-La logica è ricostruita dai documenti di gara conservati localmente nella cartella `milano-lotti-extraurbani-om`.
-La cartella non è versionata nel repository perché contiene molti allegati binari pesanti; per lavorare sulla ricostruzione completa va mantenuta nella root del progetto.
+La logica è ricostruita dai documenti di gara nella cartella `milano-lotti-extraurbani-om`, versionata tramite Git LFS perché contiene allegati binari pesanti.
+Per clonare il repository con i documenti completi serve Git LFS attivo.
 
 Documenti principali:
 

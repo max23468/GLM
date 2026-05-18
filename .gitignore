@@ -8,8 +8,6 @@ dist/
 .vite/
 .playwright-cli/
 
-milano-lotti-extraurbani-om/
-
 output/
 tmp/
 
