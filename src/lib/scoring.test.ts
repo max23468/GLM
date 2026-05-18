@@ -22,6 +22,11 @@ const fillOffer = (bidder: Bidder, lotId: (typeof LOTS)[number]["id"], ribasso: 
   }
 };
 
+const assignedLotCount = (result: ReturnType<typeof simulate>, bidderId: string) =>
+  result.selectedScenario?.assignments
+    .filter((assignment) => assignment.bidderId === bidderId)
+    .reduce((sum, assignment) => sum + assignment.lotIds.length, 0) ?? 0;
+
 describe("TPL tender scoring", () => {
   it("keeps lot participation separate for each operator", () => {
     const first = createBidder("a", "A");
@@ -80,6 +85,48 @@ describe("TPL tender scoring", () => {
 
     expect(result.comboScores[first.id]["L1+L2"].admissible).toBe(true);
     expect(result.selectedScenario?.assignments.some((assignment) => assignment.kind === "combo" && assignment.pairId === "L1+L2")).toBe(true);
+  });
+
+  it("rejects a combinatory offer with the same direct amount as the single offers", () => {
+    const bidder = createBidder("a", "A");
+    fillOffer(bidder, "L1", 5, 80);
+    fillOffer(bidder, "L2", 5, 80);
+    bidder.combos["L1+L2"] = { enabled: true, phaseDiscounts: [5, 5, 5], insertedInBothBuste: true, pefCoherent: true };
+
+    const result = simulate([bidder], settings, bidder.id);
+
+    expect(result.comboScores[bidder.id]["L1+L2"].admissible).toBe(false);
+    expect(result.comboScores[bidder.id]["L1+L2"].warnings.some((warning) => warning.includes("non economicamente migliorativo"))).toBe(true);
+  });
+
+  it("does not use the two-lot award derogation when all lots can be assigned under the ordinary limit", () => {
+    const first = createBidder("a", "A");
+    for (const lot of LOTS) fillOffer(first, lot.id, 8, 95);
+
+    const second = createBidder("b", "B");
+    fillOffer(second, "L3", 3, 70);
+    fillOffer(second, "L4", 3, 70);
+
+    const result = simulate([first, second], { ...settings, applyAwardLimitDerogation: true }, first.id);
+
+    expect(result.selectedScenario?.unassignedLots).toEqual([]);
+    expect(assignedLotCount(result, first.id)).toBeLessThanOrEqual(2);
+    expect(result.selectedScenario?.awardLimitDerogationUsed).toBe(false);
+  });
+
+  it("uses the two-lot award derogation only when the ordinary limit leaves lots unassigned", () => {
+    const bidder = createBidder("a", "A");
+    for (const lot of LOTS) fillOffer(bidder, lot.id, 8, 95);
+
+    const withoutDerogation = simulate([bidder], settings, bidder.id);
+    const withDerogation = simulate([bidder], { ...settings, applyAwardLimitDerogation: true }, bidder.id);
+
+    expect(assignedLotCount(withoutDerogation, bidder.id)).toBe(2);
+    expect(withoutDerogation.selectedScenario?.unassignedLots).toHaveLength(2);
+    expect(assignedLotCount(withDerogation, bidder.id)).toBe(4);
+    expect(withDerogation.selectedScenario?.unassignedLots).toEqual([]);
+    expect(withDerogation.selectedScenario?.awardLimitDerogationUsed).toBe(true);
+    expect(withDerogation.warnings.some((warning) => warning.includes("Deroga al limite di due lotti applicata"))).toBe(true);
   });
 
   it("rejects overlapping combinatory pairs for the same bidder", () => {

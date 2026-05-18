@@ -106,6 +106,7 @@ export type Scenario = {
   technicalScore: number;
   unassignedLots: LotId[];
   drawRequired: boolean;
+  awardLimitDerogationUsed: boolean;
 };
 
 export type Suggestion = {
@@ -212,10 +213,14 @@ const getPair = (pairId: PairId) => {
 
 const discountToDecimal = (percent: number) => clamp(percent / 100, 0, 1);
 
-export const computeWeightedRibasso = (baseByPhase: [number, number, number], phaseDiscounts: [number, number, number]) => {
+const computeOfferedAmount = (baseByPhase: [number, number, number], phaseDiscounts: [number, number, number]) => {
   const roundedDiscounts = phaseDiscounts.map((item) => round4(discountToDecimal(item))) as [number, number, number];
+  return baseByPhase.reduce((sum, base, index) => sum + base * (1 - roundedDiscounts[index]), 0);
+};
+
+export const computeWeightedRibasso = (baseByPhase: [number, number, number], phaseDiscounts: [number, number, number]) => {
   const baseTotal = baseByPhase.reduce((sum, value) => sum + value, 0);
-  const offered = baseByPhase.reduce((sum, base, index) => sum + base * (1 - roundedDiscounts[index]), 0);
+  const offered = computeOfferedAmount(baseByPhase, phaseDiscounts);
   return round4(1 - offered / baseTotal);
 };
 
@@ -397,8 +402,12 @@ const computeComboScores = (
           const firstScore = lotScores[bidder.id][firstLotId];
           const secondScore = lotScores[bidder.id][secondLotId];
           const baseSum = firstLot.totalBase + secondLot.totalBase;
+          const pairBases = pairBaseByPhase(pair.id);
           const ribasso = computeWeightedRibasso(pairBaseByPhase(pair.id), combo.phaseDiscounts);
-          const singleOfferedSum = firstLot.totalBase * (1 - firstScore.singleRibasso) + secondLot.totalBase * (1 - secondScore.singleRibasso);
+          const comboOffered = computeOfferedAmount(pairBases, combo.phaseDiscounts);
+          const singleOfferedSum =
+            computeOfferedAmount(firstLot.baseByPhase, bidder.lots[firstLotId].phaseDiscounts) +
+            computeOfferedAmount(secondLot.baseByPhase, bidder.lots[secondLotId].phaseDiscounts);
           const minRequiredRibasso = round4(1 - singleOfferedSum / baseSum);
           const warnings: string[] = [];
 
@@ -420,7 +429,7 @@ const computeComboScores = (
           if (combo.enabled && !combo.pefCoherent) {
             warnings.push("PEF combinatorio non dichiarato coerente/presente.");
           }
-          if (combo.enabled && ribasso <= minRequiredRibasso) {
+          if (combo.enabled && comboOffered >= singleOfferedSum) {
             warnings.push(`Ribasso combinatorio non economicamente migliorativo: serve > ${formatPercent(minRequiredRibasso)}.`);
           }
 
@@ -434,7 +443,7 @@ const computeComboScores = (
             comboSetAllowed(bidder) &&
             combo.insertedInBothBuste &&
             combo.pefCoherent &&
-            ribasso > minRequiredRibasso;
+            comboOffered < singleOfferedSum;
 
           const firstEconomic = admissible && rMaxByLot[firstLotId] > 0 ? round4(30 * (ribasso / rMaxByLot[firstLotId])) : 0;
           const secondEconomic = admissible && rMaxByLot[secondLotId] > 0 ? round4(30 * (ribasso / rMaxByLot[secondLotId])) : 0;
@@ -474,10 +483,10 @@ const computeRMaxByLot = (bidders: Bidder[], lotScores: Record<string, Record<Lo
         const secondScore = lotScores[bidder.id][secondLotId];
         const firstLot = getLot(firstLotId);
         const secondLot = getLot(secondLotId);
-        const baseSum = firstLot.totalBase + secondLot.totalBase;
-        const ribasso = computeWeightedRibasso(pairBaseByPhase(pair.id), combo.phaseDiscounts);
-        const singleOfferedSum = firstLot.totalBase * (1 - firstScore.singleRibasso) + secondLot.totalBase * (1 - secondScore.singleRibasso);
-        const minRequiredRibasso = round4(1 - singleOfferedSum / baseSum);
+        const comboOffered = computeOfferedAmount(pairBaseByPhase(pair.id), combo.phaseDiscounts);
+        const singleOfferedSum =
+          computeOfferedAmount(firstLot.baseByPhase, bidder.lots[firstLotId].phaseDiscounts) +
+          computeOfferedAmount(secondLot.baseByPhase, bidder.lots[secondLotId].phaseDiscounts);
 
         return (
           pair.lots.includes(lot.id) &&
@@ -488,7 +497,7 @@ const computeRMaxByLot = (bidders: Bidder[], lotScores: Record<string, Record<Lo
           comboSetAllowed(bidder) &&
           combo.insertedInBothBuste &&
           combo.pefCoherent &&
-          ribasso > minRequiredRibasso
+          comboOffered < singleOfferedSum
         );
       }).map((pair) => computeWeightedRibasso(pairBaseByPhase(pair.id), bidder.combos[pair.id].phaseDiscounts)),
     );
@@ -546,7 +555,7 @@ const buildCandidates = (bidders: Bidder[], lotScores: Record<string, Record<Lot
 
 const scenarioKey = (assignments: AssignmentCandidate[]) => assignments.map((assignment) => assignment.id).sort().join("||");
 
-const enumerateScenarios = (candidates: AssignmentCandidate[], settings: Settings): Scenario[] => {
+const enumerateScenarios = (candidates: AssignmentCandidate[], allowAwardLimitDerogation: boolean): Scenario[] => {
   const scenarios = new Map<string, Scenario>();
   const lots = LOTS.map((lot) => lot.id);
 
@@ -569,6 +578,7 @@ const enumerateScenarios = (candidates: AssignmentCandidate[], settings: Setting
         technicalScore,
         unassignedLots,
         drawRequired: false,
+        awardLimitDerogationUsed: Object.values(bidderCounts).some((count) => count > 2),
       });
       return;
     }
@@ -579,7 +589,7 @@ const enumerateScenarios = (candidates: AssignmentCandidate[], settings: Setting
       if (candidate.lotIds.some((lotId) => occupiedLots.has(lotId))) continue;
       const currentCount = bidderCounts[candidate.bidderId] ?? 0;
       const nextCount = currentCount + candidate.lotIds.length;
-      if (!settings.applyAwardLimitDerogation && nextCount > 2) continue;
+      if (!allowAwardLimitDerogation && nextCount > 2) continue;
       const nextProcessed = new Set(processedLots);
       const nextOccupied = new Set(occupiedLots);
       candidate.lotIds.forEach((lotId) => {
@@ -609,6 +619,21 @@ const enumerateScenarios = (candidates: AssignmentCandidate[], settings: Setting
   }
 
   return sorted;
+};
+
+const enumerateScenariosWithAwardLimitPolicy = (candidates: AssignmentCandidate[], settings: Settings): Scenario[] => {
+  const limitedScenarios = enumerateScenarios(candidates, false);
+  const bestLimitedScenario = limitedScenarios[0];
+
+  if (!settings.applyAwardLimitDerogation || !bestLimitedScenario?.unassignedLots.length) {
+    return limitedScenarios;
+  }
+
+  const relaxedScenarios = enumerateScenarios(candidates, true);
+  const bestRelaxedScenario = relaxedScenarios[0];
+  return bestRelaxedScenario && bestRelaxedScenario.unassignedLots.length < bestLimitedScenario.unassignedLots.length
+    ? relaxedScenarios
+    : limitedScenarios;
 };
 
 const lotRankings = (candidates: AssignmentCandidate[]) => {
@@ -650,6 +675,9 @@ const buildWarnings = (
   const selected = scenarios[0];
   if (selected?.drawRequired) {
     warnings.push("Lo scenario migliore è ex aequo anche dopo il criterio tecnico: è richiesto sorteggio pubblico.");
+  }
+  if (selected?.awardLimitDerogationUsed) {
+    warnings.push("Deroga al limite di due lotti applicata solo perché il limite ordinario lasciava almeno un lotto non assegnato.");
   }
   if (selected?.unassignedLots.length) {
     warnings.push(`Scenario selezionato con lotti non assegnati: ${selected.unassignedLots.join(", ")}.`);
@@ -747,7 +775,7 @@ export const simulate = (bidders: Bidder[], settings: Settings, selectedBidderId
   computeSingleEconomicScores(bidders, lotScores, rMaxByLot);
   const comboScores = computeComboScores(bidders, lotScores, rMaxByLot);
   const candidates = buildCandidates(bidders, lotScores, comboScores);
-  const scenarios = enumerateScenarios(candidates, settings);
+  const scenarios = enumerateScenariosWithAwardLimitPolicy(candidates, settings);
   return {
     lotScores,
     comboScores,

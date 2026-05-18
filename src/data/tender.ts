@@ -359,16 +359,16 @@ export const CRITERIA: Criterion[] = [
   criterion("A.1.2", "A", "Q", "higher", 4, "Numero aggiuntivo di passeggeri controllati", "integer", "passeggeri/anno", "medio", "All. 13, p. 22", "Soglie minime: 60.000 per L1, 100.000 per L2-L4."),
   criterion("B.1.1", "B", "Q", "higher", 3, "Incremento dei posti offerti nelle fasce di punta", "integer", "posti*km", "alto", "All. 13, p. 23", "Output dal Modello presentazione PdE."),
   criterion("B.2.1", "B", "Q", "higher", 4, "Corse aggiuntive nell'arco giornaliero base", "integer", "corse", "alto", "All. 13, p. 23", "Output dal Modello presentazione PdE."),
-  criterion("B.3.1", "B", "Q", "higher", 2, "Corse aggiuntive serali", "integer", "corse", "alto", "All. 13, p. 24", "Output dal Modello presentazione PdE."),
-  criterion("B.4.1", "B", "Q", "higher", 3, "Percorrenze aggiuntive nelle prime due fasi", "integer", "vett*km", "alto", "All. 13, p. 25"),
+  criterion("B.3.1", "B", "Q", "higher", 2, "Numero di corse aggiuntive per allungamento dell'arco di servizio giornaliero nelle fasce serali", "integer", "corse", "alto", "All. 13, p. 24", "Output dal Modello presentazione PdE."),
+  criterion("B.4.1", "B", "Q", "higher", 3, "Percorrenze aggiuntive offerte nel Programma d'esercizio delle prime due fasi attuative", "integer", "vett*km", "alto", "All. 13, p. 25"),
   criterion("B.5.1", "B", "D", "discretionary", 2, "Efficacia del progetto di servizi complementari DRT", "judgement", "coeff.", "alto", "All. 13, p. 37"),
-  criterion("C.1.1", "C", "Q", "higher", 2, "Copertura con telecamere BSD", "ratio", "0-1", "medio", "All. 13, p. 25", undefined, undefined, busCoverageInput("Autobus attrezzati con telecamere BSD", "Tbsd")),
-  criterion("C.1.2", "C", "Q", "higher", 2, "Copertura con telecamere ADAS", "ratio", "0-1", "medio", "All. 13, p. 26", undefined, undefined, busCoverageInput("Autobus attrezzati con telecamere ADAS", "Tadas")),
-  criterion("C.2.1", "C", "Q", "higher", 3, "Copertura con videosorveglianza di bordo", "ratio", "0-1", "medio", "All. 13 tabella criteri e All. 13.10", "Il paragrafo formula indica 2 punti e sigla PC31: criticità documentale segnalata.", undefined, busCoverageInput("Autobus attrezzati con videosorveglianza", "Tvideo")),
+  criterion("C.1.1", "C", "Q", "higher", 2, "Tasso di copertura del servizio con telecamere BSD", "ratio", "0-1", "medio", "All. 13, p. 25", undefined, undefined, busCoverageInput("Autobus attrezzati con telecamere BSD", "Tbsd")),
+  criterion("C.1.2", "C", "Q", "higher", 2, "Tasso di copertura del servizio con telecamere ADAS", "ratio", "0-1", "medio", "All. 13, p. 26", undefined, undefined, busCoverageInput("Autobus attrezzati con telecamere ADAS", "Tadas")),
+  criterion("C.2.1", "C", "Q", "higher", 3, "Tasso di copertura del servizio con telecamere di bordo di videosorveglianza", "ratio", "0-1", "medio", "All. 13 tabella criteri e All 131_2.XLS", "Il paragrafo formula indica 2 punti e sigla PC31: criticità documentale segnalata.", undefined, busCoverageInput("Autobus attrezzati con videosorveglianza", "Tvideo")),
   criterion("C.2.2", "C", "T", "tabular", 1, "Software video/audio analisi per situazioni di pericolo", "yesno", "sì/no", "basso", "All. 13, p. 32"),
   criterion("C.2.3", "C", "T", "tabular", 1, "Collegamento con centrale qualificata di pronto intervento", "yesno", "sì/no", "basso", "All. 13, p. 33"),
-  criterion("C.2.4", "C", "Q", "higher", 1, "Copertura con chiamata emergenza conducente", "ratio", "0-1", "medio", "All. 13 tabella criteri e All. 13.10", "Il testo formula riporta 2 punti: criticità documentale segnalata.", undefined, busCoverageInput("Autobus attrezzati con chiamata di emergenza", "Tall")),
-  criterion("C.3.1", "C", "Q", "higher", 2, "Copertura con informazione dinamica a bordo", "ratio", "0-1", "medio", "All. 13, p. 27", undefined, undefined, busCoverageInput("Autobus con monitor e indicatori vocali", "Tinfo")),
+  criterion("C.2.4", "C", "Q", "higher", 1, "Tasso di copertura del servizio con dispositivi per la chiamata di emergenza del conducente", "ratio", "0-1", "medio", "All. 13 tabella criteri e All 131_2.XLS", "Il testo formula riporta 2 punti: criticità documentale segnalata.", undefined, busCoverageInput("Autobus attrezzati con chiamata di emergenza", "Tall")),
+  criterion("C.3.1", "C", "Q", "higher", 2, "Tasso di copertura del servizio con dispositivi di informazione dinamica a bordo mezzo", "ratio", "0-1", "medio", "All. 13, p. 27", undefined, undefined, busCoverageInput("Autobus con monitor e indicatori vocali", "Tinfo")),
   criterion("C.3.2", "C", "T", "tabular", 2, "Informazioni a bordo su coincidenze ai nodi", "yesno", "sì/no", "basso", "All. 13, p. 34", undefined, {
     criterionId: "C.3.1",
     operator: ">=",
@@ -376,13 +376,13 @@ export const CRITERIA: Criterion[] = [
     message: "Ammessa solo se C.3.1 è uguale o superiore a 0,5.",
   }),
   criterion("D.1.1", "D", "Q", "higher", 3, "Installazione di pensiline", "integer", "fermate", "medio", "All. 13, p. 28", "Il testo formula usa variabili Tpensi/Tpensmax: criticità redazionale."),
-  criterion("D.1.2", "D", "Q", "higher", 3, "Paline di fermata conformi DGR 581/2023", "integer", "fermate", "medio", "All. 13 tabella criteri e All. 13.10", "Il testo formula indica 2 punti pur con max 3 in tabella/modello."),
+  criterion("D.1.2", "D", "Q", "higher", 3, "Installazione di paline di fermata conformi alla DGR 581/2023", "integer", "fermate", "medio", "All. 13 tabella criteri e All 131_2.XLS", "Il testo formula indica 2 punti pur con max 3 in tabella/modello."),
   criterion("D.1.3", "D", "Q", "higher", 2, "Display informativi connessi alle fermate", "integer", "fermate", "medio", "All. 13, p. 29"),
   criterion("D.2.1", "D", "Q", "higher", 2, "Segnali tattili Loges-Vet-Evolution", "integer", "fermate", "medio", "All. 13, p. 29"),
   criterion("E.1.1", "E", "T", "tabular", 2, "Mobile app con travel planner PRM", "yesno", "sì/no", "basso", "All. 13, p. 34"),
   criterion("E.2.1", "E", "D", "discretionary", 2, "Altre azioni informative e rapporti con gli utenti", "judgement", "coeff.", "alto", "All. 13, p. 37"),
-  criterion("F.1.1", "F", "Q", "lower", 7, "Performance ambientali del parco mezzi - I_CEA", "index", "indice", "alto", "All. 13, p. 30 e All. 13.11", "Punteggio inverso: migliore il CEA più basso."),
-  criterion("F.2.1", "F", "Q", "higher", 2, "Copertura con dispositivi ECO-DRIVER", "ratio", "0-1", "medio", "All. 13, p. 31", undefined, undefined, busCoverageInput("Autobus attrezzati con dispositivi ECO-DRIVER", "Tecod")),
+  criterion("F.1.1", "F", "Q", "lower", 7, "Performance ambientali del parco mezzi adibito al servizio - I_CEA", "index", "indice", "alto", "All. 13, p. 30 e All. 13.11", "Punteggio inverso: migliore il CEA più basso."),
+  criterion("F.2.1", "F", "Q", "higher", 2, "Tasso di copertura del servizio con dispositivi ECO-DRIVER", "ratio", "0-1", "medio", "All. 13, p. 31", undefined, undefined, busCoverageInput("Autobus attrezzati con dispositivi ECO-DRIVER", "Tecod")),
   criterion("F.3.1", "F", "Q", "higher", 2, "Autoproduzione consumi elettrici per trazione", "integer", "kWh/anno", "alto", "All. 13, p. 31"),
   criterion("F.4.1", "F", "Q", "soil", 2, "Indice di consumo di suolo", "sqm", "m2", "alto", "All. 13, p. 32", "Se <= 0 assegna il massimo; se > 0 usa la formula su ICsuolomax."),
   criterion("F.5.1", "F", "T", "tabular", 1, "Rendicontazione di sostenibilità ambientale", "yesno", "sì/no", "basso", "All. 13, p. 34"),
@@ -390,7 +390,7 @@ export const CRITERIA: Criterion[] = [
   criterion("G.2.1", "G", "T", "tabular", 1, "Certificazione ISO 45001", "yesno", "sì/no", "basso", "All. 13, p. 35"),
   criterion("G.3.1", "G", "T", "tabular", 1, "Certificazioni di responsabilità sociale", "yesno", "sì/no", "basso", "All. 13, p. 35"),
   criterion("G.4.1", "G", "D", "discretionary", 2, "Qualità del piano di formazione del personale", "judgement", "coeff.", "alto", "All. 13, p. 37"),
-  criterion("G.5.1", "G", "T", "tabular", 1, "Miglioramento clausola sociale", "yesno", "sì/no", "basso", "All. 13 tabella/PDF e All. 13.10", "Descrizione non perfettamente allineata fra PDF e modello All. 13.10."),
+  criterion("G.5.1", "G", "T", "tabular", 1, "Impegno al mantenimento delle garanzie del contratto di secondo livello del gestore uscente", "yesno", "sì/no", "basso", "All. 13 tabella/PDF e All 131_2.XLS", "Descrizione non perfettamente allineata fra PDF e modello All 131_2.XLS."),
 ];
 
 export const DISCRETIONARY_SCALE = [
@@ -432,7 +432,7 @@ export const DOCUMENT_WARNINGS = [
   },
   {
     title: "Massimi di alcuni sub-criteri non allineati al testo formula",
-    body: "C.2.1, C.2.4 e D.1.2 presentano differenze tra tabella/modello e frase formula. Il simulatore usa i massimi della tabella e del modello All. 13.10 e segnala la criticità.",
+    body: "C.2.1, C.2.4 e D.1.2 presentano differenze tra tabella/modello e frase formula. Il simulatore usa i massimi della tabella e del modello All 131_2.XLS e segnala la criticità.",
   },
   {
     title: "Criteri aggregati con refusi nei massimi",
@@ -440,6 +440,6 @@ export const DOCUMENT_WARNINGS = [
   },
   {
     title: "G.5.1 ha descrizione non identica tra PDF e modello",
-    body: "Il PDF parla di continuità lavorativa dei lavoratori subaffidatari; il modello All. 13.10 cita il mantenimento delle garanzie del contratto di secondo livello.",
+    body: "Il PDF parla di continuità lavorativa dei lavoratori subaffidatari; il modello All 131_2.XLS cita il mantenimento delle garanzie del contratto di secondo livello.",
   },
 ];
