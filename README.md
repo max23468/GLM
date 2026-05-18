@@ -26,13 +26,19 @@ Il comando compila l'app con Vite e pubblica la cartella `dist` sul branch `main
 - Scenari demo già compilati con operatori e profili ispirati a dati pubblici reperibili sul web.
 - Basi operative degli scenari demo ricavate dagli allegati locali di gara: mezzi, fermate e corse annue stimate per lotto.
 - Inserimento di più offerenti.
+- Salvataggio locale degli scenari, duplicazione e ripristino dei preset demo.
+- Import/export JSON degli scenari per archiviazione o condivisione.
+- Riepilogo strategico sempre visibile con scenario vincente, lotti assegnati e warning prioritario.
+- Confronto tra scenario corrente e scenari salvati.
+- Report scenario stampabile o salvabile in PDF dal browser.
 - Scelta, per ciascun operatore, dei lotti singoli L1-L4 a cui partecipa.
 - Scelta delle offerte combinatorie ammesse: 1+2, 2+3, 3+4, 1+4.
 - Simulazione dei sub-criteri tecnici Q/T/D, con raggruppamento per criterio padre e ambito A-G.
 - Input operativi per i tassi derivati: l'utente inserisce numeratori e basi tecniche, per esempio autobus attrezzati e autobus totali, e il simulatore calcola il rapporto usato nel punteggio.
 - Calcolo di soglia Q/T, riparametrazione per ambito, offerta economica singola e combinatoria, classifica e scenario vincente.
-- Pannello di suggerimenti prioritizzati e criticità documentali.
+- Pannello di suggerimenti prioritizzati e criticità documentali, con suggerimenti operativi coerenti con numeratori e denominatori quando disponibili.
 - Tradeoff tecnico/economico per sub-criterio: delta operativo, costo unitario/totale, variazione del punteggio tecnico, economico e totale.
+- Layout responsive con schede partecipazione dedicate su mobile.
 
 ## Fonti
 

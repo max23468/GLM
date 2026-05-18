@@ -129,6 +129,43 @@ describe("TPL tender scoring", () => {
     expect(withDerogation.warnings.some((warning) => warning.includes("Deroga al limite di due lotti applicata"))).toBe(true);
   });
 
+  it("applies the configured Q/T threshold before economic ranking", () => {
+    const bidder = createBidder("a", "A");
+    bidder.lots.L1.enabled = true;
+    bidder.lots.L1.phaseDiscounts = [10, 10, 10];
+
+    const result = simulate([bidder], { ...settings, threshold: 43.4 }, bidder.id);
+
+    expect(result.lotScores[bidder.id].L1.admitted).toBe(false);
+    expect(result.lotScores[bidder.id].L1.singleEconomic).toBe(0);
+    expect(result.warnings.some((warning) => warning.includes("Sotto soglia Q/T"))).toBe(true);
+  });
+
+  it("includes admissible combinatory discounts in rMax for both lots", () => {
+    const bidder = createBidder("a", "A");
+    fillOffer(bidder, "L1", 2, 80);
+    fillOffer(bidder, "L2", 2, 80);
+    bidder.combos["L1+L2"] = { enabled: true, phaseDiscounts: [6, 6, 6], insertedInBothBuste: true, pefCoherent: true };
+
+    const result = simulate([bidder], settings, bidder.id);
+
+    expect(result.comboScores[bidder.id]["L1+L2"].admissible).toBe(true);
+    expect(result.rMaxByLot.L1).toBe(0.06);
+    expect(result.rMaxByLot.L2).toBe(0.06);
+  });
+
+  it("flags a draw when total and technical scores are tied", () => {
+    const first = createBidder("a", "A");
+    const second = createBidder("b", "B");
+    fillOffer(first, "L1", 4, 80);
+    fillOffer(second, "L1", 4, 80);
+
+    const result = simulate([first, second], settings, first.id);
+
+    expect(result.selectedScenario?.drawRequired).toBe(true);
+    expect(result.warnings.some((warning) => warning.includes("sorteggio pubblico"))).toBe(true);
+  });
+
   it("rejects overlapping combinatory pairs for the same bidder", () => {
     const bidder = createBidder("a", "A");
     for (const lot of ["L1", "L2", "L3"] as const) fillOffer(bidder, lot, 3, 80);

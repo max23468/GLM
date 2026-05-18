@@ -49,12 +49,21 @@ import {
   type SimulationResult,
   type TradeoffPlan,
 } from "./lib/scoring";
+import {
+  ReportPanel,
+  ScenarioComparison,
+  ScenarioTools,
+  StrategicSummary,
+  type SavedScenarioSnapshot,
+} from "./components/scenario-panels";
 
 const euroFormatter = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 type ThemePreference = "auto" | "light" | "dark";
 type WorkspaceTab = "tecnica" | "economica" | "combinatorie" | "risultati";
 
 const THEME_STORAGE_KEY = "tpl-simulator-theme";
+const WORKSPACE_STORAGE_KEY = "tpl-simulator-workspace";
+const SAVED_SCENARIOS_STORAGE_KEY = "tpl-simulator-scenarios";
 
 const themeOptions: { value: ThemePreference; label: string; icon: LucideIcon }[] = [
   { value: "auto", label: "Auto", icon: Monitor },
@@ -445,6 +454,74 @@ const DEMO_SCENARIOS: DemoScenario[] = [
   },
 ];
 
+type StoredWorkspace = {
+  scenarioName: string;
+  activeSavedScenarioId?: string;
+  demoScenarioId: DemoScenarioId;
+  bidders: Bidder[];
+  settings: Settings;
+  selectedBidderId: string;
+  selectedLotId: LotId;
+  selectedPairId: PairId;
+};
+
+const isDemoScenarioId = (value: string): value is DemoScenarioId => DEMO_SCENARIOS.some((scenario) => scenario.id === value);
+const isLotId = (value: string): value is LotId => LOTS.some((lot) => lot.id === value);
+const isPairId = (value: string): value is PairId => PAIRS.some((pair) => pair.id === value);
+
+const getStoredJson = <T,>(key: string): T | undefined => {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const normalizeScenarioSnapshot = (value: unknown): SavedScenarioSnapshot | undefined => {
+  if (!value || typeof value !== "object") return undefined;
+  const candidate = value as Partial<SavedScenarioSnapshot>;
+  if (!Array.isArray(candidate.bidders) || !candidate.settings || typeof candidate.settings !== "object") return undefined;
+  const fallbackScenario = DEMO_SCENARIOS[0];
+  const firstBidderId = candidate.bidders[0]?.id ?? fallbackScenario.defaultBidderId;
+  return {
+    id: typeof candidate.id === "string" && candidate.id ? candidate.id : `scenario-${Date.now()}`,
+    name: typeof candidate.name === "string" && candidate.name.trim() ? candidate.name.trim() : "Scenario importato",
+    savedAt: typeof candidate.savedAt === "string" ? candidate.savedAt : new Date().toISOString(),
+    demoScenarioId: typeof candidate.demoScenarioId === "string" && isDemoScenarioId(candidate.demoScenarioId) ? candidate.demoScenarioId : fallbackScenario.id,
+    bidders: candidate.bidders,
+    settings: candidate.settings as Settings,
+    selectedBidderId: typeof candidate.selectedBidderId === "string" ? candidate.selectedBidderId : firstBidderId,
+    selectedLotId: typeof candidate.selectedLotId === "string" && isLotId(candidate.selectedLotId) ? candidate.selectedLotId : fallbackScenario.defaultLotId,
+    selectedPairId: typeof candidate.selectedPairId === "string" && isPairId(candidate.selectedPairId) ? candidate.selectedPairId : fallbackScenario.defaultPairId,
+  };
+};
+
+const getStoredWorkspace = (): StoredWorkspace | undefined => {
+  const stored = getStoredJson<StoredWorkspace>(WORKSPACE_STORAGE_KEY);
+  if (!stored || !Array.isArray(stored.bidders) || !stored.settings) return undefined;
+  const fallback = DEMO_SCENARIOS[0];
+  return {
+    scenarioName: stored.scenarioName || fallback.title,
+    activeSavedScenarioId: stored.activeSavedScenarioId,
+    demoScenarioId: isDemoScenarioId(stored.demoScenarioId) ? stored.demoScenarioId : fallback.id,
+    bidders: stored.bidders,
+    settings: stored.settings,
+    selectedBidderId: stored.selectedBidderId || stored.bidders[0]?.id || fallback.defaultBidderId,
+    selectedLotId: isLotId(stored.selectedLotId) ? stored.selectedLotId : fallback.defaultLotId,
+    selectedPairId: isPairId(stored.selectedPairId) ? stored.selectedPairId : fallback.defaultPairId,
+  };
+};
+
+const getStoredSavedScenarios = () =>
+  (getStoredJson<unknown[]>(SAVED_SCENARIOS_STORAGE_KEY) ?? [])
+    .map(normalizeScenarioSnapshot)
+    .filter((scenario): scenario is SavedScenarioSnapshot => Boolean(scenario));
+
+const makeDownloadName = (name: string) =>
+  `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "scenario"}-${new Date().toISOString().slice(0, 10)}.json`;
+
 type TradeoffPreview = {
   nextValue: number | boolean;
   totalCost: number;
@@ -542,15 +619,21 @@ const criterionStatus = (criterion: Criterion, score: number, note?: string) => 
 };
 
 function App() {
-  const [demoScenarioId, setDemoScenarioId] = useState<DemoScenarioId>("market");
-  const [bidders, setBidders] = useState<Bidder[]>(() => DEMO_SCENARIOS[0].buildBidders());
-  const [selectedBidderId, setSelectedBidderId] = useState(DEMO_SCENARIOS[0].defaultBidderId);
-  const [selectedLotId, setSelectedLotId] = useState<LotId>("L1");
-  const [selectedPairId, setSelectedPairId] = useState<PairId>(DEMO_SCENARIOS[0].defaultPairId);
+  const [initialWorkspace] = useState(() => getStoredWorkspace());
+  const [demoScenarioId, setDemoScenarioId] = useState<DemoScenarioId>(initialWorkspace?.demoScenarioId ?? "market");
+  const [bidders, setBidders] = useState<Bidder[]>(() => initialWorkspace?.bidders ?? DEMO_SCENARIOS[0].buildBidders());
+  const [selectedBidderId, setSelectedBidderId] = useState(initialWorkspace?.selectedBidderId ?? DEMO_SCENARIOS[0].defaultBidderId);
+  const [selectedLotId, setSelectedLotId] = useState<LotId>(initialWorkspace?.selectedLotId ?? "L1");
+  const [selectedPairId, setSelectedPairId] = useState<PairId>(initialWorkspace?.selectedPairId ?? DEMO_SCENARIOS[0].defaultPairId);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("tecnica");
   const [selectedAmbitId, setSelectedAmbitId] = useState(AMBITS[0].id);
   const [selectedCriterionId, setSelectedCriterionId] = useState(CRITERIA[0].id);
-  const [settings, setSettings] = useState<Settings>(defaultSettings);
+  const [settings, setSettings] = useState<Settings>(initialWorkspace?.settings ?? defaultSettings);
+  const [scenarioName, setScenarioName] = useState(initialWorkspace?.scenarioName ?? DEMO_SCENARIOS[0].title);
+  const [savedScenarios, setSavedScenarios] = useState<SavedScenarioSnapshot[]>(getStoredSavedScenarios);
+  const [activeSavedScenarioId, setActiveSavedScenarioId] = useState<string | undefined>(initialWorkspace?.activeSavedScenarioId);
+  const [compareScenarioId, setCompareScenarioId] = useState("");
+  const [scenarioNotice, setScenarioNotice] = useState("");
   const [themePreference, setThemePreference] = useState<ThemePreference>(getStoredTheme);
   const [systemPrefersDark, setSystemPrefersDark] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(prefers-color-scheme: dark)").matches : false,
@@ -572,6 +655,26 @@ function App() {
     window.localStorage.setItem(THEME_STORAGE_KEY, themePreference);
   }, [resolvedTheme, themePreference]);
 
+  useEffect(() => {
+    window.localStorage.setItem(
+      WORKSPACE_STORAGE_KEY,
+      JSON.stringify({
+        scenarioName,
+        activeSavedScenarioId,
+        demoScenarioId,
+        bidders,
+        settings,
+        selectedBidderId,
+        selectedLotId,
+        selectedPairId,
+      } satisfies StoredWorkspace),
+    );
+  }, [activeSavedScenarioId, bidders, demoScenarioId, scenarioName, selectedBidderId, selectedLotId, selectedPairId, settings]);
+
+  useEffect(() => {
+    window.localStorage.setItem(SAVED_SCENARIOS_STORAGE_KEY, JSON.stringify(savedScenarios));
+  }, [savedScenarios]);
+
   const selectedBidder = bidders.find((bidder) => bidder.id === selectedBidderId) ?? bidders[0];
   const selectedLotContext = LOT_CONTEXT[selectedLotId];
   const selectedDemoScenario = DEMO_SCENARIOS.find((scenario) => scenario.id === demoScenarioId) ?? DEMO_SCENARIOS[0];
@@ -587,6 +690,11 @@ function App() {
   const selectedAmbit = AMBITS.find((ambit) => ambit.id === selectedAmbitId) ?? AMBITS[0];
   const selectedAmbitCriteria = useMemo(() => CRITERIA.filter((criterion) => criterion.ambit === selectedAmbit.id), [selectedAmbit.id]);
   const selectedCriterion = selectedAmbitCriteria.find((criterion) => criterion.id === selectedCriterionId) ?? selectedAmbitCriteria[0] ?? CRITERIA[0];
+  const compareScenario = savedScenarios.find((scenario) => scenario.id === compareScenarioId);
+  const compareResult = useMemo(
+    () => (compareScenario ? simulate(compareScenario.bidders, compareScenario.settings, compareScenario.selectedBidderId) : undefined),
+    [compareScenario],
+  );
 
   useEffect(() => {
     if (selectedAmbitCriteria.length && !selectedAmbitCriteria.some((criterion) => criterion.id === selectedCriterionId)) {
@@ -651,6 +759,8 @@ function App() {
 
   const loadDemoScenario = (scenario: DemoScenario) => {
     setDemoScenarioId(scenario.id);
+    setScenarioName(scenario.title);
+    setActiveSavedScenarioId(undefined);
     setBidders(scenario.buildBidders());
     setSettings(scenario.settings);
     setSelectedBidderId(scenario.defaultBidderId);
@@ -711,6 +821,86 @@ function App() {
     if (selectedBidderId === bidderId) setSelectedBidderId(nextBidders[0].id);
   };
 
+  const currentScenarioSnapshot = (id = activeSavedScenarioId ?? `scenario-${Date.now()}`, name = scenarioName): SavedScenarioSnapshot => ({
+    id,
+    name: name.trim() || "Scenario senza nome",
+    savedAt: new Date().toISOString(),
+    demoScenarioId,
+    bidders: structuredClone(bidders),
+    settings: { ...settings },
+    selectedBidderId: selectedBidder?.id ?? bidders[0]?.id ?? "",
+    selectedLotId,
+    selectedPairId,
+  });
+
+  const applyScenarioSnapshot = (scenario: SavedScenarioSnapshot) => {
+    const nextBidders = structuredClone(scenario.bidders);
+    setScenarioName(scenario.name);
+    setActiveSavedScenarioId(scenario.id);
+    setDemoScenarioId(isDemoScenarioId(scenario.demoScenarioId) ? scenario.demoScenarioId : "market");
+    setBidders(nextBidders);
+    setSettings(scenario.settings);
+    setSelectedBidderId(nextBidders.some((bidder) => bidder.id === scenario.selectedBidderId) ? scenario.selectedBidderId : nextBidders[0]?.id ?? "");
+    setSelectedLotId(isLotId(scenario.selectedLotId) ? scenario.selectedLotId : "L1");
+    setSelectedPairId(isPairId(scenario.selectedPairId) ? scenario.selectedPairId : PAIRS[0].id);
+    setScenarioNotice(`Caricato: ${scenario.name}`);
+  };
+
+  const saveCurrentScenario = () => {
+    const nextId = activeSavedScenarioId ?? `scenario-${Date.now()}`;
+    const snapshot = currentScenarioSnapshot(nextId);
+    setSavedScenarios((current) => [snapshot, ...current.filter((scenario) => scenario.id !== nextId)]);
+    setActiveSavedScenarioId(nextId);
+    setScenarioNotice(`Salvato: ${snapshot.name}`);
+  };
+
+  const duplicateCurrentScenario = () => {
+    const snapshot = currentScenarioSnapshot(`scenario-${Date.now()}`, `${scenarioName || "Scenario"} copia`);
+    setSavedScenarios((current) => [snapshot, ...current]);
+    applyScenarioSnapshot(snapshot);
+    setScenarioNotice(`Duplicato: ${snapshot.name}`);
+  };
+
+  const exportCurrentScenario = () => {
+    const snapshot = currentScenarioSnapshot(activeSavedScenarioId ?? `scenario-${Date.now()}`);
+    const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = makeDownloadName(snapshot.name);
+    link.click();
+    URL.revokeObjectURL(url);
+    setScenarioNotice(`Esportato: ${snapshot.name}`);
+  };
+
+  const importScenarioFile = async (file: File) => {
+    try {
+      const parsed = JSON.parse(await file.text());
+      const snapshot = normalizeScenarioSnapshot(parsed);
+      if (!snapshot) {
+        setScenarioNotice("File JSON non riconosciuto.");
+        return;
+      }
+      const imported = { ...snapshot, id: snapshot.id || `scenario-${Date.now()}`, savedAt: new Date().toISOString() };
+      setSavedScenarios((current) => [imported, ...current.filter((scenario) => scenario.id !== imported.id)]);
+      applyScenarioSnapshot(imported);
+      setScenarioNotice(`Importato: ${imported.name}`);
+    } catch {
+      setScenarioNotice("Import non riuscito: controlla il file JSON.");
+    }
+  };
+
+  const loadSavedScenario = (scenarioId: string) => {
+    if (!scenarioId) return;
+    const scenario = savedScenarios.find((item) => item.id === scenarioId);
+    if (scenario) applyScenarioSnapshot(scenario);
+  };
+
+  const resetCurrentDemoScenario = () => {
+    loadDemoScenario(selectedDemoScenario);
+    setScenarioNotice(`Preset ripristinato: ${selectedDemoScenario.title}`);
+  };
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -745,6 +935,23 @@ function App() {
 
       <div className="layout">
         <aside className="left-rail">
+          <ScenarioTools
+            scenarioName={scenarioName}
+            savedScenarios={savedScenarios}
+            activeSavedScenarioId={activeSavedScenarioId}
+            scenarioNotice={scenarioNotice}
+            onScenarioNameChange={(name) => {
+              setScenarioName(name);
+              setActiveSavedScenarioId(undefined);
+            }}
+            onSave={saveCurrentScenario}
+            onDuplicate={duplicateCurrentScenario}
+            onExport={exportCurrentScenario}
+            onImportFile={importScenarioFile}
+            onLoadSaved={loadSavedScenario}
+            onResetDemo={resetCurrentDemoScenario}
+          />
+
           <section className="panel demo-panel">
             <div className="section-title">
               <ClipboardList size={18} />
@@ -862,6 +1069,15 @@ function App() {
         <main className="workspace">
           {selectedBidder && (
             <>
+              <StrategicSummary
+                scenarioName={scenarioName}
+                selectedBidderName={selectedBidder.name}
+                selectedLotLabel={selectedLotLabel}
+                result={result}
+                selectedLotQt={selectedLotScore?.qtRaw}
+                onOpenResults={() => setActiveTab("risultati")}
+              />
+
               <section className="panel identity-panel">
                 <div>
                   <div className="section-title">Offerente</div>
@@ -943,6 +1159,53 @@ function App() {
                         );
                       })}
                     </div>
+                  ))}
+                </div>
+                <div className="mobile-participation-cards" aria-label="Partecipazioni per offerente">
+                  {bidders.map((bidder) => (
+                    <article key={bidder.id} className={`mobile-bidder-card ${bidder.id === selectedBidder.id ? "selected" : ""}`}>
+                      <button className="mobile-bidder-name" onClick={() => setSelectedBidderId(bidder.id)}>
+                        {bidder.name}
+                      </button>
+                      <div className="mobile-check-grid">
+                        {LOTS.map((lot) => {
+                          const lotScore = result.lotScores[bidder.id][lot.id];
+                          return (
+                            <label key={lot.id} className={bidder.lots[lot.id].enabled ? lotScore.admitted ? "ok" : "warn" : ""}>
+                              <span>{lot.shortLabel}</span>
+                              <input
+                                type="checkbox"
+                                checked={bidder.lots[lot.id].enabled}
+                                onChange={(event) =>
+                                  updateBidder(bidder.id, (draft) => {
+                                    draft.lots[lot.id].enabled = event.target.checked;
+                                    return draft;
+                                  })
+                                }
+                              />
+                            </label>
+                          );
+                        })}
+                        {PAIRS.map((pair) => {
+                          const comboScore = result.comboScores[bidder.id][pair.id];
+                          return (
+                            <label key={pair.id} className={bidder.combos[pair.id].enabled ? comboScore.admissible ? "ok" : "warn" : ""}>
+                              <span>{pair.label.replace("Lotti ", "")}</span>
+                              <input
+                                type="checkbox"
+                                checked={bidder.combos[pair.id].enabled}
+                                onChange={(event) =>
+                                  updateBidder(bidder.id, (draft) => {
+                                    draft.combos[pair.id].enabled = event.target.checked;
+                                    return draft;
+                                  })
+                                }
+                              />
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </article>
                   ))}
                 </div>
                 <div className="hint">Le combinatorie restano valide solo per coppie ammesse, senza sovrapposizioni e con offerte singole attive sui due lotti.</div>
@@ -1104,6 +1367,23 @@ function App() {
         </main>
 
         <aside className="right-panel">
+          <ReportPanel
+            scenarioName={scenarioName}
+            result={result}
+            selectedLotId={selectedLotId}
+            sourceCount={PUBLIC_SOURCE_NOTES.length}
+            onPrint={() => window.print()}
+          />
+
+          <ScenarioComparison
+            savedScenarios={savedScenarios}
+            compareScenarioId={compareScenarioId}
+            compareScenario={compareScenario}
+            compareResult={compareResult}
+            currentResult={result}
+            onCompareScenarioChange={setCompareScenarioId}
+          />
+
           <section className="panel hero-score">
             <div className="section-title">
               <Trophy size={18} />
@@ -1175,6 +1455,9 @@ function App() {
                     <span>{note.metric}</span>
                   </div>
                   <p>{note.body}</p>
+                  <small>
+                    {note.reliability} - verificata il {note.verifiedAt}
+                  </small>
                   <a href={note.sourceUrl} target="_blank" rel="noreferrer">
                     {note.source}
                   </a>

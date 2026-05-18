@@ -77,6 +77,8 @@ export type PublicSourceNote = {
   body: string;
   source: string;
   sourceUrl: string;
+  verifiedAt: string;
+  reliability: "Documento di gara" | "Fonte pubblica" | "Assunzione demo";
 };
 
 export const LOTS: Lot[] = [
@@ -164,6 +166,8 @@ export const PUBLIC_SOURCE_NOTES: PublicSourceNote[] = [
     body: "La pubblicazione dell'Agenzia TPL indica procedura aperta, quattro lotti extraurbani e scadenza bando al 30 settembre 2026.",
     source: "Agenzia TPL Milano, Monza Brianza, Lodi e Pavia",
     sourceUrl: "https://www.agenziatpl.it/agenzia/amministrazione-trasparente/19-bandi-di-gara-e-contratti/287-bando-di-gara-per-l-affidamento-di-servizi-di-tpl",
+    verifiedAt: "19/05/2026",
+    reliability: "Documento di gara",
   },
   {
     id: "sintel",
@@ -172,6 +176,8 @@ export const PUBLIC_SOURCE_NOTES: PublicSourceNote[] = [
     body: "Il fascicolo pubblico Sintel espone il set documentale della procedura, inclusi allegati tecnici, PEF, offerta economica e modelli di partecipazione.",
     source: "ARIA Lombardia - Sintel",
     sourceUrl: "https://www.sintel.regione.lombardia.it/eprocdata/auctionDetail.xhtml?id=218044617",
+    verifiedAt: "19/05/2026",
+    reliability: "Documento di gara",
   },
   {
     id: "lot-baselines",
@@ -180,6 +186,8 @@ export const PUBLIC_SOURCE_NOTES: PublicSourceNote[] = [
     body: "Le basi demo usano All. 09 per mezzi, All. 05 per fermate e All. 04.9-04.12 per corse annue stimate per lotto.",
     source: "Allegati locali di gara / Sintel",
     sourceUrl: "https://www.sintel.regione.lombardia.it/eprocdata/auctionDetail.xhtml?id=218044617",
+    verifiedAt: "19/05/2026",
+    reliability: "Assunzione demo",
   },
   {
     id: "autoguidovie",
@@ -188,6 +196,8 @@ export const PUBLIC_SOURCE_NOTES: PublicSourceNote[] = [
     body: "Il profilo demo usa dati pubblici su classe emissiva Euro 5+, AVM, accessibilità, videosorveglianza, ADAS e rinnovo medio della flotta.",
     source: "Autoguidovie - Flotta",
     sourceUrl: "https://autoguidovie.it/it/flotta",
+    verifiedAt: "19/05/2026",
+    reliability: "Fonte pubblica",
   },
   {
     id: "arriva",
@@ -196,6 +206,8 @@ export const PUBLIC_SOURCE_NOTES: PublicSourceNote[] = [
     body: "Il profilo demo usa la scala nazionale del gruppo e gli investimenti dichiarati su rinnovo flotta, quota clean e classe emissiva minima.",
     source: "Arriva Italia - Piano investimenti",
     sourceUrl: "https://arriva.it/news/investimenti-pari-a-156-milioni-di-euro-nei-prossimi-5-anni/",
+    verifiedAt: "19/05/2026",
+    reliability: "Fonte pubblica",
   },
   {
     id: "movibus",
@@ -204,6 +216,8 @@ export const PUBLIC_SOURCE_NOTES: PublicSourceNote[] = [
     body: "Il profilo RTI Ovest è ispirato al perimetro pubblico di Movibus nell'Alto Milanese e nell'area ovest della città metropolitana.",
     source: "Gruppo ATM - Movibus",
     sourceUrl: "https://www.atm.it/en/IlGruppo/ChiSiamo/Pages/Movibus.aspx",
+    verifiedAt: "19/05/2026",
+    reliability: "Fonte pubblica",
   },
   {
     id: "net-atm",
@@ -212,6 +226,8 @@ export const PUBLIC_SOURCE_NOTES: PublicSourceNote[] = [
     body: "Il profilo urbano-tecnologico deriva dal presidio NET nel nord-est milanese e dalla traiettoria ATM verso una flotta bus elettrica.",
     source: "Gruppo ATM - NET",
     sourceUrl: "https://www.atm.it/it/IlGruppo/ChiSiamo/Pagine/NET.aspx",
+    verifiedAt: "19/05/2026",
+    reliability: "Fonte pubblica",
   },
   {
     id: "star",
@@ -220,6 +236,8 @@ export const PUBLIC_SOURCE_NOTES: PublicSourceNote[] = [
     body: "Il profilo locale sul lotto 4 usa segnali pubblici su servizio urbano, bigliettazione elettronica, pagamento contactless e presidio lodigiano.",
     source: "STAR Mobility - Servizio urbano",
     sourceUrl: "https://starmobility.it/servizio-urbano/",
+    verifiedAt: "19/05/2026",
+    reliability: "Fonte pubblica",
   },
 ];
 

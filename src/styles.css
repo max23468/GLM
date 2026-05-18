@@ -313,6 +313,67 @@ input[type="checkbox"] {
   font-size: 0.78rem;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.scenario-tools {
+  display: grid;
+  gap: 12px;
+}
+
+.scenario-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-soft);
+  color: var(--body-soft);
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.action-button.primary {
+  border-color: var(--teal-border);
+  background: var(--teal-soft);
+  color: var(--success-text);
+}
+
+.action-button.subtle {
+  width: 100%;
+}
+
+.action-button.compact {
+  min-height: 34px;
+  white-space: nowrap;
+}
+
+.scenario-notice {
+  border: 1px solid var(--teal-border);
+  border-radius: 6px;
+  background: var(--teal-soft);
+  color: var(--success-text);
+  padding: 8px;
+  font-size: 0.78rem;
+  font-weight: 760;
+}
+
 .demo-list {
   display: grid;
   gap: 8px;
@@ -504,6 +565,86 @@ input[type="checkbox"] {
   min-width: 0;
 }
 
+.strategic-summary {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--teal-border);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, var(--teal-soft), var(--surface));
+  box-shadow: var(--shadow);
+  padding: 14px;
+}
+
+.strategic-heading,
+.strategic-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.strategic-heading > div,
+.summary-score,
+.strategic-footer {
+  min-width: 0;
+}
+
+.strategic-heading span,
+.strategic-lot span,
+.strategic-lot small,
+.strategic-footer {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 720;
+}
+
+.strategic-heading strong {
+  display: block;
+  color: var(--section-title);
+  overflow-wrap: anywhere;
+  font-size: 1rem;
+}
+
+.summary-score strong {
+  color: var(--score-text);
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.strategic-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.strategic-lot {
+  display: grid;
+  gap: 3px;
+  min-height: 74px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 10px;
+}
+
+.strategic-lot.assigned {
+  border-color: var(--teal-border);
+}
+
+.strategic-lot strong {
+  color: var(--strong-text);
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.summary-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--warning-text);
+}
+
 .identity-panel {
   display: flex;
   align-items: flex-end;
@@ -549,6 +690,10 @@ input[type="checkbox"] {
   overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: 8px;
+}
+
+.mobile-participation-cards {
+  display: none;
 }
 
 .matrix-head,
@@ -1502,6 +1647,55 @@ input[type="checkbox"] {
   background: var(--surface-soft);
 }
 
+.comparison-panel,
+.report-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.comparison-grid,
+.report-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.report-summary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.comparison-grid > div,
+.report-summary > div {
+  display: grid;
+  gap: 3px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 9px;
+}
+
+.comparison-grid span,
+.report-summary span,
+.source-card small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.comparison-grid strong,
+.report-summary strong {
+  color: var(--strong-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.comparison-grid .positive strong {
+  color: var(--success-text);
+}
+
+.comparison-grid .negative strong {
+  color: var(--red);
+}
+
 @media (max-width: 1320px) {
   .layout {
     grid-template-columns: minmax(230px, 260px) minmax(0, 1fr);
@@ -1580,6 +1774,9 @@ input[type="checkbox"] {
   .identity-grid,
   .criterion-inspector-main,
   .quantity-input-grid,
+  .strategic-grid,
+  .comparison-grid,
+  .report-summary,
   .tradeoff-grid,
   .tradeoff-preview,
   .metric-grid,
@@ -1591,6 +1788,73 @@ input[type="checkbox"] {
 
   .workspace-tabs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .strategic-heading,
+  .strategic-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .participation-matrix {
+    display: none;
+  }
+
+  .mobile-participation-cards {
+    display: grid;
+    gap: 8px;
+  }
+
+  .mobile-bidder-card {
+    display: grid;
+    gap: 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-soft);
+    padding: 10px;
+  }
+
+  .mobile-bidder-card.selected {
+    border-color: var(--teal-border);
+    background: var(--teal-soft);
+  }
+
+  .mobile-bidder-name {
+    border: 0;
+    background: transparent;
+    color: var(--section-title);
+    padding: 0;
+    text-align: left;
+    font-weight: 800;
+  }
+
+  .mobile-check-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .mobile-check-grid label {
+    display: grid;
+    justify-items: center;
+    gap: 5px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--control-bg);
+    padding: 7px 4px;
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 800;
+  }
+
+  .mobile-check-grid label.ok {
+    border-color: var(--teal-border);
+    color: var(--success-text);
+  }
+
+  .mobile-check-grid label.warn {
+    border-color: var(--amber-border);
+    color: var(--warning-text);
   }
 
   .ambit-strip,
@@ -1626,5 +1890,43 @@ input[type="checkbox"] {
 
   .row-status {
     justify-self: end;
+  }
+}
+
+@media print {
+  body {
+    background: #fff;
+    color: #111;
+  }
+
+  .topbar-actions,
+  .left-rail,
+  .workspace-tabs,
+  .identity-panel,
+  .lot-switchboard,
+  .technical-workbench,
+  .action-button {
+    display: none !important;
+  }
+
+  .app-shell {
+    padding: 0;
+  }
+
+  .layout {
+    display: block;
+    max-width: none;
+  }
+
+  .workspace,
+  .right-panel {
+    display: grid;
+    gap: 12px;
+  }
+
+  .panel,
+  .strategic-summary {
+    box-shadow: none;
+    break-inside: avoid;
   }
 }

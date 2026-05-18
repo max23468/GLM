@@ -691,6 +691,8 @@ const effortWeight = (effort: Criterion["effort"]) => {
   return 3;
 };
 
+const formatInteger = (value: number) => Math.round(value).toLocaleString("it-IT");
+
 const buildSuggestions = (
   bidders: Bidder[],
   lotScores: Record<string, Record<LotId, LotScore>>,
@@ -715,8 +717,21 @@ const buildSuggestions = (
           ? `${criterion.id}: prima risolvi la dipendenza indicata, poi il sì assegna ${formatPoints(criterion.maxPoints)} punti tabellari.`
           : `${criterion.id}: portare il selettore a sì assegna ${formatPoints(criterion.maxPoints)} punti tabellari se l'impegno è documentabile.`;
       } else if (criterion.formula === "higher") {
-        const bestValue = Math.max(...bidders.filter((item) => item.lots[lot.id].enabled).map((item) => getQuantitativeCriterionValue(item.lots[lot.id], criterion)));
-        body = `${criterion.id}: per allinearti al migliore scenario corrente il valore deve raggiungere ${bestValue.toLocaleString("it-IT")} ${criterion.unit}.`;
+        const enabledBidders = bidders.filter((item) => item.lots[lot.id].enabled);
+        const bestBidder = enabledBidders
+          .map((item) => ({ bidder: item, value: getQuantitativeCriterionValue(item.lots[lot.id], criterion) }))
+          .sort((a, b) => b.value - a.value)[0];
+        const bestValue = bestBidder?.value ?? 0;
+        const currentInput = bidder.lots[lot.id].quantityInputs?.[criterion.id];
+        const bestInput = bestBidder?.bidder.lots[lot.id].quantityInputs?.[criterion.id];
+        if (criterion.quantityInput && bestInput?.denominator) {
+          const denominator = currentInput?.denominator || bestInput.denominator;
+          const targetNumerator =
+            denominator === bestInput.denominator ? bestInput.numerator : Math.ceil((bestValue / (criterion.quantityInput.kind === "percent" ? 100 : 1)) * denominator);
+          body = `${criterion.id}: porta ${criterion.quantityInput.numeratorLabel.toLowerCase()} a circa ${formatInteger(targetNumerator)} su ${formatInteger(denominator)} ${criterion.quantityInput.denominatorUnit} per allinearti al migliore scenario corrente.`;
+        } else {
+          body = `${criterion.id}: per allinearti al migliore scenario corrente il valore deve raggiungere ${bestValue.toLocaleString("it-IT")} ${criterion.unit}.`;
+        }
       } else if (criterion.formula === "lower") {
         const bestValue = Math.min(...bidders.filter((item) => item.lots[lot.id].enabled).map((item) => getQuantitativeCriterionValue(item.lots[lot.id], criterion) || Infinity));
         body = `${criterion.id}: il punteggio cresce riducendo l'indice verso ${bestValue.toLocaleString("it-IT")} ${criterion.unit}.`;
