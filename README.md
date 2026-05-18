@@ -24,7 +24,10 @@ Apri `http://127.0.0.1:4173/`.
 
 ## Fonti
 
-La logica è ricostruita dai documenti allegati nella cartella `milano-lotti-extraurbani-om`, in particolare:
+La logica è ricostruita dai documenti di gara conservati localmente nella cartella `milano-lotti-extraurbani-om`.
+La cartella non è versionata nel repository perché contiene molti allegati binari pesanti; per lavorare sulla ricostruzione completa va mantenuta nella root del progetto.
+
+Documenti principali:
 
 - `DISCIPLINARE DI GARA.pdf`
 - `All 13 - Offerta tecnica e criteri di valutazione.pdf`
