@@ -40,7 +40,7 @@
   --score-text: #0f4f49;
   --focus-ring: rgba(15, 118, 110, 0.16);
   --focus-inner: rgba(49, 90, 138, 0.2);
-  --shadow: 0 10px 30px rgba(26, 43, 45, 0.08);
+  --shadow: 0 8px 22px rgba(26, 43, 45, 0.07);
   --radius: 8px;
 }
 
@@ -80,7 +80,7 @@
   --score-text: #79e6d9;
   --focus-ring: rgba(103, 225, 210, 0.22);
   --focus-inner: rgba(155, 194, 245, 0.24);
-  --shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
+  --shadow: 0 14px 34px rgba(0, 0, 0, 0.26);
 }
 
 * {
@@ -189,8 +189,12 @@ button {
 
 .layout {
   display: grid;
-  grid-template-columns: 290px minmax(0, 1fr) 390px;
-  gap: 16px;
+  grid-template-areas:
+    "rail workspace"
+    "rail insights";
+  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
   max-width: 1680px;
   margin: 0 auto;
 }
@@ -202,7 +206,28 @@ button {
   gap: 14px;
 }
 
+.left-rail {
+  grid-area: rail;
+  position: sticky;
+  top: 18px;
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.right-panel {
+  grid-area: insights;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.right-panel .panel {
+  min-width: 0;
+}
+
 .panel {
+  min-width: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -213,6 +238,7 @@ button {
 .section-title {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 12px;
   color: var(--section-title);
@@ -384,7 +410,13 @@ input[type="checkbox"] {
 }
 
 .offeror-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-weight: 700;
+}
+
+.offeror-row small {
+  white-space: nowrap;
 }
 
 .offeror-row small,
@@ -451,6 +483,7 @@ input[type="checkbox"] {
 }
 
 .workspace {
+  grid-area: workspace;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -459,6 +492,7 @@ input[type="checkbox"] {
 
 .identity-panel {
   display: flex;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 14px;
 }
@@ -469,8 +503,9 @@ input[type="checkbox"] {
 
 .identity-grid {
   display: grid;
-  grid-template-columns: 1.1fr 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
+  max-width: min(920px, 100%);
 }
 
 .ghost {
@@ -544,6 +579,7 @@ input[type="checkbox"] {
   text-align: left;
   cursor: pointer;
   font-weight: 720;
+  overflow-wrap: anywhere;
 }
 
 .matrix-check {
@@ -689,7 +725,7 @@ input[type="checkbox"] {
 
 .technical-workbench {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(310px, 0.42fr);
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.42fr);
   gap: 14px;
   align-items: start;
 }
@@ -850,13 +886,16 @@ input[type="checkbox"] {
 }
 
 .criterion-row-name span {
-  overflow: hidden;
   color: var(--section-title);
+  display: -webkit-box;
+  overflow: hidden;
   font-size: 0.86rem;
   font-weight: 690;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   line-height: 1.25;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .criterion-row-value,
@@ -1286,6 +1325,14 @@ input[type="checkbox"] {
 .ranking-row div {
   display: grid;
   gap: 2px;
+  min-width: 0;
+}
+
+.assignment-row strong,
+.ranking-row strong,
+.suggestion strong,
+.source-card strong {
+  overflow-wrap: anywhere;
 }
 
 .ranking-row b {
@@ -1306,6 +1353,7 @@ input[type="checkbox"] {
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+  min-width: 0;
 }
 
 .suggestion p,
@@ -1330,6 +1378,7 @@ input[type="checkbox"] {
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+  min-width: 0;
 }
 
 .source-card strong {
@@ -1382,17 +1431,7 @@ input[type="checkbox"] {
 
 @media (max-width: 1320px) {
   .layout {
-    grid-template-columns: 250px minmax(0, 1fr);
-  }
-
-  .right-panel {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .right-panel .panel:last-child {
-    grid-column: 1 / -1;
+    grid-template-columns: minmax(230px, 260px) minmax(0, 1fr);
   }
 }
 
@@ -1436,12 +1475,24 @@ input[type="checkbox"] {
   }
 
   .layout {
+    grid-template-areas:
+      "rail"
+      "workspace"
+      "insights";
     grid-template-columns: 1fr;
   }
 
-  .left-rail,
-  .right-panel {
+  .left-rail {
     display: flex;
+    position: static;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .right-panel {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .identity-panel,
