@@ -39,13 +39,17 @@ import {
   round4,
   simulate,
   type Bidder,
+  type ComboScore,
+  type LotScore,
   type LotOffer,
   type Settings,
+  type SimulationResult,
   type TradeoffPlan,
 } from "./lib/scoring";
 
 const euroFormatter = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 type ThemePreference = "auto" | "light" | "dark";
+type WorkspaceTab = "tecnica" | "economica" | "combinatorie" | "risultati";
 
 const THEME_STORAGE_KEY = "tpl-simulator-theme";
 
@@ -54,6 +58,19 @@ const themeOptions: { value: ThemePreference; label: string; icon: LucideIcon }[
   { value: "light", label: "Chiaro", icon: Sun },
   { value: "dark", label: "Scuro", icon: Moon },
 ];
+
+const workspaceTabs: { value: WorkspaceTab; label: string; icon: LucideIcon }[] = [
+  { value: "tecnica", label: "Tecnica", icon: BarChart3 },
+  { value: "economica", label: "Economica", icon: CircleDollarSign },
+  { value: "combinatorie", label: "Combinatorie", icon: Route },
+  { value: "risultati", label: "Risultati", icon: Trophy },
+];
+
+const criterionKindLabel: Record<Criterion["kind"], string> = {
+  Q: "Quantitativo",
+  T: "Tabellare",
+  D: "Discrezionale",
+};
 
 const getStoredTheme = (): ThemePreference => {
   if (typeof window === "undefined") return "auto";
@@ -406,12 +423,41 @@ const tradeoffCost = (criterion: Criterion, plan: TradeoffPlan) => {
   return quantity * Math.max(0, plan.unitCost);
 };
 
+const signedPoints = (amount: number) => `${amount >= 0 ? "+" : ""}${formatPoints(amount)}`;
+
+const signedPercent = (amount: number) =>
+  `${amount >= 0 ? "+" : ""}${amount.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} pt`;
+
+const formatCriterionValue = (criterion: Criterion, value: number | boolean | undefined) => {
+  if (criterion.kind === "T") return value ? "Sì" : "No";
+  const numericValue = Number(value ?? 0);
+  const formatted = numericValue.toLocaleString("it-IT", {
+    minimumFractionDigits: criterion.input === "integer" || criterion.input === "sqm" || criterion.input === "index" ? 0 : 2,
+    maximumFractionDigits: criterion.input === "integer" || criterion.input === "sqm" || criterion.input === "index" ? 0 : 3,
+  });
+  if (criterion.input === "percent") return `${formatted}%`;
+  if (criterion.input === "judgement") return `coeff. ${formatted}`;
+  if (criterion.unit === "0-1" || !criterion.unit) return formatted;
+  return `${formatted} ${criterion.unit}`.trim();
+};
+
+const criterionStatus = (criterion: Criterion, score: number, note?: string) => {
+  if (note) return { label: "Verifica", tone: "warn" };
+  if (criterion.maxPoints <= 0) return { label: "n/d", tone: "muted" };
+  if (score <= 0) return { label: "Scoperto", tone: "weak" };
+  if (score >= criterion.maxPoints * 0.9) return { label: "Forte", tone: "ok" };
+  return { label: "Parziale", tone: "mid" };
+};
+
 function App() {
   const [demoScenarioId, setDemoScenarioId] = useState<DemoScenarioId>("market");
   const [bidders, setBidders] = useState<Bidder[]>(() => DEMO_SCENARIOS[0].buildBidders());
   const [selectedBidderId, setSelectedBidderId] = useState(DEMO_SCENARIOS[0].defaultBidderId);
   const [selectedLotId, setSelectedLotId] = useState<LotId>("L1");
   const [selectedPairId, setSelectedPairId] = useState<PairId>(DEMO_SCENARIOS[0].defaultPairId);
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>("tecnica");
+  const [selectedAmbitId, setSelectedAmbitId] = useState(AMBITS[0].id);
+  const [selectedCriterionId, setSelectedCriterionId] = useState(CRITERIA[0].id);
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [themePreference, setThemePreference] = useState<ThemePreference>(getStoredTheme);
   const [systemPrefersDark, setSystemPrefersDark] = useState(() =>
@@ -440,6 +486,21 @@ function App() {
   const result = useMemo(() => simulate(bidders, settings, selectedBidder?.id ?? ""), [bidders, settings, selectedBidder?.id]);
   const selectedLotScore = selectedBidder ? result.lotScores[selectedBidder.id][selectedLotId] : undefined;
   const selectedComboScore = selectedBidder ? result.comboScores[selectedBidder.id][selectedPairId] : undefined;
+  const selectedLotLabel = LOTS.find((lot) => lot.id === selectedLotId)?.label ?? selectedLotId;
+  const activeTabLabel = workspaceTabs.find((tab) => tab.value === activeTab)?.label ?? "Tecnica";
+  const workspaceTitle =
+    activeTab === "risultati" ? `Risultati - ${selectedLotLabel}` :
+    activeTab === "combinatorie" ? `Offerte combinatorie - ${selectedLotLabel}` :
+    `Offerta ${activeTabLabel.toLowerCase()} - ${selectedLotLabel}`;
+  const selectedAmbit = AMBITS.find((ambit) => ambit.id === selectedAmbitId) ?? AMBITS[0];
+  const selectedAmbitCriteria = useMemo(() => CRITERIA.filter((criterion) => criterion.ambit === selectedAmbit.id), [selectedAmbit.id]);
+  const selectedCriterion = selectedAmbitCriteria.find((criterion) => criterion.id === selectedCriterionId) ?? selectedAmbitCriteria[0] ?? CRITERIA[0];
+
+  useEffect(() => {
+    if (selectedAmbitCriteria.length && !selectedAmbitCriteria.some((criterion) => criterion.id === selectedCriterionId)) {
+      setSelectedCriterionId(selectedAmbitCriteria[0].id);
+    }
+  }, [selectedAmbitCriteria, selectedCriterionId]);
 
   const buildTradeoffPreview = (criterion: Criterion) => {
     if (!selectedBidder || !selectedLotScore || !selectedBidder.lots[selectedLotId].enabled) return undefined;
@@ -779,11 +840,11 @@ function App() {
                 </div>
               </section>
 
-              <section className="panel score-editor">
+              <section className="panel workbench-panel">
                 <div className="editor-header">
                   <div>
-                    <div className="section-title">Offerta tecnica - {LOTS.find((lot) => lot.id === selectedLotId)?.label}</div>
-                    <p>Valori Q/T/D simulati con formule e riparametrazione per ambito.</p>
+                    <div className="section-title">{workspaceTitle}</div>
+                    <p>Vista operativa per compilare valori, ribassi, combinatorie e leggere subito l'impatto sul punteggio.</p>
                   </div>
                   {selectedLotScore && (
                     <div className={`status-badge ${selectedLotScore.admitted ? "ok" : "warn"}`}>
@@ -793,150 +854,114 @@ function App() {
                   )}
                 </div>
 
-                {!selectedBidder.lots[selectedLotId].enabled ? (
+                <div className="workspace-tabs" role="tablist" aria-label="Sezioni offerta">
+                  {workspaceTabs.map((tab) => {
+                    const Icon = tab.icon;
+                    return (
+                      <button
+                        key={tab.value}
+                        className={`workspace-tab ${activeTab === tab.value ? "active" : ""}`}
+                        onClick={() => setActiveTab(tab.value)}
+                        role="tab"
+                        aria-selected={activeTab === tab.value}
+                      >
+                        <Icon size={16} />
+                        <span>{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {!selectedBidder.lots[selectedLotId].enabled && activeTab !== "combinatorie" && activeTab !== "risultati" ? (
                   <div className="empty-state">Attiva la partecipazione al lotto per inserire i punteggi.</div>
                 ) : (
-                  <div className="criteria-stack">
-                    {AMBITS.map((ambit) => (
-                      <details key={ambit.id} className="criteria-group" open={["A", "B", "C"].includes(ambit.id)}>
-                        <summary>
-                          <span>{ambit.id}. {ambit.label}</span>
-                          <strong>{formatPoints(selectedLotScore?.riparamByAmbit[ambit.id] ?? 0)} / {formatPoints(ambit.maxPoints)}</strong>
-                        </summary>
-	                        <div className="parent-stack">
-	                          {criteriaByParent(ambit).map((parent) => {
-	                            const parentScore = parent.criteria.reduce((sum, criterion) => sum + (selectedLotScore?.subScores[criterion.id]?.rawScore ?? 0), 0);
-	                            const parentMax = parent.criteria.reduce((sum, criterion) => sum + criterion.maxPoints, 0);
-	                            return (
-	                              <div key={parent.parentId} className="parent-criterion">
-	                                <div className="parent-head">
-	                                  <div>
-	                                    <strong>{parent.parentId}</strong>
-	                                    <span>{parent.parentLabel}</span>
-	                                  </div>
-	                                  <b>{formatPoints(parentScore)} / {formatPoints(parentMax)}</b>
-	                                </div>
-	                                <div className="criteria-grid">
-	                                  {parent.criteria.map((criterion) => (
-	                                    <CriterionControl
-	                                      key={criterion.id}
-	                                      criterion={criterion}
-	                                      bidder={selectedBidder}
-	                                      lotId={selectedLotId}
-	                                      score={selectedLotScore?.subScores[criterion.id]?.rawScore ?? 0}
-	                                      note={selectedLotScore?.subScores[criterion.id]?.note}
-	                                      tradeoff={selectedBidder.lots[selectedLotId].tradeoffs[criterion.id] ?? defaultTradeoff()}
-	                                      preview={buildTradeoffPreview(criterion)}
-	                                      onTradeoffChange={(patch) =>
-	                                        updateLotOffer(selectedLotId, (offer) => ({
-	                                          ...offer,
-	                                          tradeoffs: {
-	                                            ...offer.tradeoffs,
-	                                            [criterion.id]: { ...(offer.tradeoffs[criterion.id] ?? defaultTradeoff()), ...patch },
-	                                          },
-	                                        }))
-	                                      }
-	                                      onApplyTradeoff={() => applyTradeoff(criterion)}
-	                                      onChange={(value) =>
-	                                        updateLotOffer(selectedLotId, (offer) => {
-	                                          if (criterion.kind === "Q") offer.qValues[criterion.id] = Number(value);
-	                                          if (criterion.kind === "T") offer.tValues[criterion.id] = Boolean(value);
-	                                          if (criterion.kind === "D") offer.dValues[criterion.id] = Number(value);
-	                                          return { ...offer };
-	                                        })
-	                                      }
-	                                    />
-	                                  ))}
-	                                </div>
-	                              </div>
-	                            );
-	                          })}
-	                        </div>
-                      </details>
-                    ))}
-                  </div>
-                )}
-              </section>
+                  <>
+                    {activeTab === "tecnica" && selectedLotScore && (
+                      <TechnicalWorkbench
+                        bidder={selectedBidder}
+                        lotId={selectedLotId}
+                        lotScore={selectedLotScore}
+                        selectedAmbitId={selectedAmbit.id}
+                        selectedCriterion={selectedCriterion}
+                        onAmbitSelect={setSelectedAmbitId}
+                        onCriterionSelect={setSelectedCriterionId}
+                        onCriterionChange={(criterion, value) =>
+                          updateLotOffer(selectedLotId, (offer) => {
+                            if (criterion.kind === "Q") offer.qValues[criterion.id] = Number(value);
+                            if (criterion.kind === "T") offer.tValues[criterion.id] = Boolean(value);
+                            if (criterion.kind === "D") offer.dValues[criterion.id] = Number(value);
+                            return { ...offer };
+                          })
+                        }
+                        tradeoff={selectedBidder.lots[selectedLotId].tradeoffs[selectedCriterion.id] ?? defaultTradeoff()}
+                        preview={buildTradeoffPreview(selectedCriterion)}
+                        onTradeoffChange={(patch) =>
+                          updateLotOffer(selectedLotId, (offer) => ({
+                            ...offer,
+                            tradeoffs: {
+                              ...offer.tradeoffs,
+                              [selectedCriterion.id]: { ...(offer.tradeoffs[selectedCriterion.id] ?? defaultTradeoff()), ...patch },
+                            },
+                          }))
+                        }
+                        onApplyTradeoff={() => applyTradeoff(selectedCriterion)}
+                      />
+                    )}
 
-              <section className="panel economics-panel">
-                <div className="section-title">
-                  <CircleDollarSign size={18} />
-                  Offerta economica
-                </div>
-                <EconomicEditor
-                  title={`Ribasso singolo - ${selectedLotId}`}
-                  discounts={selectedBidder.lots[selectedLotId].phaseDiscounts}
-                  ribasso={selectedLotScore?.singleRibasso ?? 0}
-                  disabled={!selectedBidder.lots[selectedLotId].enabled}
-                  onChange={(index, value) =>
-                    updateLotOffer(selectedLotId, (offer) => {
-                      const next = [...offer.phaseDiscounts] as [number, number, number];
-                      next[index] = value;
-                      return { ...offer, phaseDiscounts: next };
-                    })
-                  }
-                />
-                <div className="combo-box">
-                  <div className="combo-title">
-                    <strong>Combinatoria {selectedPairId.replace("L", "").replace("+L", "+")}</strong>
-                    <label className="switch">
-                      <input
-                        type="checkbox"
-                        checked={selectedBidder.combos[selectedPairId].enabled}
-                        onChange={(event) =>
+                    {activeTab === "economica" && selectedLotScore && (
+                      <EconomicsWorkbench
+                        selectedLotId={selectedLotId}
+                        lotScore={selectedLotScore}
+                        discounts={selectedBidder.lots[selectedLotId].phaseDiscounts}
+                        disabled={!selectedBidder.lots[selectedLotId].enabled}
+                        onChange={(index, value) =>
+                          updateLotOffer(selectedLotId, (offer) => {
+                            const next = [...offer.phaseDiscounts] as [number, number, number];
+                            next[index] = value;
+                            return { ...offer, phaseDiscounts: next };
+                          })
+                        }
+                      />
+                    )}
+
+                    {activeTab === "combinatorie" && selectedComboScore && (
+                      <ComboWorkbench
+                        bidder={selectedBidder}
+                        selectedPairId={selectedPairId}
+                        comboScore={selectedComboScore}
+                        onPairSelect={setSelectedPairId}
+                        onEnabledChange={(enabled) =>
                           updateBidder(selectedBidder.id, (bidder) => {
-                            bidder.combos[selectedPairId].enabled = event.target.checked;
+                            bidder.combos[selectedPairId].enabled = enabled;
+                            return bidder;
+                          })
+                        }
+                        onDiscountChange={(index, value) =>
+                          updateBidder(selectedBidder.id, (bidder) => {
+                            const next = [...bidder.combos[selectedPairId].phaseDiscounts] as [number, number, number];
+                            next[index] = value;
+                            bidder.combos[selectedPairId].phaseDiscounts = next;
+                            return bidder;
+                          })
+                        }
+                        onInsertedChange={(checked) =>
+                          updateBidder(selectedBidder.id, (bidder) => {
+                            bidder.combos[selectedPairId].insertedInBothBuste = checked;
+                            return bidder;
+                          })
+                        }
+                        onPefChange={(checked) =>
+                          updateBidder(selectedBidder.id, (bidder) => {
+                            bidder.combos[selectedPairId].pefCoherent = checked;
                             return bidder;
                           })
                         }
                       />
-                      <span>attiva</span>
-                    </label>
-                  </div>
-                  <EconomicEditor
-                    title="Ribasso combinatorio"
-                    discounts={selectedBidder.combos[selectedPairId].phaseDiscounts}
-                    ribasso={selectedComboScore?.ribasso ?? 0}
-                    disabled={!selectedBidder.combos[selectedPairId].enabled}
-                    onChange={(index, value) =>
-                      updateBidder(selectedBidder.id, (bidder) => {
-                        const next = [...bidder.combos[selectedPairId].phaseDiscounts] as [number, number, number];
-                        next[index] = value;
-                        bidder.combos[selectedPairId].phaseDiscounts = next;
-                        return bidder;
-                      })
-                    }
-                  />
-                  <div className="combo-checks">
-                    <label className="toggle-row">
-                      <input
-                        type="checkbox"
-                        checked={selectedBidder.combos[selectedPairId].insertedInBothBuste}
-                        onChange={(event) =>
-                          updateBidder(selectedBidder.id, (bidder) => {
-                            bidder.combos[selectedPairId].insertedInBothBuste = event.target.checked;
-                            return bidder;
-                          })
-                        }
-                      />
-                      Inserita in entrambe le buste
-                    </label>
-                    <label className="toggle-row">
-                      <input
-                        type="checkbox"
-                        checked={selectedBidder.combos[selectedPairId].pefCoherent}
-                        onChange={(event) =>
-                          updateBidder(selectedBidder.id, (bidder) => {
-                            bidder.combos[selectedPairId].pefCoherent = event.target.checked;
-                            return bidder;
-                          })
-                        }
-                      />
-                      PEF combinatorio presente e coerente
-                    </label>
-                  </div>
-                  {selectedComboScore?.warnings.length ? <div className="inline-warning">{selectedComboScore.warnings[0]}</div> : null}
-                </div>
+                    )}
+
+                    {activeTab === "risultati" && <ResultsWorkbench result={result} selectedLotId={selectedLotId} />}
+                  </>
+                )}
               </section>
             </>
           )}
@@ -1048,7 +1073,138 @@ function App() {
   );
 }
 
-function CriterionControl({
+function TechnicalWorkbench({
+  bidder,
+  lotId,
+  lotScore,
+  selectedAmbitId,
+  selectedCriterion,
+  onAmbitSelect,
+  onCriterionSelect,
+  onCriterionChange,
+  tradeoff,
+  preview,
+  onTradeoffChange,
+  onApplyTradeoff,
+}: {
+  bidder: Bidder;
+  lotId: LotId;
+  lotScore: LotScore;
+  selectedAmbitId: string;
+  selectedCriterion: Criterion;
+  onAmbitSelect: (ambitId: string) => void;
+  onCriterionSelect: (criterionId: string) => void;
+  onCriterionChange: (criterion: Criterion, value: number | boolean) => void;
+  tradeoff: TradeoffPlan;
+  preview?: TradeoffPreview;
+  onTradeoffChange: (patch: Partial<TradeoffPlan>) => void;
+  onApplyTradeoff: () => void;
+}) {
+  const selectedSubScore = lotScore.subScores[selectedCriterion.id];
+  const selectedAmbit = AMBITS.find((ambit) => ambit.id === selectedAmbitId) ?? AMBITS[0];
+
+  return (
+    <div className="technical-workbench">
+      <div className="scorecard-area">
+        <div className="ambit-strip" aria-label="Ambiti tecnici">
+          {AMBITS.map((ambit) => (
+            <button
+              key={ambit.id}
+              className={`ambit-button ${ambit.id === selectedAmbitId ? "active" : ""}`}
+              onClick={() => onAmbitSelect(ambit.id)}
+            >
+              <small>{ambit.id}</small>
+              <span>{ambit.label}</span>
+              <strong>{formatPoints(lotScore.riparamByAmbit[ambit.id] ?? 0)} / {formatPoints(ambit.maxPoints)}</strong>
+            </button>
+          ))}
+        </div>
+
+        <div className="criteria-table" aria-label={`Criteri ${selectedAmbit.label}`}>
+          <div className="criteria-table-head">
+            <span>Criterio</span>
+            <span>Valore</span>
+            <span>Punti</span>
+            <span>Stato</span>
+          </div>
+          {criteriaByParent(selectedAmbit).map((parent) => {
+            const parentScore = parent.criteria.reduce((sum, criterion) => sum + (lotScore.subScores[criterion.id]?.rawScore ?? 0), 0);
+            const parentMax = parent.criteria.reduce((sum, criterion) => sum + criterion.maxPoints, 0);
+            return (
+              <div key={parent.parentId} className="criteria-parent-section">
+                <div className="criteria-parent-row">
+                  <div>
+                    <strong>{parent.parentId}</strong>
+                    <span>{parent.parentLabel}</span>
+                  </div>
+                  <b>{formatPoints(parentScore)} / {formatPoints(parentMax)}</b>
+                </div>
+                {parent.criteria.map((criterion) => {
+                  const subScore = lotScore.subScores[criterion.id];
+                  return (
+                    <CriterionRow
+                      key={criterion.id}
+                      criterion={criterion}
+                      value={subScore?.value}
+                      score={subScore?.rawScore ?? 0}
+                      note={subScore?.note}
+                      selected={criterion.id === selectedCriterion.id}
+                      onSelect={() => onCriterionSelect(criterion.id)}
+                    />
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <CriterionInspector
+        criterion={selectedCriterion}
+        bidder={bidder}
+        lotId={lotId}
+        score={selectedSubScore?.rawScore ?? 0}
+        note={selectedSubScore?.note}
+        tradeoff={tradeoff}
+        preview={preview}
+        onChange={(value) => onCriterionChange(selectedCriterion, value)}
+        onTradeoffChange={onTradeoffChange}
+        onApplyTradeoff={onApplyTradeoff}
+      />
+    </div>
+  );
+}
+
+function CriterionRow({
+  criterion,
+  value,
+  score,
+  note,
+  selected,
+  onSelect,
+}: {
+  criterion: Criterion;
+  value?: number | boolean;
+  score: number;
+  note?: string;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const status = criterionStatus(criterion, score, note);
+  return (
+    <button className={`criterion-row ${selected ? "selected" : ""}`} onClick={onSelect}>
+      <span className="criterion-row-name">
+        <strong>{criterion.id}</strong>
+        <span>{criterion.label}</span>
+      </span>
+      <span className="criterion-row-value">{formatCriterionValue(criterion, value)}</span>
+      <span className="criterion-row-points">{formatPoints(score)} / {formatPoints(criterion.maxPoints)}</span>
+      <span className={`row-status ${status.tone}`}>{status.label}</span>
+    </button>
+  );
+}
+
+function CriterionInspector({
   criterion,
   bidder,
   lotId,
@@ -1073,18 +1229,25 @@ function CriterionControl({
 }) {
   const offer = bidder.lots[lotId];
   const value = criterion.kind === "Q" ? offer.qValues[criterion.id] : criterion.kind === "T" ? offer.tValues[criterion.id] : offer.dValues[criterion.id];
-  const signedPoints = (amount: number) => `${amount >= 0 ? "+" : ""}${formatPoints(amount)}`;
-  const signedPercent = (amount: number) =>
-    `${amount >= 0 ? "+" : ""}${amount.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} pt`;
+  const status = criterionStatus(criterion, score, note);
+
   return (
-    <div className="criterion-card">
-      <div className="criterion-head">
+    <aside className="criterion-inspector">
+      <div className="criterion-inspector-head">
         <div>
           <strong>{criterion.id}</strong>
           <span>{criterion.label}</span>
         </div>
         <b>{formatPoints(score)} / {formatPoints(criterion.maxPoints)}</b>
       </div>
+
+      <div className="inspector-badges">
+        <span>{criterionKindLabel[criterion.kind]}</span>
+        <span className={`row-status ${status.tone}`}>{status.label}</span>
+      </div>
+
+      <div className="inspector-section">
+        <div className="inspector-section-title">Valore offerta</div>
       {criterion.kind === "Q" && (
         <div className="input-with-unit">
           <input
@@ -1117,7 +1280,10 @@ function CriterionControl({
           ))}
         </select>
       )}
+      </div>
+
       <div className="criterion-meta">
+        <span>{criterion.parentId} - {criterion.parentLabel}</span>
         <span>{criterion.kind} - {criterion.source}</span>
         {criterion.note && <span>{criterion.note}</span>}
         {note && <span className="note-warning">{note}</span>}
@@ -1188,6 +1354,184 @@ function CriterionControl({
           I sub-criteri discrezionali dipendono dal giudizio della Commissione: qui si simula il coefficiente, ma non esiste una formula deterministica costo-punteggio nel disciplinare.
         </div>
       )}
+    </aside>
+  );
+}
+
+function EconomicsWorkbench({
+  selectedLotId,
+  lotScore,
+  discounts,
+  disabled,
+  onChange,
+}: {
+  selectedLotId: LotId;
+  lotScore: LotScore;
+  discounts: [number, number, number];
+  disabled?: boolean;
+  onChange: (index: number, value: number) => void;
+}) {
+  return (
+    <div className="economics-board">
+      <div className="metric-grid">
+        <div className="metric-tile">
+          <span>Ribasso medio</span>
+          <strong>{formatPercent(lotScore.singleRibasso)}</strong>
+        </div>
+        <div className="metric-tile">
+          <span>Punteggio economico</span>
+          <strong>{formatPoints(lotScore.singleEconomic)} / 30,00</strong>
+        </div>
+        <div className="metric-tile">
+          <span>Totale singolo</span>
+          <strong>{formatPoints(lotScore.singleTotal)}</strong>
+        </div>
+      </div>
+      <EconomicEditor
+        title={`Ribasso singolo - ${selectedLotId}`}
+        discounts={discounts}
+        ribasso={lotScore.singleRibasso}
+        disabled={disabled}
+        onChange={onChange}
+      />
+      <div className="hint">Il ribasso medio è ponderato sulle tre fasi e alimenta il punteggio economico del lotto singolo.</div>
+    </div>
+  );
+}
+
+function ComboWorkbench({
+  bidder,
+  selectedPairId,
+  comboScore,
+  onPairSelect,
+  onEnabledChange,
+  onDiscountChange,
+  onInsertedChange,
+  onPefChange,
+}: {
+  bidder: Bidder;
+  selectedPairId: PairId;
+  comboScore: ComboScore;
+  onPairSelect: (pairId: PairId) => void;
+  onEnabledChange: (enabled: boolean) => void;
+  onDiscountChange: (index: number, value: number) => void;
+  onInsertedChange: (checked: boolean) => void;
+  onPefChange: (checked: boolean) => void;
+}) {
+  const combo = bidder.combos[selectedPairId];
+  return (
+    <div className="combo-workbench">
+      <div className="pair-strip" aria-label="Coppie combinatorie">
+        {PAIRS.map((pair) => (
+          <button key={pair.id} className={`pair-button ${pair.id === selectedPairId ? "active" : ""}`} onClick={() => onPairSelect(pair.id)}>
+            <strong>{pair.label.replace("Lotti ", "")}</strong>
+            <span>{bidder.combos[pair.id].enabled ? "attiva" : "non presentata"}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="metric-grid">
+        <div className="metric-tile">
+          <span>Ribasso combinatorio</span>
+          <strong>{formatPercent(comboScore.ribasso)}</strong>
+        </div>
+        <div className="metric-tile">
+          <span>Minimo migliorativo</span>
+          <strong>{formatPercent(comboScore.minRequiredRibasso)}</strong>
+        </div>
+        <div className={`metric-tile ${comboScore.admissible ? "ok" : "warn"}`}>
+          <span>Stato</span>
+          <strong>{comboScore.admissible ? "Ammissibile" : combo.enabled ? "Da verificare" : "Non attiva"}</strong>
+        </div>
+      </div>
+
+      <div className="combo-box elevated">
+        <div className="combo-title">
+          <strong>Combinatoria {selectedPairId.replace("L", "").replace("+L", "+")}</strong>
+          <label className="switch">
+            <input type="checkbox" checked={combo.enabled} onChange={(event) => onEnabledChange(event.target.checked)} />
+            <span>attiva</span>
+          </label>
+        </div>
+        <EconomicEditor
+          title="Ribasso combinatorio"
+          discounts={combo.phaseDiscounts}
+          ribasso={comboScore.ribasso}
+          disabled={!combo.enabled}
+          onChange={onDiscountChange}
+        />
+        <div className="combo-checks">
+          <label className="toggle-row">
+            <input type="checkbox" checked={combo.insertedInBothBuste} onChange={(event) => onInsertedChange(event.target.checked)} />
+            Inserita in entrambe le buste
+          </label>
+          <label className="toggle-row">
+            <input type="checkbox" checked={combo.pefCoherent} onChange={(event) => onPefChange(event.target.checked)} />
+            PEF combinatorio presente e coerente
+          </label>
+        </div>
+        {comboScore.warnings.length ? (
+          <div className="warning-list compact">
+            {comboScore.warnings.map((warning) => (
+              <div key={warning} className="inline-warning">{warning}</div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ResultsWorkbench({ result, selectedLotId }: { result: SimulationResult; selectedLotId: LotId }) {
+  return (
+    <div className="results-board">
+      <div className="metric-grid">
+        <div className="metric-tile">
+          <span>Scenario migliore</span>
+          <strong>{result.selectedScenario ? formatPoints(result.selectedScenario.totalScore) : "n/d"}</strong>
+        </div>
+        <div className="metric-tile">
+          <span>Tecnico complessivo</span>
+          <strong>{result.selectedScenario ? formatPoints(result.selectedScenario.technicalScore) : "n/d"}</strong>
+        </div>
+        <div className={`metric-tile ${result.selectedScenario?.unassignedLots.length ? "warn" : "ok"}`}>
+          <span>Lotti non assegnati</span>
+          <strong>{result.selectedScenario?.unassignedLots.join(", ") || "nessuno"}</strong>
+        </div>
+      </div>
+
+      <div className="results-grid">
+        <section>
+          <div className="section-title compact">Assegnazioni scenario</div>
+          <div className="assignment-list">
+            {result.selectedScenario?.assignments.map((assignment) => (
+              <div key={assignment.id} className="assignment-row">
+                <span>{assignment.lotIds.join(" + ")}</span>
+                <strong>{assignment.bidderName}</strong>
+                <small>{assignment.kind === "combo" ? "combinatoria" : "singola"} - {formatPoints(assignment.totalScore)}</small>
+              </div>
+            ))}
+            {!result.selectedScenario?.assignments.length && <div className="empty-state compact">Nessuna assegnazione ammissibile.</div>}
+          </div>
+        </section>
+
+        <section>
+          <div className="section-title compact">Classifica {selectedLotId}</div>
+          <div className="ranking-list">
+            {result.lotRankings[selectedLotId].slice(0, 8).map((candidate, index) => (
+              <div key={candidate.id} className="ranking-row">
+                <span>{index + 1}</span>
+                <div>
+                  <strong>{candidate.bidderName}</strong>
+                  <small>{candidate.kind === "combo" ? candidate.pairId : "Offerta singola"}</small>
+                </div>
+                <b>{formatPoints(candidate.kind === "combo" ? candidate.totalScore / candidate.lotIds.length : candidate.totalScore)}</b>
+              </div>
+            ))}
+            {!result.lotRankings[selectedLotId].length && <div className="empty-state compact">Nessuna offerta ammessa sul lotto.</div>}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
