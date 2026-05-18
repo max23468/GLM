@@ -725,9 +725,8 @@ input[type="checkbox"] {
 
 .technical-workbench {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.42fr);
-  gap: 14px;
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
 }
 
 .scorecard-area,
@@ -742,7 +741,7 @@ input[type="checkbox"] {
 .ambit-strip,
 .pair-strip {
   display: grid;
-  grid-template-columns: repeat(7, minmax(118px, 1fr));
+  grid-template-columns: repeat(7, minmax(122px, 1fr));
   gap: 6px;
   overflow-x: auto;
   padding-bottom: 2px;
@@ -756,7 +755,7 @@ input[type="checkbox"] {
 .pair-button {
   display: grid;
   gap: 3px;
-  min-height: 72px;
+  min-height: 66px;
   border: 1px solid var(--border);
   border-radius: 7px;
   background: var(--surface-soft);
@@ -802,7 +801,7 @@ input[type="checkbox"] {
 .criteria-table-head,
 .criterion-row {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(110px, 0.45fr) minmax(100px, 0.38fr) 92px;
+  grid-template-columns: minmax(340px, 1fr) minmax(150px, 0.42fr) minmax(118px, 0.32fr) 96px;
   gap: 12px;
   align-items: center;
 }
@@ -940,16 +939,26 @@ input[type="checkbox"] {
 }
 
 .criterion-inspector {
-  position: sticky;
-  top: 14px;
   display: grid;
   gap: 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--surface-soft);
-  padding: 12px;
-  max-height: calc(100vh - 32px);
-  overflow: auto;
+  background: linear-gradient(180deg, var(--surface-soft), var(--surface));
+  padding: 14px;
+  overflow: visible;
+}
+
+.criterion-inspector-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.95fr) minmax(220px, 0.8fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.criterion-inspector-head,
+.criterion-entry-panel,
+.criterion-meta {
+  min-width: 0;
 }
 
 .criterion-inspector-head {
@@ -957,6 +966,8 @@ input[type="checkbox"] {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  border-right: 1px solid var(--border);
+  padding-right: 14px;
 }
 
 .criterion-inspector-head div {
@@ -982,6 +993,16 @@ input[type="checkbox"] {
   color: var(--strong-text);
   font-size: 0.86rem;
   font-variant-numeric: tabular-nums;
+}
+
+.criterion-entry-panel {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 10px;
 }
 
 .inspector-badges {
@@ -1049,6 +1070,9 @@ input[type="checkbox"] {
 .criterion-meta {
   display: grid;
   gap: 3px;
+  align-content: start;
+  border-left: 1px solid var(--border);
+  padding-left: 14px;
   color: var(--muted);
   font-size: 0.72rem;
 }
@@ -1060,9 +1084,11 @@ input[type="checkbox"] {
 
 .tradeoff-box {
   display: grid;
-  gap: 9px;
-  border-top: 1px solid var(--border);
-  padding-top: 9px;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 12px;
 }
 
 .tradeoff-title {
@@ -1082,13 +1108,13 @@ input[type="checkbox"] {
 
 .tradeoff-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
   gap: 8px;
 }
 
 .tradeoff-preview {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(124px, 1fr));
   gap: 6px;
   align-items: stretch;
 }
@@ -1436,14 +1462,15 @@ input[type="checkbox"] {
 }
 
 @media (max-width: 1100px) {
-  .technical-workbench,
+  .criterion-inspector-main,
   .results-grid {
     grid-template-columns: 1fr;
   }
 
-  .criterion-inspector {
-    position: static;
-    max-height: none;
+  .criterion-inspector-head,
+  .criterion-meta {
+    border: 0;
+    padding: 0;
   }
 }
 
@@ -1504,6 +1531,7 @@ input[type="checkbox"] {
   }
 
   .identity-grid,
+  .criterion-inspector-main,
   .tradeoff-grid,
   .tradeoff-preview,
   .metric-grid,
@@ -1515,6 +1543,12 @@ input[type="checkbox"] {
 
   .workspace-tabs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ambit-strip,
+  .pair-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
   }
 
   .criteria-table-head {

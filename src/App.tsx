@@ -1105,58 +1105,18 @@ function TechnicalWorkbench({
 
   return (
     <div className="technical-workbench">
-      <div className="scorecard-area">
-        <div className="ambit-strip" aria-label="Ambiti tecnici">
-          {AMBITS.map((ambit) => (
-            <button
-              key={ambit.id}
-              className={`ambit-button ${ambit.id === selectedAmbitId ? "active" : ""}`}
-              onClick={() => onAmbitSelect(ambit.id)}
-            >
-              <small>{ambit.id}</small>
-              <span>{ambit.label}</span>
-              <strong>{formatPoints(lotScore.riparamByAmbit[ambit.id] ?? 0)} / {formatPoints(ambit.maxPoints)}</strong>
-            </button>
-          ))}
-        </div>
-
-        <div className="criteria-table" aria-label={`Criteri ${selectedAmbit.label}`}>
-          <div className="criteria-table-head">
-            <span>Criterio</span>
-            <span>Valore</span>
-            <span>Punti</span>
-            <span>Stato</span>
-          </div>
-          {criteriaByParent(selectedAmbit).map((parent) => {
-            const parentScore = parent.criteria.reduce((sum, criterion) => sum + (lotScore.subScores[criterion.id]?.rawScore ?? 0), 0);
-            const parentMax = parent.criteria.reduce((sum, criterion) => sum + criterion.maxPoints, 0);
-            return (
-              <div key={parent.parentId} className="criteria-parent-section">
-                <div className="criteria-parent-row">
-                  <div>
-                    <strong>{parent.parentId}</strong>
-                    <span>{parent.parentLabel}</span>
-                  </div>
-                  <b>{formatPoints(parentScore)} / {formatPoints(parentMax)}</b>
-                </div>
-                {parent.criteria.map((criterion) => {
-                  const subScore = lotScore.subScores[criterion.id];
-                  return (
-                    <CriterionRow
-                      key={criterion.id}
-                      criterion={criterion}
-                      value={subScore?.value}
-                      score={subScore?.rawScore ?? 0}
-                      note={subScore?.note}
-                      selected={criterion.id === selectedCriterion.id}
-                      onSelect={() => onCriterionSelect(criterion.id)}
-                    />
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
+      <div className="ambit-strip" aria-label="Ambiti tecnici">
+        {AMBITS.map((ambit) => (
+          <button
+            key={ambit.id}
+            className={`ambit-button ${ambit.id === selectedAmbitId ? "active" : ""}`}
+            onClick={() => onAmbitSelect(ambit.id)}
+          >
+            <small>{ambit.id}</small>
+            <span>{ambit.label}</span>
+            <strong>{formatPoints(lotScore.riparamByAmbit[ambit.id] ?? 0)} / {formatPoints(ambit.maxPoints)}</strong>
+          </button>
+        ))}
       </div>
 
       <CriterionInspector
@@ -1171,6 +1131,44 @@ function TechnicalWorkbench({
         onTradeoffChange={onTradeoffChange}
         onApplyTradeoff={onApplyTradeoff}
       />
+
+      <div className="criteria-table" aria-label={`Criteri ${selectedAmbit.label}`}>
+        <div className="criteria-table-head">
+          <span>Criterio</span>
+          <span>Valore</span>
+          <span>Punti</span>
+          <span>Stato</span>
+        </div>
+        {criteriaByParent(selectedAmbit).map((parent) => {
+          const parentScore = parent.criteria.reduce((sum, criterion) => sum + (lotScore.subScores[criterion.id]?.rawScore ?? 0), 0);
+          const parentMax = parent.criteria.reduce((sum, criterion) => sum + criterion.maxPoints, 0);
+          return (
+            <div key={parent.parentId} className="criteria-parent-section">
+              <div className="criteria-parent-row">
+                <div>
+                  <strong>{parent.parentId}</strong>
+                  <span>{parent.parentLabel}</span>
+                </div>
+                <b>{formatPoints(parentScore)} / {formatPoints(parentMax)}</b>
+              </div>
+              {parent.criteria.map((criterion) => {
+                const subScore = lotScore.subScores[criterion.id];
+                return (
+                  <CriterionRow
+                    key={criterion.id}
+                    criterion={criterion}
+                    value={subScore?.value}
+                    score={subScore?.rawScore ?? 0}
+                    note={subScore?.note}
+                    selected={criterion.id === selectedCriterion.id}
+                    onSelect={() => onCriterionSelect(criterion.id)}
+                  />
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -1233,61 +1231,66 @@ function CriterionInspector({
 
   return (
     <aside className="criterion-inspector">
-      <div className="criterion-inspector-head">
-        <div>
-          <strong>{criterion.id}</strong>
-          <span>{criterion.label}</span>
+      <div className="criterion-inspector-main">
+        <div className="criterion-inspector-head">
+          <div>
+            <strong>{criterion.id}</strong>
+            <span>{criterion.label}</span>
+          </div>
+          <b>{formatPoints(score)} / {formatPoints(criterion.maxPoints)}</b>
         </div>
-        <b>{formatPoints(score)} / {formatPoints(criterion.maxPoints)}</b>
+
+        <div className="criterion-entry-panel">
+          <div className="inspector-section">
+            <div className="inspector-section-title">Valore offerta</div>
+            {criterion.kind === "Q" && (
+              <div className="input-with-unit">
+                <input
+                  type="number"
+                  min={criterion.formula === "soil" ? undefined : 0}
+                  max={criterion.input === "ratio" ? 1 : undefined}
+                  step={criterion.input === "ratio" ? 0.05 : criterion.input === "percent" ? 0.01 : 1}
+                  value={Number(value)}
+                  onChange={(event) => onChange(Number(event.target.value))}
+                />
+                <span>{criterion.unit}</span>
+              </div>
+            )}
+            {criterion.kind === "T" && (
+              <div className="segmented">
+                <button className={value ? "selected" : ""} onClick={() => onChange(true)}>
+                  Sì
+                </button>
+                <button className={!value ? "selected" : ""} onClick={() => onChange(false)}>
+                  No
+                </button>
+              </div>
+            )}
+            {criterion.kind === "D" && (
+              <select value={Number(value)} onChange={(event) => onChange(Number(event.target.value))}>
+                {DISCRETIONARY_SCALE.map((item) => (
+                  <option key={item.label} value={item.value}>
+                    {item.label} - {item.value}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <div className="inspector-badges">
+            <span>{criterionKindLabel[criterion.kind]}</span>
+            <span className={`row-status ${status.tone}`}>{status.label}</span>
+          </div>
+        </div>
+
+        <div className="criterion-meta">
+          <span>{criterion.parentId} - {criterion.parentLabel}</span>
+          <span>{criterion.kind} - {criterion.source}</span>
+          {criterion.note && <span>{criterion.note}</span>}
+          {note && <span className="note-warning">{note}</span>}
+        </div>
       </div>
 
-      <div className="inspector-badges">
-        <span>{criterionKindLabel[criterion.kind]}</span>
-        <span className={`row-status ${status.tone}`}>{status.label}</span>
-      </div>
-
-      <div className="inspector-section">
-        <div className="inspector-section-title">Valore offerta</div>
-      {criterion.kind === "Q" && (
-        <div className="input-with-unit">
-          <input
-            type="number"
-            min={criterion.formula === "soil" ? undefined : 0}
-            max={criterion.input === "ratio" ? 1 : undefined}
-            step={criterion.input === "ratio" ? 0.05 : criterion.input === "percent" ? 0.01 : 1}
-            value={Number(value)}
-            onChange={(event) => onChange(Number(event.target.value))}
-          />
-          <span>{criterion.unit}</span>
-        </div>
-      )}
-      {criterion.kind === "T" && (
-        <div className="segmented">
-          <button className={value ? "selected" : ""} onClick={() => onChange(true)}>
-            Sì
-          </button>
-          <button className={!value ? "selected" : ""} onClick={() => onChange(false)}>
-            No
-          </button>
-        </div>
-      )}
-      {criterion.kind === "D" && (
-        <select value={Number(value)} onChange={(event) => onChange(Number(event.target.value))}>
-          {DISCRETIONARY_SCALE.map((item) => (
-            <option key={item.label} value={item.value}>
-              {item.label} - {item.value}
-            </option>
-          ))}
-        </select>
-      )}
-      </div>
-
-      <div className="criterion-meta">
-        <span>{criterion.parentId} - {criterion.parentLabel}</span>
-        <span>{criterion.kind} - {criterion.source}</span>
-        {criterion.note && <span>{criterion.note}</span>}
-        {note && <span className="note-warning">{note}</span>}
-      </div>
       {criterion.kind !== "D" ? (
         <div className="tradeoff-box">
           <div className="tradeoff-title">
