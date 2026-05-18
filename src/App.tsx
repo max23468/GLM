@@ -22,7 +22,6 @@ import {
   DOCUMENT_WARNINGS,
   LOT_CONTEXT,
   LOTS,
-  OFFEROR_TYPES,
   PAIRS,
   PUBLIC_SOURCE_NOTES,
   THRESHOLD_OPTIONS,
@@ -244,31 +243,26 @@ const realisticOffer = (lotId: LotId, profile: DemoOfferProfile): LotOffer => {
 
 const buildMarketScenario = (): Bidder[] => {
   const autoguidovie = createBidder("autoguidovie-demo", "Autoguidovie (scenario demo)");
-  autoguidovie.decisionGroup = "Gruppo Autoguidovie";
   autoguidovie.lots.L1 = realisticOffer("L1", DEMO_PROFILES.autoguidovie);
   autoguidovie.lots.L4 = realisticOffer("L4", withProfile(DEMO_PROFILES.autoguidovie, { service: 1.08, discounts: [4.55, 4.8, 5.05] }));
   autoguidovie.combos["L1+L4"] = { enabled: true, phaseDiscounts: [5.05, 5.25, 5.45], insertedInBothBuste: true, pefCoherent: true };
 
-  const movibus = createBidder("movibus-ovest-demo", "Movibus RTI Ovest (scenario demo)", "RTI");
-  movibus.decisionGroup = "Movibus / partner Alto Milanese";
+  const movibus = createBidder("movibus-ovest-demo", "Movibus RTI Ovest (scenario demo)");
   movibus.lots.L1 = realisticOffer("L1", withProfile(DEMO_PROFILES.movibusWest, { service: 1.04, discounts: [4.85, 5.05, 5.25] }));
   movibus.lots.L2 = realisticOffer("L2", withProfile(DEMO_PROFILES.movibusWest, { quality: 0.78, stopFocus: 0.75, discounts: [5.0, 5.2, 5.4] }));
   movibus.combos["L1+L2"] = { enabled: true, phaseDiscounts: [5.4, 5.55, 5.75], insertedInBothBuste: true, pefCoherent: true };
 
   const arriva = createBidder("arriva-demo", "Arriva Italia (scenario demo)");
-  arriva.decisionGroup = "Arriva Italia";
   arriva.lots.L2 = realisticOffer("L2", DEMO_PROFILES.arriva);
   arriva.lots.L3 = realisticOffer("L3", withProfile(DEMO_PROFILES.arriva, { service: 1.06, discounts: [4.95, 5.2, 5.45] }));
   arriva.combos["L2+L3"] = { enabled: true, phaseDiscounts: [5.7, 5.9, 6.1], insertedInBothBuste: true, pefCoherent: true };
 
   const netAtm = createBidder("net-atm-demo", "NET / Gruppo ATM (scenario demo)");
-  netAtm.decisionGroup = "Gruppo ATM";
   netAtm.lots.L3 = realisticOffer("L3", DEMO_PROFILES.netAtm);
   netAtm.lots.L4 = realisticOffer("L4", withProfile(DEMO_PROFILES.netAtm, { service: 1.0, stopFocus: 0.72, discounts: [4.0, 4.25, 4.45] }));
   netAtm.combos["L3+L4"] = { enabled: true, phaseDiscounts: [4.9, 5.05, 5.25], insertedInBothBuste: true, pefCoherent: true };
 
   const star = createBidder("star-lodi-demo", "STAR Mobility Lodi (scenario demo)");
-  star.decisionGroup = "STAR Mobility";
   star.lots.L4 = realisticOffer("L4", DEMO_PROFILES.starLocal);
 
   return [autoguidovie, movibus, arriva, netAtm, star];
@@ -646,7 +640,9 @@ function App() {
                 return (
                   <button key={bidder.id} className={`offeror-row ${isSelected ? "selected" : ""}`} onClick={() => setSelectedBidderId(bidder.id)}>
                     <span>{bidder.name}</span>
-                    <small>{activeLots} lotti</small>
+                    <small>
+                      {activeLots} {activeLots === 1 ? "lotto" : "lotti"}
+                    </small>
                   </button>
                 );
               })}
@@ -697,34 +693,6 @@ function App() {
                         onChange={(event) =>
                           updateBidder(selectedBidder.id, (bidder) => {
                             bidder.name = event.target.value;
-                            return bidder;
-                          })
-                        }
-                      />
-                    </label>
-                    <label className="field">
-                      <span>Forma di partecipazione</span>
-                      <select
-                        value={selectedBidder.type}
-                        onChange={(event) =>
-                          updateBidder(selectedBidder.id, (bidder) => {
-                            bidder.type = event.target.value as Bidder["type"];
-                            return bidder;
-                          })
-                        }
-                      >
-                        {OFFEROR_TYPES.map((type) => (
-                          <option key={type}>{type}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="field">
-                      <span>Centro decisionale / gruppo</span>
-                      <input
-                        value={selectedBidder.decisionGroup}
-                        onChange={(event) =>
-                          updateBidder(selectedBidder.id, (bidder) => {
-                            bidder.decisionGroup = event.target.value;
                             return bidder;
                           })
                         }

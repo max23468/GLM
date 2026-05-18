@@ -149,18 +149,18 @@ export const PUBLIC_SOURCE_NOTES: PublicSourceNote[] = [
   {
     id: "agency-tender",
     title: "Gara TPL MLMP",
-    metric: "1,248 mld euro / 7 anni",
-    body: "La pubblicazione dell'Agenzia TPL indica quattro lotti extraurbani e un aumento del servizio annuo da 34,9 a 44,4 milioni di vettura-km.",
+    metric: "4 lotti / 30.09.2026",
+    body: "La pubblicazione dell'Agenzia TPL indica procedura aperta, quattro lotti extraurbani e scadenza bando al 30 settembre 2026.",
     source: "Agenzia TPL Milano, Monza Brianza, Lodi e Pavia",
     sourceUrl: "https://www.agenziatpl.it/agenzia/amministrazione-trasparente/19-bandi-di-gara-e-contratti/287-bando-di-gara-per-l-affidamento-di-servizi-di-tpl",
   },
   {
     id: "sintel",
     title: "Procedura aperta Sintel",
-    metric: "ID 199999498",
-    body: "Il fascicolo pubblico Sintel conferma oggetto, quattro lotti, criterio dell'offerta economicamente più vantaggiosa e deadline del 30 luglio 2026.",
+    metric: "ID 218044617",
+    body: "Il fascicolo pubblico Sintel espone il set documentale della procedura, inclusi allegati tecnici, PEF, offerta economica e modelli di partecipazione.",
     source: "ARIA Lombardia - Sintel",
-    sourceUrl: "https://www.sintel.regione.lombardia.it/eprocdata/auctionDetail.xhtml?id=199999498",
+    sourceUrl: "https://www.sintel.regione.lombardia.it/eprocdata/auctionDetail.xhtml?id=218044617",
   },
   {
     id: "autoguidovie",
@@ -394,13 +394,3 @@ export const DOCUMENT_WARNINGS = [
     body: "Il PDF parla di continuità lavorativa dei lavoratori subaffidatari; il modello All. 13.10 cita il mantenimento delle garanzie del contratto di secondo livello.",
   },
 ];
-
-export const OFFEROR_TYPES = [
-  "Operatore singolo",
-  "RTI",
-  "Consorzio ordinario",
-  "Consorzio stabile",
-  "Rete di imprese",
-  "GEIE",
-  "Altro operatore plurisoggettivo",
-] as const;

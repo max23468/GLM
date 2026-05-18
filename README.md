@@ -13,7 +13,8 @@ Apri `http://127.0.0.1:4173/`.
 
 ## Perimetro
 
-- Inserimento di più offerenti e relativa forma di partecipazione.
+- Scenari demo già compilati con operatori e profili ispirati a dati pubblici reperibili sul web.
+- Inserimento di più offerenti.
 - Scelta, per ciascun operatore, dei lotti singoli L1-L4 a cui partecipa.
 - Scelta delle offerte combinatorie ammesse: 1+2, 2+3, 3+4, 1+4.
 - Simulazione dei sub-criteri tecnici Q/T/D, con raggruppamento per criterio padre e ambito A-G.
@@ -32,3 +33,11 @@ La logica è ricostruita dai documenti allegati nella cartella `milano-lotti-ext
 - modelli `All 18.1` - `All 18.8`
 
 I costi unitari dei tradeoff non sono contenuti nei documenti di gara: sono ipotesi dell'utente e vengono trattati come riduzione del ribasso medio del lotto.
+
+Per rendere l'app più realistica, gli scenari demo usano anche segnali pubblici web, sempre come base simulativa e non come offerte ufficiali:
+
+- Agenzia TPL Milano, Monza Brianza, Lodi e Pavia: pubblicazione gara TPL MLMP 2026.
+- ARIA Lombardia / Sintel: procedura aperta ID 218044617.
+- Autoguidovie: dati pubblici di sostenibilità e flotta.
+- Gruppo ATM: pagine pubbliche NET e Movibus.
+- STAR Mobility: presidio pubblico nell'area di Lodi.

@@ -10,15 +10,6 @@ import {
   type PairId,
 } from "../data/tender";
 
-export type OfferorType =
-  | "Operatore singolo"
-  | "RTI"
-  | "Consorzio ordinario"
-  | "Consorzio stabile"
-  | "Rete di imprese"
-  | "GEIE"
-  | "Altro operatore plurisoggettivo";
-
 export type LotOffer = {
   enabled: boolean;
   qValues: Record<string, number>;
@@ -44,8 +35,6 @@ export type ComboOffer = {
 export type Bidder = {
   id: string;
   name: string;
-  type: OfferorType;
-  decisionGroup: string;
   lots: Record<LotId, LotOffer>;
   combos: Record<PairId, ComboOffer>;
 };
@@ -155,11 +144,9 @@ export const emptyComboOffer = (): ComboOffer => ({
   pefCoherent: true,
 });
 
-export const createBidder = (id: string, name: string, type: OfferorType = "Operatore singolo"): Bidder => ({
+export const createBidder = (id: string, name: string): Bidder => ({
   id,
   name,
-  type,
-  decisionGroup: "",
   lots: Object.fromEntries(LOTS.map((lot) => [lot.id, emptyLotOffer()])) as Record<LotId, LotOffer>,
   combos: Object.fromEntries(PAIRS.map((pair) => [pair.id, emptyComboOffer()])) as Record<PairId, ComboOffer>,
 });
@@ -623,10 +610,6 @@ const buildWarnings = (
 ) => {
   const warnings: string[] = [];
   for (const bidder of bidders) {
-    const enabledLots = LOTS.filter((lot) => bidder.lots[lot.id].enabled);
-    if (enabledLots.length > 1 && bidder.decisionGroup.trim() === "") {
-      warnings.push(`${bidder.name}: indicare il centro decisionale/gruppo se serve verificare relazioni tra operatori formalmente distinti.`);
-    }
     for (const lot of LOTS) {
       warnings.push(...lotScores[bidder.id][lot.id].warnings.map((warning) => `${bidder.name} ${lot.shortLabel}: ${warning}`));
     }
