@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc && vite build",
+    "deploy": "npm run deploy:cloudflare",
+    "deploy:cloudflare": "npm run build && npx wrangler pages deploy dist --project-name gare-lotti-milanesi --branch main",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run"
   },

@@ -11,6 +11,16 @@ npm run dev -- --port 4173
 
 Apri `http://127.0.0.1:4173/`.
 
+## Deploy
+
+Il deploy ufficiale è Cloudflare Pages, progetto `gare-lotti-milanesi`.
+
+```bash
+npm run deploy:cloudflare
+```
+
+Il comando compila l'app con Vite e pubblica la cartella `dist` sul branch `main`.
+
 ## Perimetro
 
 - Scenari demo già compilati con operatori e profili ispirati a dati pubblici reperibili sul web.
