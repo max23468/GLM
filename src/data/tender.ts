@@ -5,6 +5,16 @@ export type FormulaKind = "higher" | "lower" | "soil" | "tabular" | "discretiona
 export type InputKind = "percent" | "ratio" | "integer" | "index" | "sqm" | "yesno" | "judgement";
 export type Effort = "basso" | "medio" | "alto";
 
+export type QuantityInputDefinition = {
+  kind: "ratio" | "percent";
+  numeratorLabel: string;
+  denominatorLabel: string;
+  numeratorUnit: string;
+  denominatorUnit: string;
+  resultLabel: string;
+  resultUnit: string;
+};
+
 export type Lot = {
   id: LotId;
   label: string;
@@ -37,6 +47,7 @@ export type Criterion = {
   effort: Effort;
   source: string;
   note?: string;
+  quantityInput?: QuantityInputDefinition;
   dependency?: {
     criterionId: string;
     operator: ">=";
@@ -163,12 +174,28 @@ export const PUBLIC_SOURCE_NOTES: PublicSourceNote[] = [
     sourceUrl: "https://www.sintel.regione.lombardia.it/eprocdata/auctionDetail.xhtml?id=218044617",
   },
   {
+    id: "lot-baselines",
+    title: "Basi demo di lotto",
+    metric: "484 mezzi / 4.682 fermate",
+    body: "Le basi demo usano All. 09 per mezzi, All. 05 per fermate e All. 04.9-04.12 per corse annue stimate per lotto.",
+    source: "Allegati locali di gara / Sintel",
+    sourceUrl: "https://www.sintel.regione.lombardia.it/eprocdata/auctionDetail.xhtml?id=218044617",
+  },
+  {
     id: "autoguidovie",
     title: "Autoguidovie",
     metric: "777 mezzi",
-    body: "Il profilo demo usa una flotta matura e digitalizzata, con indicatori pubblici su classe emissiva, età media, AVM, accessibilità e sistemi di bordo.",
-    source: "Bilancio di sostenibilità Autoguidovie",
-    sourceUrl: "https://www.autoguidovie.it/media/3903/autoguidovie-bilancio_sostenibilita-2022.pdf",
+    body: "Il profilo demo usa dati pubblici su classe emissiva Euro 5+, AVM, accessibilità, videosorveglianza, ADAS e rinnovo medio della flotta.",
+    source: "Autoguidovie - Flotta",
+    sourceUrl: "https://autoguidovie.it/it/flotta",
+  },
+  {
+    id: "arriva",
+    title: "Arriva Italia",
+    metric: "1.920 mezzi",
+    body: "Il profilo demo usa la scala nazionale del gruppo e gli investimenti dichiarati su rinnovo flotta, quota clean e classe emissiva minima.",
+    source: "Arriva Italia - Piano investimenti",
+    sourceUrl: "https://arriva.it/news/investimenti-pari-a-156-milioni-di-euro-nei-prossimi-5-anni/",
   },
   {
     id: "movibus",
@@ -181,18 +208,18 @@ export const PUBLIC_SOURCE_NOTES: PublicSourceNote[] = [
   {
     id: "net-atm",
     title: "NET / Gruppo ATM",
-    metric: "49 comuni serviti",
-    body: "Il profilo urbano-tecnologico deriva dal presidio NET nel nord-est milanese/monzese e dalla traiettoria ATM verso una flotta bus a zero emissioni.",
-    source: "Gruppo ATM - NET e Piano Strategico",
-    sourceUrl: "https://www.atm.it/en/IlGruppo/ChiSiamo/Pages/NET.aspx",
+    metric: "49 comuni / 23 linee",
+    body: "Il profilo urbano-tecnologico deriva dal presidio NET nel nord-est milanese e dalla traiettoria ATM verso una flotta bus elettrica.",
+    source: "Gruppo ATM - NET",
+    sourceUrl: "https://www.atm.it/it/IlGruppo/ChiSiamo/Pagine/NET.aspx",
   },
   {
     id: "star",
     title: "STAR Mobility",
     metric: "Lodi e Casalpusterlengo",
-    body: "Il profilo locale sul lotto 4 usa segnali pubblici di presidio lodigiano e servizi digitali di bigliettazione nell'area urbana ed extraurbana.",
-    source: "STAR Mobility",
-    sourceUrl: "https://www.starmobility.it/",
+    body: "Il profilo locale sul lotto 4 usa segnali pubblici su servizio urbano, bigliettazione elettronica, pagamento contactless e presidio lodigiano.",
+    source: "STAR Mobility - Servizio urbano",
+    sourceUrl: "https://starmobility.it/servizio-urbano/",
   },
 ];
 
@@ -240,7 +267,7 @@ const PARENT_LABELS: Record<string, string> = {
 };
 
 const TRADEOFF_UNITS: Record<string, string> = {
-  "A.1.1": "punti percentuali di corse controllate",
+  "A.1.1": "corse controllate annue",
   "A.1.2": "passeggeri controllati/anno",
   "B.1.1": "posti*km in punta",
   "B.2.1": "corse aggiuntive base",
@@ -273,6 +300,26 @@ const TRADEOFF_UNITS: Record<string, string> = {
   "G.5.1": "impegno clausola sociale",
 };
 
+const controlledRunsInput: QuantityInputDefinition = {
+  kind: "percent",
+  numeratorLabel: "Corse controllate annue",
+  denominatorLabel: "Corse programmate annue",
+  numeratorUnit: "corse",
+  denominatorUnit: "corse",
+  resultLabel: "TCor_contr",
+  resultUnit: "%",
+};
+
+const busCoverageInput = (numeratorLabel: string, resultLabel: string): QuantityInputDefinition => ({
+  kind: "ratio",
+  numeratorLabel,
+  denominatorLabel: "Autobus totali in offerta, incluse scorte",
+  numeratorUnit: "autobus",
+  denominatorUnit: "autobus",
+  resultLabel,
+  resultUnit: "0-1",
+});
+
 const criterion = (
   id: string,
   ambit: string,
@@ -286,6 +333,7 @@ const criterion = (
   source: string,
   note?: string,
   dependency?: Criterion["dependency"],
+  quantityInput?: QuantityInputDefinition,
 ): Criterion => ({
   id,
   ambit,
@@ -302,24 +350,25 @@ const criterion = (
   effort,
   source,
   note,
+  quantityInput,
   dependency,
 });
 
 export const CRITERIA: Criterion[] = [
-  criterion("A.1.1", "A", "Q", "higher", 3, "Tasso aggiuntivo di corse controllate", "percent", "%", "medio", "All. 13, p. 22"),
+  criterion("A.1.1", "A", "Q", "higher", 3, "Tasso aggiuntivo di corse controllate", "percent", "%", "medio", "All. 13, p. 22", undefined, undefined, controlledRunsInput),
   criterion("A.1.2", "A", "Q", "higher", 4, "Numero aggiuntivo di passeggeri controllati", "integer", "passeggeri/anno", "medio", "All. 13, p. 22", "Soglie minime: 60.000 per L1, 100.000 per L2-L4."),
   criterion("B.1.1", "B", "Q", "higher", 3, "Incremento dei posti offerti nelle fasce di punta", "integer", "posti*km", "alto", "All. 13, p. 23", "Output dal Modello presentazione PdE."),
   criterion("B.2.1", "B", "Q", "higher", 4, "Corse aggiuntive nell'arco giornaliero base", "integer", "corse", "alto", "All. 13, p. 23", "Output dal Modello presentazione PdE."),
   criterion("B.3.1", "B", "Q", "higher", 2, "Corse aggiuntive serali", "integer", "corse", "alto", "All. 13, p. 24", "Output dal Modello presentazione PdE."),
   criterion("B.4.1", "B", "Q", "higher", 3, "Percorrenze aggiuntive nelle prime due fasi", "integer", "vett*km", "alto", "All. 13, p. 25"),
   criterion("B.5.1", "B", "D", "discretionary", 2, "Efficacia del progetto di servizi complementari DRT", "judgement", "coeff.", "alto", "All. 13, p. 37"),
-  criterion("C.1.1", "C", "Q", "higher", 2, "Copertura con telecamere BSD", "ratio", "0-1", "medio", "All. 13, p. 25"),
-  criterion("C.1.2", "C", "Q", "higher", 2, "Copertura con telecamere ADAS", "ratio", "0-1", "medio", "All. 13, p. 26"),
-  criterion("C.2.1", "C", "Q", "higher", 3, "Copertura con videosorveglianza di bordo", "ratio", "0-1", "medio", "All. 13 tabella criteri e All. 13.10", "Il paragrafo formula indica 2 punti e sigla PC31: criticità documentale segnalata."),
+  criterion("C.1.1", "C", "Q", "higher", 2, "Copertura con telecamere BSD", "ratio", "0-1", "medio", "All. 13, p. 25", undefined, undefined, busCoverageInput("Autobus attrezzati con telecamere BSD", "Tbsd")),
+  criterion("C.1.2", "C", "Q", "higher", 2, "Copertura con telecamere ADAS", "ratio", "0-1", "medio", "All. 13, p. 26", undefined, undefined, busCoverageInput("Autobus attrezzati con telecamere ADAS", "Tadas")),
+  criterion("C.2.1", "C", "Q", "higher", 3, "Copertura con videosorveglianza di bordo", "ratio", "0-1", "medio", "All. 13 tabella criteri e All. 13.10", "Il paragrafo formula indica 2 punti e sigla PC31: criticità documentale segnalata.", undefined, busCoverageInput("Autobus attrezzati con videosorveglianza", "Tvideo")),
   criterion("C.2.2", "C", "T", "tabular", 1, "Software video/audio analisi per situazioni di pericolo", "yesno", "sì/no", "basso", "All. 13, p. 32"),
   criterion("C.2.3", "C", "T", "tabular", 1, "Collegamento con centrale qualificata di pronto intervento", "yesno", "sì/no", "basso", "All. 13, p. 33"),
-  criterion("C.2.4", "C", "Q", "higher", 1, "Copertura con chiamata emergenza conducente", "ratio", "0-1", "medio", "All. 13 tabella criteri e All. 13.10", "Il testo formula riporta 2 punti: criticità documentale segnalata."),
-  criterion("C.3.1", "C", "Q", "higher", 2, "Copertura con informazione dinamica a bordo", "ratio", "0-1", "medio", "All. 13, p. 27"),
+  criterion("C.2.4", "C", "Q", "higher", 1, "Copertura con chiamata emergenza conducente", "ratio", "0-1", "medio", "All. 13 tabella criteri e All. 13.10", "Il testo formula riporta 2 punti: criticità documentale segnalata.", undefined, busCoverageInput("Autobus attrezzati con chiamata di emergenza", "Tall")),
+  criterion("C.3.1", "C", "Q", "higher", 2, "Copertura con informazione dinamica a bordo", "ratio", "0-1", "medio", "All. 13, p. 27", undefined, undefined, busCoverageInput("Autobus con monitor e indicatori vocali", "Tinfo")),
   criterion("C.3.2", "C", "T", "tabular", 2, "Informazioni a bordo su coincidenze ai nodi", "yesno", "sì/no", "basso", "All. 13, p. 34", undefined, {
     criterionId: "C.3.1",
     operator: ">=",
@@ -333,7 +382,7 @@ export const CRITERIA: Criterion[] = [
   criterion("E.1.1", "E", "T", "tabular", 2, "Mobile app con travel planner PRM", "yesno", "sì/no", "basso", "All. 13, p. 34"),
   criterion("E.2.1", "E", "D", "discretionary", 2, "Altre azioni informative e rapporti con gli utenti", "judgement", "coeff.", "alto", "All. 13, p. 37"),
   criterion("F.1.1", "F", "Q", "lower", 7, "Performance ambientali del parco mezzi - I_CEA", "index", "indice", "alto", "All. 13, p. 30 e All. 13.11", "Punteggio inverso: migliore il CEA più basso."),
-  criterion("F.2.1", "F", "Q", "higher", 2, "Copertura con dispositivi ECO-DRIVER", "ratio", "0-1", "medio", "All. 13, p. 31"),
+  criterion("F.2.1", "F", "Q", "higher", 2, "Copertura con dispositivi ECO-DRIVER", "ratio", "0-1", "medio", "All. 13, p. 31", undefined, undefined, busCoverageInput("Autobus attrezzati con dispositivi ECO-DRIVER", "Tecod")),
   criterion("F.3.1", "F", "Q", "higher", 2, "Autoproduzione consumi elettrici per trazione", "integer", "kWh/anno", "alto", "All. 13, p. 31"),
   criterion("F.4.1", "F", "Q", "soil", 2, "Indice di consumo di suolo", "sqm", "m2", "alto", "All. 13, p. 32", "Se <= 0 assegna il massimo; se > 0 usa la formula su ICsuolomax."),
   criterion("F.5.1", "F", "T", "tabular", 1, "Rendicontazione di sostenibilità ambientale", "yesno", "sì/no", "basso", "All. 13, p. 34"),

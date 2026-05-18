@@ -48,6 +48,24 @@ describe("TPL tender scoring", () => {
     expect(result.comboScores[bidder.id]["L1+L2"].warnings).toContain("L'offerta combinatoria richiede offerte singole su entrambi i lotti.");
   });
 
+  it("calcola i tassi di copertura dagli input tecnici elementari", () => {
+    const first = createBidder("a", "A");
+    const second = createBidder("b", "B");
+    first.lots.L1.enabled = true;
+    second.lots.L1.enabled = true;
+    first.lots.L1.qValues["C.1.2"] = 1;
+    second.lots.L1.qValues["C.1.2"] = 1;
+    first.lots.L1.quantityInputs["C.1.2"] = { numerator: 50, denominator: 100 };
+    second.lots.L1.quantityInputs["C.1.2"] = { numerator: 80, denominator: 100 };
+
+    const result = simulate([first, second], settings, first.id);
+
+    expect(result.lotScores[first.id].L1.subScores["C.1.2"].value).toBe(0.5);
+    expect(result.lotScores[first.id].L1.subScores["C.1.2"].rawScore).toBe(1.25);
+    expect(result.lotScores[second.id].L1.subScores["C.1.2"].value).toBe(0.8);
+    expect(result.lotScores[second.id].L1.subScores["C.1.2"].rawScore).toBe(2);
+  });
+
   it("uses the admissible combinatory assignment when it maximizes the scenario", () => {
     const first = createBidder("a", "A");
     fillOffer(first, "L1", 3, 80);
