@@ -33,9 +33,12 @@ import {
   computeQuantityInputValue,
   createBidder,
   criteriaByParent,
+  emptyComboOffer,
+  emptyLotOffer,
   emptyTradeoffs,
   formatPercent,
   formatPoints,
+  candidateLotScore,
   getQuantitativeCriterionValue,
   maxQtPoints,
   round4,
@@ -468,6 +471,114 @@ type StoredWorkspace = {
 const isDemoScenarioId = (value: string): value is DemoScenarioId => DEMO_SCENARIOS.some((scenario) => scenario.id === value);
 const isLotId = (value: string): value is LotId => LOTS.some((lot) => lot.id === value);
 const isPairId = (value: string): value is PairId => PAIRS.some((pair) => pair.id === value);
+const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === "object" && !Array.isArray(value);
+const numberOr = (value: unknown, fallback = 0) => {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : fallback;
+};
+
+const normalizePhaseDiscounts = (value: unknown, fallback: [number, number, number] = [0, 0, 0]): [number, number, number] => {
+  const candidate = Array.isArray(value) ? value : [];
+  return [0, 1, 2].map((index) => Math.max(0, numberOr(candidate[index], fallback[index]))) as [number, number, number];
+};
+
+const normalizeTradeoffPlan = (value: unknown): TradeoffPlan => {
+  const base = defaultTradeoff();
+  const candidate = isRecord(value) ? value : {};
+  return {
+    deltaUnits: Math.max(0, numberOr(candidate.deltaUnits, base.deltaUnits)),
+    unitCost: Math.max(0, numberOr(candidate.unitCost, base.unitCost)),
+    denominator: Math.max(0, numberOr(candidate.denominator, base.denominator)),
+  };
+};
+
+const normalizeQuantityInput = (value: unknown): QuantityInputValue => {
+  const candidate = isRecord(value) ? value : {};
+  return {
+    numerator: Math.max(0, numberOr(candidate.numerator)),
+    denominator: Math.max(0, numberOr(candidate.denominator)),
+  };
+};
+
+const normalizeLotOffer = (value: unknown): LotOffer => {
+  const base = emptyLotOffer();
+  const candidate = isRecord(value) ? value : {};
+  const qValues = isRecord(candidate.qValues) ? candidate.qValues : {};
+  const quantityInputs = isRecord(candidate.quantityInputs) ? candidate.quantityInputs : {};
+  const tValues = isRecord(candidate.tValues) ? candidate.tValues : {};
+  const dValues = isRecord(candidate.dValues) ? candidate.dValues : {};
+  const tradeoffs = isRecord(candidate.tradeoffs) ? candidate.tradeoffs : {};
+
+  return {
+    enabled: Boolean(candidate.enabled),
+    qValues: Object.fromEntries(
+      CRITERIA.filter((criterion) => criterion.kind === "Q").map((criterion) => [
+        criterion.id,
+        Math.max(0, numberOr(qValues[criterion.id], base.qValues[criterion.id] ?? 0)),
+      ]),
+    ),
+    quantityInputs: Object.fromEntries(
+      CRITERIA.filter((criterion) => criterion.quantityInput).map((criterion) => [criterion.id, normalizeQuantityInput(quantityInputs[criterion.id])]),
+    ),
+    tValues: Object.fromEntries(
+      CRITERIA.filter((criterion) => criterion.kind === "T").map((criterion) => [criterion.id, Boolean(tValues[criterion.id])]),
+    ),
+    dValues: Object.fromEntries(
+      CRITERIA.filter((criterion) => criterion.kind === "D").map((criterion) => [
+        criterion.id,
+        clamp01(numberOr(dValues[criterion.id], base.dValues[criterion.id] ?? 0)),
+      ]),
+    ),
+    tradeoffs: Object.fromEntries(CRITERIA.map((criterion) => [criterion.id, normalizeTradeoffPlan(tradeoffs[criterion.id])])),
+    phaseDiscounts: normalizePhaseDiscounts(candidate.phaseDiscounts, base.phaseDiscounts),
+  };
+};
+
+const normalizeComboOffer = (value: unknown) => {
+  const base = emptyComboOffer();
+  const candidate = isRecord(value) ? value : {};
+  return {
+    enabled: Boolean(candidate.enabled),
+    phaseDiscounts: normalizePhaseDiscounts(candidate.phaseDiscounts, base.phaseDiscounts),
+    insertedInBothBuste: typeof candidate.insertedInBothBuste === "boolean" ? candidate.insertedInBothBuste : base.insertedInBothBuste,
+    pefCoherent: typeof candidate.pefCoherent === "boolean" ? candidate.pefCoherent : base.pefCoherent,
+  };
+};
+
+const normalizeBidders = (value: unknown): Bidder[] | undefined => {
+  if (!Array.isArray(value)) return undefined;
+  const seenIds = new Set<string>();
+  const bidders = value
+    .map((item, index) => {
+      if (!isRecord(item)) return undefined;
+      const rawId = typeof item.id === "string" && item.id.trim() ? item.id.trim() : `offerente-importato-${index + 1}`;
+      let id = rawId;
+      let suffix = 2;
+      while (seenIds.has(id)) {
+        id = `${rawId}-${suffix}`;
+        suffix += 1;
+      }
+      seenIds.add(id);
+
+      const bidder = createBidder(id, typeof item.name === "string" && item.name.trim() ? item.name.trim() : `Offerente ${index + 1}`);
+      const lots = isRecord(item.lots) ? item.lots : {};
+      const combos = isRecord(item.combos) ? item.combos : {};
+      for (const lot of LOTS) bidder.lots[lot.id] = normalizeLotOffer(lots[lot.id]);
+      for (const pair of PAIRS) bidder.combos[pair.id] = normalizeComboOffer(combos[pair.id]);
+      return bidder;
+    })
+    .filter((bidder): bidder is Bidder => Boolean(bidder));
+
+  return bidders.length ? bidders : undefined;
+};
+
+const normalizeSettings = (value: unknown): Settings => {
+  const candidate = isRecord(value) ? value : {};
+  return {
+    threshold: Math.max(0, numberOr(candidate.threshold, defaultSettings.threshold)),
+    applyAwardLimitDerogation: Boolean(candidate.applyAwardLimitDerogation),
+  };
+};
 
 const getStoredJson = <T,>(key: string): T | undefined => {
   if (typeof window === "undefined") return undefined;
@@ -482,17 +593,22 @@ const getStoredJson = <T,>(key: string): T | undefined => {
 const normalizeScenarioSnapshot = (value: unknown): SavedScenarioSnapshot | undefined => {
   if (!value || typeof value !== "object") return undefined;
   const candidate = value as Partial<SavedScenarioSnapshot>;
-  if (!Array.isArray(candidate.bidders) || !candidate.settings || typeof candidate.settings !== "object") return undefined;
+  const bidders = normalizeBidders(candidate.bidders);
+  if (!bidders) return undefined;
   const fallbackScenario = DEMO_SCENARIOS[0];
-  const firstBidderId = candidate.bidders[0]?.id ?? fallbackScenario.defaultBidderId;
+  const firstBidderId = bidders[0]?.id ?? fallbackScenario.defaultBidderId;
+  const selectedBidderId =
+    typeof candidate.selectedBidderId === "string" && bidders.some((bidder) => bidder.id === candidate.selectedBidderId)
+      ? candidate.selectedBidderId
+      : firstBidderId;
   return {
     id: typeof candidate.id === "string" && candidate.id ? candidate.id : `scenario-${Date.now()}`,
     name: typeof candidate.name === "string" && candidate.name.trim() ? candidate.name.trim() : "Scenario importato",
     savedAt: typeof candidate.savedAt === "string" ? candidate.savedAt : new Date().toISOString(),
     demoScenarioId: typeof candidate.demoScenarioId === "string" && isDemoScenarioId(candidate.demoScenarioId) ? candidate.demoScenarioId : fallbackScenario.id,
-    bidders: candidate.bidders,
-    settings: candidate.settings as Settings,
-    selectedBidderId: typeof candidate.selectedBidderId === "string" ? candidate.selectedBidderId : firstBidderId,
+    bidders,
+    settings: normalizeSettings(candidate.settings),
+    selectedBidderId,
     selectedLotId: typeof candidate.selectedLotId === "string" && isLotId(candidate.selectedLotId) ? candidate.selectedLotId : fallbackScenario.defaultLotId,
     selectedPairId: typeof candidate.selectedPairId === "string" && isPairId(candidate.selectedPairId) ? candidate.selectedPairId : fallbackScenario.defaultPairId,
   };
@@ -500,15 +616,20 @@ const normalizeScenarioSnapshot = (value: unknown): SavedScenarioSnapshot | unde
 
 const getStoredWorkspace = (): StoredWorkspace | undefined => {
   const stored = getStoredJson<StoredWorkspace>(WORKSPACE_STORAGE_KEY);
-  if (!stored || !Array.isArray(stored.bidders) || !stored.settings) return undefined;
+  if (!stored) return undefined;
+  const bidders = normalizeBidders(stored.bidders);
+  if (!bidders) return undefined;
   const fallback = DEMO_SCENARIOS[0];
+  const selectedBidderId = bidders.some((bidder) => bidder.id === stored.selectedBidderId)
+    ? stored.selectedBidderId
+    : bidders[0]?.id || fallback.defaultBidderId;
   return {
     scenarioName: stored.scenarioName || fallback.title,
-    activeSavedScenarioId: stored.activeSavedScenarioId,
+    activeSavedScenarioId: typeof stored.activeSavedScenarioId === "string" ? stored.activeSavedScenarioId : undefined,
     demoScenarioId: isDemoScenarioId(stored.demoScenarioId) ? stored.demoScenarioId : fallback.id,
-    bidders: stored.bidders,
-    settings: stored.settings,
-    selectedBidderId: stored.selectedBidderId || stored.bidders[0]?.id || fallback.defaultBidderId,
+    bidders,
+    settings: normalizeSettings(stored.settings),
+    selectedBidderId,
     selectedLotId: isLotId(stored.selectedLotId) ? stored.selectedLotId : fallback.defaultLotId,
     selectedPairId: isPairId(stored.selectedPairId) ? stored.selectedPairId : fallback.defaultPairId,
   };
@@ -1419,7 +1540,7 @@ function App() {
                     <strong>{candidate.bidderName}</strong>
                     <small>{candidate.kind === "combo" ? candidate.pairId : "Offerta singola"}</small>
                   </div>
-                  <b>{formatPoints(candidate.kind === "combo" ? candidate.totalScore / candidate.lotIds.length : candidate.totalScore)}</b>
+                  <b>{formatPoints(candidateLotScore(candidate, selectedLotId))}</b>
                 </div>
               ))}
               {!result.lotRankings[selectedLotId].length && <div className="empty-state compact">Nessuna offerta ammessa sul lotto.</div>}
@@ -1991,7 +2112,7 @@ function ResultsWorkbench({ result, selectedLotId }: { result: SimulationResult;
                   <strong>{candidate.bidderName}</strong>
                   <small>{candidate.kind === "combo" ? candidate.pairId : "Offerta singola"}</small>
                 </div>
-                <b>{formatPoints(candidate.kind === "combo" ? candidate.totalScore / candidate.lotIds.length : candidate.totalScore)}</b>
+                <b>{formatPoints(candidateLotScore(candidate, selectedLotId))}</b>
               </div>
             ))}
             {!result.lotRankings[selectedLotId].length && <div className="empty-state compact">Nessuna offerta ammessa sul lotto.</div>}

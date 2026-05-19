@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CRITERIA, LOTS, PAIRS } from "../data/tender";
-import { createBidder, simulate, type Bidder, type Settings } from "./scoring";
+import { candidateLotScore, createBidder, round4, simulate, type Bidder, type Settings } from "./scoring";
 
 const settings: Settings = {
   threshold: 0,
@@ -85,6 +85,26 @@ describe("TPL tender scoring", () => {
 
     expect(result.comboScores[first.id]["L1+L2"].admissible).toBe(true);
     expect(result.selectedScenario?.assignments.some((assignment) => assignment.kind === "combo" && assignment.pairId === "L1+L2")).toBe(true);
+  });
+
+  it("keeps lot-specific scores for combinatory candidates", () => {
+    const bidder = createBidder("a", "A");
+    bidder.lots.L1.enabled = true;
+    bidder.lots.L1.phaseDiscounts = [2, 2, 2];
+    fillOffer(bidder, "L2", 2, 90);
+    bidder.combos["L1+L2"] = { enabled: true, phaseDiscounts: [5, 5, 5], insertedInBothBuste: true, pefCoherent: true };
+
+    const result = simulate([bidder], settings, bidder.id);
+    const candidate = result.candidates.find((item) => item.kind === "combo" && item.pairId === "L1+L2");
+    expect(candidate).toBeDefined();
+
+    const expectedL1 = round4(result.lotScores[bidder.id].L1.technical + (result.comboScores[bidder.id]["L1+L2"].lotEconomic.L1 ?? 0));
+    const expectedL2 = round4(result.lotScores[bidder.id].L2.technical + (result.comboScores[bidder.id]["L1+L2"].lotEconomic.L2 ?? 0));
+    expect(candidate?.scoreByLot.L1).toBe(expectedL1);
+    expect(candidate?.scoreByLot.L2).toBe(expectedL2);
+    expect(candidateLotScore(candidate!, "L1")).toBe(expectedL1);
+    expect(candidateLotScore(candidate!, "L2")).toBe(expectedL2);
+    expect(candidateLotScore(candidate!, "L1")).not.toBe(candidateLotScore(candidate!, "L2"));
   });
 
   it("rejects a combinatory offer with the same direct amount as the single offers", () => {

@@ -97,6 +97,8 @@ export type AssignmentCandidate = {
   pairId?: PairId;
   totalScore: number;
   technicalScore: number;
+  scoreByLot: Partial<Record<LotId, number>>;
+  technicalByLot: Partial<Record<LotId, number>>;
 };
 
 export type Scenario = {
@@ -530,6 +532,8 @@ const buildCandidates = (bidders: Bidder[], lotScores: Record<string, Record<Lot
           lotIds: [lot.id],
           totalScore: score.singleTotal,
           technicalScore: score.technical,
+          scoreByLot: { [lot.id]: score.singleTotal },
+          technicalByLot: { [lot.id]: score.technical },
         });
       }
     }
@@ -537,6 +541,12 @@ const buildCandidates = (bidders: Bidder[], lotScores: Record<string, Record<Lot
     for (const pair of PAIRS) {
       const score = comboScores[bidder.id][pair.id];
       if (score.admissible) {
+        const scoreByLot = Object.fromEntries(
+          pair.lots.map((lotId) => [lotId, round4(lotScores[bidder.id][lotId].technical + (score.lotEconomic[lotId] ?? 0))]),
+        ) as Partial<Record<LotId, number>>;
+        const technicalByLot = Object.fromEntries(
+          pair.lots.map((lotId) => [lotId, lotScores[bidder.id][lotId].technical]),
+        ) as Partial<Record<LotId, number>>;
         candidates.push({
           id: `${bidder.id}:${pair.id}:combo`,
           bidderId: bidder.id,
@@ -546,6 +556,8 @@ const buildCandidates = (bidders: Bidder[], lotScores: Record<string, Record<Lot
           pairId: pair.id,
           totalScore: score.totalScore,
           technicalScore: score.technicalScore,
+          scoreByLot,
+          technicalByLot,
         });
       }
     }
@@ -646,15 +658,24 @@ const lotRankings = (candidates: AssignmentCandidate[]) => {
           const aLotScore = candidateLotScore(a, lot.id);
           const bLotScore = candidateLotScore(b, lot.id);
           if (bLotScore !== aLotScore) return bLotScore - aLotScore;
-          return b.technicalScore - a.technicalScore;
+          return candidateLotTechnicalScore(b, lot.id) - candidateLotTechnicalScore(a, lot.id);
         }),
     ]),
   ) as Record<LotId, AssignmentCandidate[]>;
 };
 
-const candidateLotScore = (candidate: AssignmentCandidate, lotId: LotId) => {
+export const candidateLotScore = (candidate: AssignmentCandidate, lotId: LotId) => {
+  const lotScore = candidate.scoreByLot[lotId];
+  if (typeof lotScore === "number") return lotScore;
   if (candidate.kind === "single") return candidate.totalScore;
   return candidate.totalScore / candidate.lotIds.length;
+};
+
+const candidateLotTechnicalScore = (candidate: AssignmentCandidate, lotId: LotId) => {
+  const lotTechnicalScore = candidate.technicalByLot[lotId];
+  if (typeof lotTechnicalScore === "number") return lotTechnicalScore;
+  if (candidate.kind === "single") return candidate.technicalScore;
+  return candidate.technicalScore / candidate.lotIds.length;
 };
 
 const buildWarnings = (
