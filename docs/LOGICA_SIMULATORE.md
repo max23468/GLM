@@ -17,7 +17,7 @@ Non va usato come fonte ufficiale autonoma. Ogni dato deve restare riconducibile
 - `src/data/tender.ts`: definisce lotti, coppie combinatorie, ambiti A-G, sub-criteri, soglie Q/T, fonti pubbliche e warning documentali.
 - `src/data/base-scenarios.ts`: definisce scenari base, profili simulati, baseline operative e assunzioni numeriche non ufficiali.
 - `src/lib/scoring.ts`: calcola punteggi tecnici/economici, ammissibilità combinatorie, ranking lotti e scenario migliore.
-- `src/lib/optimization.ts`: genera piani di miglioramento da un'offerta iniziale, con budget tecnico o strategico.
+- `src/lib/optimization.ts`: genera piani di miglioramento da un'offerta iniziale, con budget massimo opzionale.
 - `src/lib/tradeoff.ts`: applica l'analisi puntuale criterio e calcola il relativo costo stimato.
 - `src/lib/scenario-persistence.ts`: normalizza workspace, scenari salvati, import JSON e migrazione dai campi legacy.
 - `src/App.tsx`: gestisce stato UI, salvataggio locale, import/export JSON, selezione tab, analisi puntuale criterio e ottimizzazione offerta.
@@ -65,7 +65,7 @@ Il costo totale non arriva dai documenti di gara. È un'ipotesi dell'utente e vi
 
 ## Ottimizzazione Offerta
 
-L'ottimizzazione offerta parte dall'offerta corrente dell'offerente selezionato e tiene fermi i concorrenti. Il motore genera mosse candidate, le applica su copie dello scenario e sceglie progressivamente la leva con miglior incremento di punteggio per euro finché il budget è esaurito o non restano miglioramenti positivi.
+L'ottimizzazione offerta parte dall'offerta corrente dell'offerente selezionato e tiene fermi i concorrenti. Il motore genera mosse candidate, le applica su copie dello scenario e sceglie progressivamente la leva con maggior incremento di punteggio finché non restano miglioramenti positivi. Se l'utente attiva il budget massimo, le mosse che superano il budget residuo vengono escluse e l'ordinamento privilegia l'incremento di punteggio per euro; senza budget attivo il piano massimizza il punteggio entro massimali, costi e input configurati.
 
 Gli obiettivi disponibili sono:
 
@@ -73,10 +73,12 @@ Gli obiettivi disponibili sono:
 - `Tutti i lotti attivi`: massimizza la somma dei punteggi singoli dell'offerente sui lotti attivi;
 - `Scenario complessivo`: massimizza il contributo dell'offerente nelle assegnazioni dello scenario vincente simulato.
 
-Le modalità budget sono:
+Le leve considerate sono:
 
-- `Budget strategico offerta`: confronta leve tecniche Q/T e maggiore ribasso economico;
-- `Budget investimenti tecnici`: usa solo leve tecniche Q/T e ignora il ribasso.
+- `Tecnica + ribasso`: confronta leve tecniche Q/T e maggiore ribasso economico;
+- `Solo tecnica`: usa solo leve tecniche Q/T e ignora il ribasso.
+
+Il budget massimo non è obbligatorio. Quando è attivo, limita sia gli investimenti tecnici sia il minore corrispettivo prodotto dal ribasso economico. Quando è disattivo, resta visibile solo il costo complessivo stimato del piano.
 
 I criteri discrezionali `D` sono esclusi dall'ottimizzazione automatica perché dipendono dal giudizio della Commissione e non hanno una funzione deterministica costo-punteggio nel disciplinare. Restano compilabili manualmente nella tab `Tecnica`.
 
@@ -114,7 +116,7 @@ Lo stato vive nel browser:
 
 Le chiavi legacy `tpl-simulator-*` restano lette in fallback. L'import/export usa JSON con snapshot dello scenario; se cambia la forma dei dati, aggiornare i normalizzatori in `src/lib/scenario-persistence.ts` e mantenere compatibilità ragionevole con scenari esportati in precedenza.
 
-Gli snapshot correnti usano `schemaVersion: 3` e includono la configurazione di ottimizzazione. La normalizzazione deve continuare ad accettare snapshot precedenti privi del blocco `optimization`.
+Gli snapshot correnti usano `schemaVersion: 4` e includono la configurazione di ottimizzazione, compreso il flag che rende facoltativo il budget massimo. La normalizzazione deve continuare ad accettare snapshot precedenti privi del blocco `optimization` o del flag `budgetEnabled`.
 
 ## Scenari base
 

@@ -29,7 +29,7 @@ npm run preview -- --port 4173
 - Offre scenari base con profili simulati ispirati a fonti pubbliche e allegati locali, senza trasformarli in offerte reali.
 - Permette salvataggio locale, duplicazione, import/export JSON e confronto fra scenari.
 - Mostra l'analisi puntuale criterio per sub-criterio, con costo stimato e impatto su punteggio/ribasso.
-- Usa l'ottimizzazione offerta per partire da un'offerta iniziale e confrontare budget tecnico, investimenti su criteri Q/T e maggiore ribasso economico.
+- Usa l'ottimizzazione offerta per partire da un'offerta iniziale, massimizzare il punteggio con leve tecniche/economiche configurabili e, se serve, applicare un budget massimo.
 - Genera un report stampabile o salvabile in PDF dal browser.
 - Espone una pagina web di istruzioni raggiungibile dal pulsante `Istruzioni` nella testata e dall'URL `/istruzioni/`.
 - Supporta tema chiaro/scuro/automatico e layout responsive.
@@ -52,7 +52,7 @@ src/App.tsx                            UI principale, stato workspace, import/ex
 src/components/scenario-panels.tsx     Pannelli scenario, confronto, riepilogo e report
 src/data/base-scenarios.ts             Scenari base, profili simulati e baseline operative
 src/data/tender.ts                     Lotti, coppie, criteri, soglie, fonti e criticità documentali
-src/lib/optimization.ts                Motore di ottimizzazione budget, leve tecniche e ribasso
+src/lib/optimization.ts                Motore di ottimizzazione punteggio, budget opzionale, leve tecniche e ribasso
 src/lib/scenario-persistence.ts        Normalizzazione snapshot, migrazione storage e import JSON
 src/lib/scoring.ts                     Motore di scoring e selezione scenario
 src/lib/tradeoff.ts                    Logica interna di analisi puntuale criterio e costo tecnico
@@ -90,7 +90,7 @@ Documenti principali:
 - `All 18 - Offerta economica.pdf`
 - modelli `All 18.1` - `All 18.8`
 
-I costi unitari dell'analisi puntuale criterio e delle leve di ottimizzazione offerta non sono contenuti nei documenti di gara: sono ipotesi dell'utente. Nella modalità strategica il ribasso economico viene trattato come minore corrispettivo offerto; nella modalità investimenti tecnici il budget viene usato solo su criteri tecnici Q/T.
+I costi unitari dell'analisi puntuale criterio e delle leve di ottimizzazione offerta non sono contenuti nei documenti di gara: sono ipotesi dell'utente. L'ottimizzazione non richiede un budget di partenza: di base cerca il miglior punteggio raggiungibile con le leve abilitate e i massimali configurati. Il budget massimo è un vincolo facoltativo. Quando il ribasso economico è incluso, il costo viene trattato come minore corrispettivo offerto.
 
 Le fonti pubbliche citate negli scenari base includono Agenzia TPL, ARIA/Sintel, Autoguidovie, Arriva Italia, Gruppo ATM/NET/Movibus e STAR Mobility. Se cambiano metriche, URL o claim pubblici, verificare la fonte e aggiornare anche la data `verifiedAt` in `src/data/tender.ts`.
 
@@ -148,4 +148,4 @@ Eseguire il deploy solo quando richiesto esplicitamente. Quando la richiesta è 
 
 Le chiavi attive di `localStorage` sono `tpl-lotti-1-4-theme`, `tpl-lotti-1-4-workspace` e `tpl-lotti-1-4-scenarios`.
 
-Gli export correnti usano `schemaVersion: 3` e includono anche la configurazione della tab `Ottimizzazione offerta`. Gli scenari salvati con le vecchie chiavi `tpl-simulator-*` o senza configurazione di ottimizzazione restano leggibili: la normalizzazione in `src/lib/scenario-persistence.ts` migra i campi legacy, inclusi `demoScenarioId`, snapshot incompleti e input mancanti.
+Gli export correnti usano `schemaVersion: 4` e includono anche la configurazione della tab `Ottimizzazione offerta`, compreso il vincolo facoltativo di budget massimo. Gli scenari salvati con le vecchie chiavi `tpl-simulator-*` o senza configurazione di ottimizzazione restano leggibili: la normalizzazione in `src/lib/scenario-persistence.ts` migra i campi legacy, inclusi `demoScenarioId`, snapshot incompleti e input mancanti.

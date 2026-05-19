@@ -29,6 +29,7 @@ export type OptimizationEconomicInput = {
 };
 
 export type OptimizationConfig = {
+  budgetEnabled: boolean;
   budget: number;
   budgetMode: OptimizationBudgetMode;
   scope: OptimizationScope;
@@ -63,9 +64,10 @@ export type OptimizationResult = {
   initialScore: number;
   finalScore: number;
   objectiveDelta: number;
+  budgetEnabled: boolean;
   budget: number;
   usedBudget: number;
-  remainingBudget: number;
+  remainingBudget: number | null;
   optimizedBidders: Bidder[];
   optimizedSimulation: SimulationResult;
   steps: OptimizationStep[];
@@ -79,6 +81,7 @@ type OptimizationCandidate = Omit<OptimizationStep, "id" | "afterScore"> & {
 };
 
 export const defaultOptimizationConfig = (): OptimizationConfig => ({
+  budgetEnabled: false,
   budget: 1_000_000,
   budgetMode: "strategic",
   scope: "active-lot",
@@ -110,8 +113,9 @@ export const optimizeOffer = (
 ): OptimizationResult => {
   const initialBidders = structuredClone(bidders);
   let currentBidders = structuredClone(bidders);
+  const budgetEnabled = config.budgetEnabled === true;
   const budget = Math.max(0, config.budget || 0);
-  let remainingBudget = budget;
+  let remainingBudget = budgetEnabled ? budget : Number.POSITIVE_INFINITY;
   const initialSimulation = simulate(initialBidders, settings, selectedBidderId);
   let currentSimulation = initialSimulation;
   const initialScore = objectiveScore(initialSimulation, currentBidders, selectedBidderId, selectedLotId, config.scope);
@@ -120,15 +124,15 @@ export const optimizeOffer = (
   const warnings: string[] = [];
 
   if (!currentBidders.some((bidder) => bidder.id === selectedBidderId)) {
-    return emptyOptimizationResult(initialSimulation, currentBidders, budget, "Offerente selezionato non trovato nello scenario.");
+    return emptyOptimizationResult(initialSimulation, currentBidders, budgetEnabled, budget, "Offerente selezionato non trovato nello scenario.");
   }
 
   const targetLots = getTargetLots(currentBidders, selectedBidderId, selectedLotId, config.scope);
   if (!targetLots.length) {
-    return emptyOptimizationResult(initialSimulation, currentBidders, budget, "Nessun lotto attivo disponibile per l'ottimizzazione.");
+    return emptyOptimizationResult(initialSimulation, currentBidders, budgetEnabled, budget, "Nessun lotto attivo disponibile per l'ottimizzazione.");
   }
 
-  for (let iteration = 0; iteration < 200; iteration += 1) {
+  for (let iteration = 0; iteration < 1000; iteration += 1) {
     const candidates = buildCandidates({
       baselineBidders: initialBidders,
       currentBidders,
@@ -142,6 +146,11 @@ export const optimizeOffer = (
       currentScore,
     });
     const best = candidates.sort((a, b) => {
+      if (!budgetEnabled) {
+        if (b.objectiveDelta !== a.objectiveDelta) return b.objectiveDelta - a.objectiveDelta;
+        if (b.efficiency !== a.efficiency) return b.efficiency - a.efficiency;
+        return a.cost - b.cost;
+      }
       if (b.efficiency !== a.efficiency) return b.efficiency - a.efficiency;
       if (b.objectiveDelta !== a.objectiveDelta) return b.objectiveDelta - a.objectiveDelta;
       return a.cost - b.cost;
@@ -151,7 +160,7 @@ export const optimizeOffer = (
     currentBidders = best.bidders;
     currentSimulation = simulate(currentBidders, settings, selectedBidderId);
     currentScore = best.score;
-    remainingBudget = Math.max(0, remainingBudget - best.cost);
+    if (budgetEnabled) remainingBudget = Math.max(0, remainingBudget - best.cost);
     steps.push({
       id: `step-${steps.length + 1}`,
       kind: best.kind,
@@ -170,16 +179,23 @@ export const optimizeOffer = (
   }
 
   if (!steps.length) {
-    warnings.push("Nessuna leva produce un miglioramento positivo con budget, massimali e costi correnti.");
+    warnings.push(
+      budgetEnabled
+        ? "Nessuna leva produce un miglioramento positivo con budget, massimali e costi correnti."
+        : "Nessuna leva produce un miglioramento positivo con massimali, costi e input correnti.",
+    );
   }
+
+  const usedBudget = steps.reduce((sum, step) => sum + step.cost, 0);
 
   return {
     initialScore: round4(initialScore),
     finalScore: round4(currentScore),
     objectiveDelta: round4(currentScore - initialScore),
+    budgetEnabled,
     budget,
-    usedBudget: round4(budget - remainingBudget),
-    remainingBudget: round4(remainingBudget),
+    usedBudget: round4(usedBudget),
+    remainingBudget: budgetEnabled ? round4(Math.max(0, budget - usedBudget)) : null,
     optimizedBidders: currentBidders,
     optimizedSimulation: currentSimulation,
     steps,
@@ -188,13 +204,20 @@ export const optimizeOffer = (
   };
 };
 
-const emptyOptimizationResult = (simulation: SimulationResult, bidders: Bidder[], budget: number, warning: string): OptimizationResult => ({
+const emptyOptimizationResult = (
+  simulation: SimulationResult,
+  bidders: Bidder[],
+  budgetEnabled: boolean,
+  budget: number,
+  warning: string,
+): OptimizationResult => ({
   initialScore: 0,
   finalScore: 0,
   objectiveDelta: 0,
+  budgetEnabled,
   budget,
   usedBudget: 0,
-  remainingBudget: budget,
+  remainingBudget: budgetEnabled ? budget : null,
   optimizedBidders: structuredClone(bidders),
   optimizedSimulation: simulation,
   steps: [],
@@ -266,7 +289,7 @@ const buildCandidates = ({
       if (stepUnits <= 0) continue;
       const cost = criterion.kind === "T" ? Math.max(0, lever.unitCost) : stepUnits * Math.max(0, lever.unitCost);
       if (cost <= 0) continue;
-      if (cost > remainingBudget) continue;
+      if (config.budgetEnabled && cost > remainingBudget) continue;
 
       const nextBidders = structuredClone(currentBidders);
       const nextBidder = nextBidders.find((item) => item.id === selectedBidderId);
@@ -299,7 +322,7 @@ const buildCandidates = ({
       const economicStep = nextEconomicStepUnits(baselineOffer, currentOffer, config.economic);
       const lot = LOTS.find((item) => item.id === lotId);
       const cost = lot ? (lot.totalBase * economicStep) / 100 : 0;
-      if (economicStep > 0 && cost <= remainingBudget) {
+      if (economicStep > 0 && (!config.budgetEnabled || cost <= remainingBudget)) {
         const nextBidders = structuredClone(currentBidders);
         const nextBidder = nextBidders.find((item) => item.id === selectedBidderId);
         if (nextBidder) {

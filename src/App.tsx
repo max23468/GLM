@@ -134,8 +134,8 @@ const optimizationScopeOptions: { value: OptimizationConfig["scope"]; label: str
 ];
 
 const optimizationBudgetModeOptions: { value: OptimizationConfig["budgetMode"]; label: string }[] = [
-  { value: "strategic", label: "Budget strategico offerta" },
-  { value: "technical", label: "Budget investimenti tecnici" },
+  { value: "strategic", label: "Tecnica + ribasso" },
+  { value: "technical", label: "Solo tecnica" },
 ];
 
 const criterionKindLabel: Record<Criterion["kind"], string> = {
@@ -271,7 +271,7 @@ function App() {
     window.localStorage.setItem(
       STORAGE_KEYS.workspace,
       JSON.stringify({
-        schemaVersion: 3,
+        schemaVersion: 4,
         scenarioName,
         activeSavedScenarioId,
         baseScenarioId,
@@ -474,7 +474,7 @@ function App() {
   };
 
   const currentScenarioSnapshot = (id = activeSavedScenarioId ?? `scenario-${Date.now()}`, name = scenarioName): SavedScenarioSnapshot => ({
-    schemaVersion: 3,
+    schemaVersion: 4,
     id,
     name: name.trim() || "Scenario senza nome",
     savedAt: new Date().toISOString(),
@@ -2009,18 +2009,27 @@ function OptimizationWorkbench({
           <HelpTooltip>Il piano parte dall'offerta corrente e rivaluta ogni mossa tenendo fermi i concorrenti. I criteri discrezionali sono esclusi.</HelpTooltip>
         </div>
         <div className="optimization-controls">
+          <label className="switch budget-switch">
+            <input
+              type="checkbox"
+              checked={config.budgetEnabled}
+              onChange={(event) => onConfigChange((current) => ({ ...current, budgetEnabled: event.target.checked }))}
+            />
+            <span>usa budget massimo</span>
+          </label>
           <label className="field compact">
-            <span>Budget disponibile</span>
+            <span>Budget massimo</span>
             <input
               type="number"
               min={0}
               step={10000}
               value={config.budget}
+              disabled={!config.budgetEnabled}
               onChange={(event) => onConfigChange((current) => ({ ...current, budget: Math.max(0, Number(event.target.value) || 0) }))}
             />
           </label>
           <label className="field compact">
-            <span>Modalità</span>
+            <span>Leve considerate</span>
             <select
               value={config.budgetMode}
               onChange={(event) =>
@@ -2056,11 +2065,14 @@ function OptimizationWorkbench({
             </select>
           </label>
         </div>
+        <div className="optimization-hint">
+          Di base il piano massimizza il punteggio partendo dall'offerta corrente. Attiva il budget massimo solo per simulare un tetto di spesa o di minore ricavo.
+        </div>
 
         <div className={`economic-optimizer ${config.budgetMode === "technical" ? "disabled" : ""}`}>
           <div>
             <strong>Leva economica</strong>
-            <span>Usata solo nel budget strategico: il costo è minore corrispettivo offerto.</span>
+            <span>Il costo è il minore corrispettivo offerto; il budget massimo è facoltativo.</span>
           </div>
           <label className="switch">
             <input
@@ -2100,16 +2112,16 @@ function OptimizationWorkbench({
         <div className="section-title compact">
           <LineChart size={16} />
           Piano consigliato
-          <HelpTooltip>Il motore sceglie a ogni passaggio la leva con miglior incremento di punteggio per euro, poi ricalcola tutto lo scenario.</HelpTooltip>
+          <HelpTooltip>Senza budget il motore cerca il maggior incremento di punteggio; con budget attivo privilegia l'incremento per euro. Dopo ogni mossa ricalcola tutto lo scenario.</HelpTooltip>
         </div>
         <div className="optimization-summary-grid">
           <div>
-            <span>Budget usato</span>
+            <span>Costo piano</span>
             <strong>{euroFormatter.format(result.usedBudget)}</strong>
           </div>
           <div>
-            <span>Residuo</span>
-            <strong>{euroFormatter.format(result.remainingBudget)}</strong>
+            <span>{result.budgetEnabled ? "Residuo budget" : "Vincolo budget"}</span>
+            <strong>{result.budgetEnabled ? euroFormatter.format(result.remainingBudget ?? 0) : "non attivo"}</strong>
           </div>
           <div>
             <span>Mosse</span>

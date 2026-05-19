@@ -29,8 +29,9 @@ describe("scenario persistence normalization", () => {
     });
 
     expect(snapshot).toBeDefined();
-    expect(snapshot?.schemaVersion).toBe(3);
+    expect(snapshot?.schemaVersion).toBe(4);
     expect(snapshot?.baseScenarioId).toBe("market");
+    expect(snapshot?.optimization.budgetEnabled).toBe(false);
     expect(snapshot?.optimization.budget).toBe(1_000_000);
     expect(snapshot?.optimization.scope).toBe("active-lot");
     expect(snapshot?.settings.threshold).toBe(37);
@@ -63,8 +64,9 @@ describe("scenario persistence normalization", () => {
     });
 
     expect(workspace).toBeDefined();
-    expect(workspace?.schemaVersion).toBe(3);
+    expect(workspace?.schemaVersion).toBe(4);
     expect(workspace?.baseScenarioId).toBe("local");
+    expect(workspace?.optimization.budgetEnabled).toBe(false);
     expect(workspace?.optimization.budgetMode).toBe("strategic");
     expect(workspace?.scenarioName).toBe("Presidio locale");
     expect(workspace?.settings).toEqual({ threshold: 38, applyAwardLimitDerogation: true });
@@ -78,6 +80,7 @@ describe("scenario persistence normalization", () => {
       id: "optimizer",
       baseScenarioId: "market",
       optimization: {
+        budgetEnabled: true,
         budget: 500000,
         budgetMode: "technical",
         scope: "active-lots",
@@ -92,6 +95,7 @@ describe("scenario persistence normalization", () => {
     });
 
     expect(snapshot).toBeDefined();
+    expect(snapshot?.optimization.budgetEnabled).toBe(true);
     expect(snapshot?.optimization.budget).toBe(500000);
     expect(snapshot?.optimization.budgetMode).toBe("technical");
     expect(snapshot?.optimization.scope).toBe("active-lots");

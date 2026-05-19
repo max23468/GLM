@@ -52,7 +52,7 @@ npm run deploy:cloudflare
 - `src/data/tender.ts`: lotti, coppie, criteri, soglie, fonti, warning documentali.
 - `src/data/base-scenarios.ts`: scenari base, profili simulati e baseline operative.
 - `src/lib/scoring.ts`: calcolo punteggi, combinatorie, ranking, scenario vincente.
-- `src/lib/optimization.ts`: motore di ottimizzazione budget, leve tecniche e ribasso.
+- `src/lib/optimization.ts`: motore di ottimizzazione punteggio, budget opzionale, leve tecniche e ribasso.
 - `src/lib/tradeoff.ts`: logica interna dell'analisi puntuale criterio e costo stimato.
 - `src/lib/scenario-persistence.ts`: normalizzazione workspace, migrazione storage e import/export JSON.
 - `src/lib/*.test.ts`: test Vitest del motore di scoring e della persistenza.
