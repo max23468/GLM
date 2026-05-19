@@ -22,14 +22,15 @@ npm run preview -- --port 4173
 
 ## Cosa fa
 
-- Gestisce più offerenti e la partecipazione ai lotti singoli `L1`, `L2`, `L3`, `L4`.
+- Gestisce scenari, concorrenti e partecipazioni dalla barra laterale `Workspace`, con modalità `Gestisci workspace` e rientro unico tramite `Indietro`.
+- Gestisce più concorrenti e la partecipazione ai lotti singoli `L1`, `L2`, `L3`, `L4`.
 - Simula le combinatorie ammesse `L1+L2`, `L2+L3`, `L3+L4`, `L1+L4`.
 - Calcola punteggi tecnici Q/T/D, soglia Q/T, riparametrazione per ambito, punteggio economico e scenario vincente.
 - Evidenzia warning su soglie, dipendenze, combinatorie non ammissibili, sorteggio e deroga al limite di due lotti.
 - Offre scenari base con profili simulati ispirati a fonti pubbliche e allegati locali, senza trasformarli in offerte reali.
 - Permette salvataggio locale, duplicazione, import/export JSON e confronto fra scenari.
 - Mostra l'analisi puntuale criterio per sub-criterio, con costo stimato e impatto su punteggio/ribasso.
-- Usa l'ottimizzazione offerta per partire da un'offerta iniziale, massimizzare il punteggio con leve tecniche/economiche configurabili e, se serve, applicare un budget massimo.
+- Usa l'ottimizzazione per partire da un'offerta iniziale, massimizzare il punteggio con leve tecniche/economiche configurabili, riallocare tecnica verso ribasso e, se serve, applicare un budget massimo.
 - Genera un report stampabile o salvabile in PDF dal browser.
 - Espone una pagina web di istruzioni raggiungibile dal pulsante `Istruzioni` nella testata e dall'URL `/istruzioni/`.
 - Supporta tema chiaro/scuro/automatico e layout responsive.
@@ -48,7 +49,7 @@ Le basi operative degli scenari derivano da documenti locali di gara e segnali p
 ## Mappa del repository
 
 ```text
-src/App.tsx                            UI principale, stato workspace, import/export, analisi puntuale criterio e ottimizzazione offerta
+src/App.tsx                            UI principale, gestione workspace laterale, stato, import/export, analisi puntuale criterio e ottimizzazione
 src/components/scenario-panels.tsx     Pannelli scenario, confronto, riepilogo e report
 src/data/base-scenarios.ts             Scenari base, profili simulati e baseline operative
 src/data/tender.ts                     Lotti, coppie, criteri, soglie, fonti e criticità documentali
@@ -90,7 +91,7 @@ Documenti principali:
 - `All 18 - Offerta economica.pdf`
 - modelli `All 18.1` - `All 18.8`
 
-I costi unitari dell'analisi puntuale criterio e delle leve di ottimizzazione offerta non sono contenuti nei documenti di gara: sono ipotesi dell'utente. L'ottimizzazione non richiede un budget di partenza: di base cerca il miglior punteggio raggiungibile con le leve abilitate e i massimali configurati. Il budget massimo è un vincolo facoltativo. Quando il ribasso economico è incluso, il costo viene trattato come minore corrispettivo offerto.
+I costi unitari dell'analisi puntuale criterio e delle leve di ottimizzazione non sono contenuti nei documenti di gara: sono ipotesi dell'utente. L'ottimizzazione non richiede un budget di partenza: di base cerca il miglior punteggio raggiungibile con le leve abilitate e i massimali configurati. Il budget massimo è un vincolo facoltativo. Quando il ribasso economico è incluso, il costo viene trattato come minore corrispettivo offerto; se una rinuncia tecnica libera risorse sufficienti, il motore può proporre una riallocazione tecnica-ribasso.
 
 Le fonti pubbliche citate negli scenari base includono Agenzia TPL, ARIA/Sintel, Autoguidovie, Arriva Italia, Gruppo ATM/NET/Movibus e STAR Mobility. Se cambiano metriche, URL o claim pubblici, verificare la fonte e aggiornare anche la data `verifiedAt` in `src/data/tender.ts`.
 
@@ -148,4 +149,4 @@ Eseguire il deploy solo quando richiesto esplicitamente. Quando la richiesta è 
 
 Le chiavi attive di `localStorage` sono `tpl-lotti-1-4-theme`, `tpl-lotti-1-4-workspace` e `tpl-lotti-1-4-scenarios`.
 
-Gli export correnti usano `schemaVersion: 4` e includono anche la configurazione della tab `Ottimizzazione offerta`, compreso il vincolo facoltativo di budget massimo. Gli scenari salvati con le vecchie chiavi `tpl-simulator-*` o senza configurazione di ottimizzazione restano leggibili: la normalizzazione in `src/lib/scenario-persistence.ts` migra i campi legacy, inclusi `demoScenarioId`, snapshot incompleti e input mancanti.
+Gli export correnti usano `schemaVersion: 4` e includono anche la configurazione della tab `Ottimizzazione`, compreso il vincolo facoltativo di budget massimo. Gli scenari salvati con le vecchie chiavi `tpl-simulator-*` o senza configurazione di ottimizzazione restano leggibili: la normalizzazione in `src/lib/scenario-persistence.ts` migra i campi legacy, inclusi `demoScenarioId`, snapshot incompleti e input mancanti.

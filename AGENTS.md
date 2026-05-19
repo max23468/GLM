@@ -56,7 +56,7 @@ npm run deploy:cloudflare
 - `src/lib/tradeoff.ts`: logica interna dell'analisi puntuale criterio e costo stimato.
 - `src/lib/scenario-persistence.ts`: normalizzazione workspace, migrazione storage e import/export JSON.
 - `src/lib/*.test.ts`: test Vitest del motore di scoring e della persistenza.
-- `src/App.tsx`: UI principale, persistenza locale, import/export, analisi puntuale criterio e ottimizzazione offerta.
+- `src/App.tsx`: UI principale, persistenza locale, import/export, analisi puntuale criterio e ottimizzazione.
 - `src/components/scenario-panels.tsx`: pannelli scenario, confronto, report.
 - `src/styles.css`: token CSS e layout responsive.
 - `docs/milano-lotti-extraurbani-om/`: allegati gara, da trattare come fonti e non come file da riscrivere.

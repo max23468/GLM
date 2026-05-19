@@ -20,13 +20,13 @@ Non va usato come fonte ufficiale autonoma. Ogni dato deve restare riconducibile
 - `src/lib/optimization.ts`: genera piani di miglioramento da un'offerta iniziale, con budget massimo opzionale.
 - `src/lib/tradeoff.ts`: applica l'analisi puntuale criterio e calcola il relativo costo stimato.
 - `src/lib/scenario-persistence.ts`: normalizza workspace, scenari salvati, import JSON e migrazione dai campi legacy.
-- `src/App.tsx`: gestisce stato UI, salvataggio locale, import/export JSON, selezione tab, analisi puntuale criterio e ottimizzazione offerta.
+- `src/App.tsx`: gestisce stato UI, gestione workspace laterale, salvataggio locale, import/export JSON, selezione tab, analisi puntuale criterio e ottimizzazione.
 - `src/components/scenario-panels.tsx`: contiene pannelli scenario, riepilogo strategico, confronto e report.
 - `src/lib/*.test.ts`: copre motore di scoring e normalizzazione della persistenza.
 
 ## Flusso di calcolo
 
-1. Ogni offerente ha offerte per lotti singoli e combinatorie.
+1. Ogni concorrente ha offerte per lotti singoli e combinatorie.
 2. Per ogni lotto attivo il simulatore calcola i sub-score dei criteri Q/T/D.
 3. I criteri Q e T concorrono alla soglia Q/T configurata.
 4. Solo le offerte ammesse superano la fase tecnica e ricevono riparametrazione per ambito.
@@ -40,8 +40,8 @@ Non va usato come fonte ufficiale autonoma. Ogni dato deve restare riconducibile
    - il valore combinatorio è economicamente migliorativo rispetto alle offerte singole.
 7. I candidati singoli e combinatori sono enumerati per costruire scenari di assegnazione.
 8. Lo scenario migliore massimizza il punteggio totale, poi il punteggio tecnico.
-9. Il limite ordinario di due lotti per offerente può essere derogato solo se l'impostazione è attiva e il limite lascerebbe lotti non assegnati.
-10. La tab `Ottimizzazione offerta` non sostituisce lo scoring: applica mosse candidate su una copia dello scenario e rivaluta sempre tramite `simulate()`.
+9. Il limite ordinario di due lotti per concorrente può essere derogato solo se l'impostazione è attiva e il limite lascerebbe lotti non assegnati.
+10. La tab `Ottimizzazione` non sostituisce lo scoring: applica mosse candidate su una copia dello scenario e rivaluta sempre tramite `simulate()`.
 
 ## Dati tecnici e quantitativi
 
@@ -63,15 +63,17 @@ Il pannello di analisi puntuale criterio simula l'effetto di un singolo migliora
 
 Il costo totale non arriva dai documenti di gara. È un'ipotesi dell'utente e viene trattato come riduzione del ribasso medio del lotto. Per questo la UI deve continuare a presentarlo come stima, non come dato ufficiale.
 
-## Ottimizzazione Offerta
+## Ottimizzazione
 
-L'ottimizzazione offerta parte dall'offerta corrente dell'offerente selezionato e tiene fermi i concorrenti. Il motore genera mosse candidate, le applica su copie dello scenario e sceglie progressivamente la leva con maggior incremento di punteggio finché non restano miglioramenti positivi. Se l'utente attiva il budget massimo, le mosse che superano il budget residuo vengono escluse e l'ordinamento privilegia l'incremento di punteggio per euro; senza budget attivo il piano massimizza il punteggio entro massimali, costi e input configurati.
+L'ottimizzazione parte dall'offerta corrente del concorrente selezionato e tiene fermi gli altri concorrenti. Il motore genera mosse candidate, le applica su copie dello scenario e sceglie progressivamente la leva con maggior incremento di punteggio finché non restano miglioramenti positivi. Se l'utente attiva il budget massimo, le mosse che superano il budget residuo vengono escluse e l'ordinamento privilegia l'incremento di punteggio per euro; senza budget attivo il piano massimizza il punteggio entro massimali, costi e input configurati.
+
+Quando `Tecnica + ribasso` è attivo, il motore valuta anche riallocazioni tecnico-economiche: riduce una leva tecnica rispetto all'offerta iniziale, calcola le risorse liberate con il costo unitario inserito dall'utente e usa tali risorse per finanziare un maggiore ribasso. La mossa entra nel piano solo se il saldo netto tra punti tecnici persi e punti economici guadagnati è positivo. Senza budget esterno attivo, una rinuncia tecnica usata per finanziare ribasso non viene riaggiunta automaticamente nella stessa ottimizzazione.
 
 Gli obiettivi disponibili sono:
 
 - `Lotto attivo`: massimizza il punteggio dell'offerta singola sul lotto selezionato;
-- `Tutti i lotti attivi`: massimizza la somma dei punteggi singoli dell'offerente sui lotti attivi;
-- `Scenario complessivo`: massimizza il contributo dell'offerente nelle assegnazioni dello scenario vincente simulato.
+- `Tutti i lotti attivi`: massimizza la somma dei punteggi singoli del concorrente sui lotti attivi;
+- `Scenario complessivo`: massimizza il contributo del concorrente nelle assegnazioni dello scenario vincente simulato.
 
 Le leve considerate sono:
 
@@ -90,6 +92,8 @@ Per ogni leva tecnica l'utente può indicare:
 - `unitCost`: costo unitario stimato dall'utente;
 - `denominator`: base di calcolo quando il criterio è un rapporto.
 
+Per le riallocazioni tecnica-ribasso, `unitCost` viene letto come risorsa liberabile se quella leva tecnica viene ridotta. Sui criteri in cui un valore più alto migliora il punteggio, la riduzione può scendere sotto l'offerta iniziale; se `maxUnits` è maggiore di `0`, limita anche quanto si può sacrificare. Sui criteri inversi, come indici ambientali o consumo di suolo, la rinuncia tecnica richiede `maxUnits` maggiore di `0`, perché il simulatore non può dedurre da solo un peggioramento massimo credibile.
+
 Per la leva economica l'utente indica step e massimo in punti percentuali di ribasso. Il costo è calcolato come minore corrispettivo offerto sul lotto. Anche questo è un input simulativo, non un dato di gara.
 
 ## Offerta economica
@@ -104,7 +108,7 @@ La sezione economica replica in forma navigabile la struttura dell'All. 18:
 
 I corrispettivi unitari sono una lettura di gestione della flessibilità contrattuale. Non modificano il punteggio economico e non vanno presentati come valore ufficiale di offerta se l'utente non ha compilato un'offerta reale.
 
-Il simulatore inverso del target economico usa lo scenario corrente come fotografia statica: stima il ribasso medio necessario a raggiungere un punteggio economico scelto rispetto all'`Rmax` corrente. Se l'offerente selezionato è già il riferimento `Rmax`, un ulteriore ribasso non aumenta il suo punteggio oltre 30, ma può ridurre il punteggio relativo degli altri concorrenti.
+Il simulatore inverso del target economico usa lo scenario corrente come fotografia statica: stima il ribasso medio necessario a raggiungere un punteggio economico scelto rispetto all'`Rmax` corrente. Se il concorrente selezionato è già il riferimento `Rmax`, un ulteriore ribasso non aumenta il suo punteggio oltre 30, ma può ridurre il punteggio relativo degli altri concorrenti.
 
 ## Persistenza e scambio scenari
 
@@ -117,6 +121,8 @@ Lo stato vive nel browser:
 Le chiavi legacy `tpl-simulator-*` restano lette in fallback. L'import/export usa JSON con snapshot dello scenario; se cambia la forma dei dati, aggiornare i normalizzatori in `src/lib/scenario-persistence.ts` e mantenere compatibilità ragionevole con scenari esportati in precedenza.
 
 Gli snapshot correnti usano `schemaVersion: 4` e includono la configurazione di ottimizzazione, compreso il flag che rende facoltativo il budget massimo. La normalizzazione deve continuare ad accettare snapshot precedenti privi del blocco `optimization` o del flag `budgetEnabled`.
+
+La gestione di scenari, concorrenti, lotti e opzioni di partecipazione è concentrata nella barra laterale. La vista ordinaria mostra solo il riepilogo `Workspace`; il pulsante `Gestisci workspace` apre i controlli laterali e `Indietro` chiude l'intera gestione.
 
 ## Scenari base
 
@@ -165,7 +171,7 @@ npm run preview -- --port 4173
 Poi aprire l'app e controllare almeno:
 
 - caricamento scenario base;
-- cambio lotto/offerente;
+- cambio lotto/concorrente;
 - salvataggio scenario;
 - import/export JSON;
 - pannelli `Tecnica`, `Economica`, `Combinatorie`, `Risultati`;

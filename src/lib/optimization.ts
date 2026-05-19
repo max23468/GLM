@@ -1,6 +1,7 @@
 import { CRITERIA, LOTS, type Criterion, type LotId } from "../data/tender";
 import {
   candidateLotScore,
+  computeQuantityInputValue,
   getQuantitativeCriterionValue,
   round4,
   simulate,
@@ -39,7 +40,7 @@ export type OptimizationConfig = {
 
 export type OptimizationStep = {
   id: string;
-  kind: "technical" | "economic";
+  kind: "technical" | "economic" | "reallocation";
   lotId: LotId;
   criterionId?: string;
   criterionLabel?: string;
@@ -48,6 +49,11 @@ export type OptimizationStep = {
   units: number;
   unitLabel: string;
   cost: number;
+  budgetImpact: number;
+  releasedBudget?: number;
+  economicUnits?: number;
+  technicalDelta?: number;
+  economicDelta?: number;
   objectiveDelta: number;
   efficiency: number;
   afterScore: number;
@@ -160,7 +166,7 @@ export const optimizeOffer = (
     currentBidders = best.bidders;
     currentSimulation = simulate(currentBidders, settings, selectedBidderId);
     currentScore = best.score;
-    if (budgetEnabled) remainingBudget = Math.max(0, remainingBudget - best.cost);
+    if (budgetEnabled) remainingBudget = Math.max(0, remainingBudget - best.budgetImpact);
     steps.push({
       id: `step-${steps.length + 1}`,
       kind: best.kind,
@@ -172,6 +178,11 @@ export const optimizeOffer = (
       units: best.units,
       unitLabel: best.unitLabel,
       cost: round4(best.cost),
+      budgetImpact: round4(best.budgetImpact),
+      releasedBudget: best.releasedBudget === undefined ? undefined : round4(best.releasedBudget),
+      economicUnits: best.economicUnits === undefined ? undefined : round4(best.economicUnits),
+      technicalDelta: best.technicalDelta === undefined ? undefined : round4(best.technicalDelta),
+      economicDelta: best.economicDelta === undefined ? undefined : round4(best.economicDelta),
       objectiveDelta: round4(best.objectiveDelta),
       efficiency: round4(best.efficiency),
       afterScore: round4(best.score),
@@ -186,7 +197,7 @@ export const optimizeOffer = (
     );
   }
 
-  const usedBudget = steps.reduce((sum, step) => sum + step.cost, 0);
+  const usedBudget = steps.reduce((sum, step) => sum + step.budgetImpact, 0);
 
   return {
     initialScore: round4(initialScore),
@@ -285,6 +296,7 @@ const buildCandidates = ({
       if (criterion.kind === "D") continue;
       const lever = getOptimizationLever(config, lotId, criterion, currentOffer.tradeoffs[criterion.id] ?? defaultTradeoff());
       if (!lever.enabled) continue;
+      if (!config.budgetEnabled && isBelowInitialTechnicalOffer(baselineOffer, currentOffer, criterion, lever)) continue;
       const stepUnits = nextTechnicalStepUnits(baselineOffer, currentOffer, currentBidders, lotId, criterion, lever);
       if (stepUnits <= 0) continue;
       const cost = criterion.kind === "T" ? Math.max(0, lever.unitCost) : stepUnits * Math.max(0, lever.unitCost);
@@ -311,6 +323,7 @@ const buildCandidates = ({
         units: stepUnits,
         unitLabel: criterion.kind === "T" ? "impegno" : criterion.tradeoffUnit,
         cost,
+        budgetImpact: cost,
         objectiveDelta,
         efficiency: efficiency(objectiveDelta, cost),
         score: nextScore,
@@ -318,11 +331,28 @@ const buildCandidates = ({
       });
     }
 
+    const reallocationCandidates =
+      config.budgetMode === "strategic" && config.economic.enabled
+        ? buildReallocationCandidates({
+            baselineOffer,
+            currentBidders,
+            currentOffer,
+            currentScore,
+            lotId,
+            remainingBudget,
+            selectedBidderId,
+            selectedLotId,
+            settings,
+            config,
+          })
+        : [];
+    candidates.push(...reallocationCandidates);
+
     if (config.budgetMode === "strategic" && config.economic.enabled) {
       const economicStep = nextEconomicStepUnits(baselineOffer, currentOffer, config.economic);
       const lot = LOTS.find((item) => item.id === lotId);
       const cost = lot ? (lot.totalBase * economicStep) / 100 : 0;
-      if (economicStep > 0 && (!config.budgetEnabled || cost <= remainingBudget)) {
+      if (economicStep > 0 && (config.budgetEnabled || !reallocationCandidates.length) && (!config.budgetEnabled || cost <= remainingBudget)) {
         const nextBidders = structuredClone(currentBidders);
         const nextBidder = nextBidders.find((item) => item.id === selectedBidderId);
         if (nextBidder) {
@@ -334,10 +364,11 @@ const buildCandidates = ({
             candidates.push({
               kind: "economic",
               lotId,
-              title: `${lotId} - aumenta il ribasso medio`,
+              title: `${lotId} - aumenta il ribasso medio diretto`,
               units: economicStep,
               unitLabel: "p.p. ribasso",
               cost,
+              budgetImpact: cost,
               objectiveDelta,
               efficiency: efficiency(objectiveDelta, cost),
               score: nextScore,
@@ -350,6 +381,91 @@ const buildCandidates = ({
   }
 
   return candidates;
+};
+
+const buildReallocationCandidates = ({
+  baselineOffer,
+  currentBidders,
+  currentOffer,
+  currentScore,
+  lotId,
+  remainingBudget,
+  selectedBidderId,
+  selectedLotId,
+  settings,
+  config,
+}: {
+  baselineOffer: Bidder["lots"][LotId];
+  currentBidders: Bidder[];
+  currentOffer: Bidder["lots"][LotId];
+  currentScore: number;
+  lotId: LotId;
+  remainingBudget: number;
+  selectedBidderId: string;
+  selectedLotId: LotId;
+  settings: Settings;
+  config: OptimizationConfig;
+}): OptimizationCandidate[] => {
+  const lot = LOTS.find((item) => item.id === lotId);
+  if (!lot) return [];
+
+  return CRITERIA.flatMap((criterion): OptimizationCandidate[] => {
+    if (criterion.kind === "D") return [];
+    const lever = getOptimizationLever(config, lotId, criterion, currentOffer.tradeoffs[criterion.id] ?? defaultTradeoff());
+    if (!lever.enabled) return [];
+
+    const reductionUnits = nextTechnicalReductionUnits(baselineOffer, currentOffer, criterion, lever);
+    const releasedBudget = technicalReductionCost(criterion, reductionUnits, lever);
+    if (reductionUnits <= 0 || releasedBudget <= 0) return [];
+
+    const maxFunding = releasedBudget + (config.budgetEnabled ? remainingBudget : 0);
+    const economicStep = fundedEconomicStepUnits(baselineOffer, currentOffer, config.economic, lot.totalBase, maxFunding);
+    if (economicStep <= 0.0001) return [];
+
+    const economicCost = (lot.totalBase * economicStep) / 100;
+    const budgetImpact = Math.max(0, economicCost - releasedBudget);
+    if (config.budgetEnabled && budgetImpact > remainingBudget) return [];
+    if (!config.budgetEnabled && budgetImpact > 0.0001) return [];
+
+    const reducedBidders = structuredClone(currentBidders);
+    const reducedBidder = reducedBidders.find((item) => item.id === selectedBidderId);
+    if (!reducedBidder) return [];
+    applyTechnicalReductionToOffer(reducedBidder.lots[lotId], criterion, lever, reductionUnits);
+    const reducedSimulation = simulate(reducedBidders, settings, selectedBidderId);
+    const reducedScore = objectiveScore(reducedSimulation, reducedBidders, selectedBidderId, selectedLotId, config.scope);
+
+    const nextBidders = structuredClone(reducedBidders);
+    const nextBidder = nextBidders.find((item) => item.id === selectedBidderId);
+    if (!nextBidder) return [];
+    nextBidder.lots[lotId].phaseDiscounts = nextBidder.lots[lotId].phaseDiscounts.map((discount) => discount + economicStep) as [number, number, number];
+    const nextSimulation = simulate(nextBidders, settings, selectedBidderId);
+    const nextScore = objectiveScore(nextSimulation, nextBidders, selectedBidderId, selectedLotId, config.scope);
+    const objectiveDelta = round4(nextScore - currentScore);
+    if (objectiveDelta <= 0) return [];
+
+    return [
+      {
+        kind: "reallocation",
+        lotId,
+        criterionId: criterion.id,
+        criterionLabel: criterion.label,
+        ambit: criterion.ambit,
+        title: `${lotId} - rialloca ${criterion.id} verso ribasso`,
+        units: reductionUnits,
+        unitLabel: criterion.kind === "T" ? "impegno tecnico" : criterion.tradeoffUnit,
+        cost: economicCost,
+        budgetImpact,
+        releasedBudget,
+        economicUnits: economicStep,
+        technicalDelta: round4(reducedScore - currentScore),
+        economicDelta: round4(nextScore - reducedScore),
+        objectiveDelta,
+        efficiency: efficiency(objectiveDelta, Math.max(1, budgetImpact || economicCost)),
+        score: nextScore,
+        bidders: nextBidders,
+      },
+    ];
+  });
 };
 
 const technicalStepToTradeoff = (criterion: Criterion, lever: OptimizationLeverInput, stepUnits: number): TradeoffPlan => ({
@@ -377,6 +493,87 @@ const nextTechnicalStepUnits = (
       ? Math.max(0, baselineUnits - currentUnits)
       : Math.max(0, currentUnits - baselineUnits);
   return Math.min(step, Math.max(0, maxUnits - usedUnits));
+};
+
+const nextTechnicalReductionUnits = (
+  baselineOffer: Bidder["lots"][LotId],
+  currentOffer: Bidder["lots"][LotId],
+  criterion: Criterion,
+  lever: OptimizationLeverInput,
+) => {
+  if (criterion.kind === "T") return currentOffer.tValues[criterion.id] ? 1 : 0;
+  const step = Math.max(0, lever.stepUnits || 0);
+  if (step <= 0) return 0;
+
+  const baselineUnits = technicalUnits(baselineOffer, criterion, lever);
+  const currentUnits = technicalUnits(currentOffer, criterion, lever);
+
+  if (criterion.formula === "lower" || criterion.formula === "soil") {
+    if (lever.maxUnits <= 0) return 0;
+    const ceiling = baselineUnits + lever.maxUnits;
+    return Math.min(step, Math.max(0, ceiling - currentUnits));
+  }
+
+  const floor = lever.maxUnits > 0 ? Math.max(0, baselineUnits - lever.maxUnits) : 0;
+  return Math.min(step, Math.max(0, currentUnits - floor));
+};
+
+const isBelowInitialTechnicalOffer = (
+  baselineOffer: Bidder["lots"][LotId],
+  currentOffer: Bidder["lots"][LotId],
+  criterion: Criterion,
+  lever: OptimizationLeverInput,
+) => {
+  if (criterion.kind === "T") return Boolean(baselineOffer.tValues[criterion.id]) && !currentOffer.tValues[criterion.id];
+  const baselineUnits = technicalUnits(baselineOffer, criterion, lever);
+  const currentUnits = technicalUnits(currentOffer, criterion, lever);
+  return criterion.formula === "lower" || criterion.formula === "soil" ? currentUnits > baselineUnits : currentUnits < baselineUnits;
+};
+
+const technicalReductionCost = (criterion: Criterion, units: number, lever: OptimizationLeverInput) =>
+  criterion.kind === "T" ? Math.max(0, lever.unitCost) : Math.max(0, units) * Math.max(0, lever.unitCost);
+
+const applyTechnicalReductionToOffer = (offer: Bidder["lots"][LotId], criterion: Criterion, lever: OptimizationLeverInput, units: number) => {
+  if (criterion.kind === "T") {
+    offer.tValues[criterion.id] = false;
+    return;
+  }
+
+  const worsensByIncreasing = criterion.formula === "lower" || criterion.formula === "soil";
+  const direction = worsensByIncreasing ? 1 : -1;
+
+  if (criterion.quantityInput) {
+    const currentInput = offer.quantityInputs[criterion.id];
+    const denominator = Math.max(0, lever.denominator || currentInput?.denominator || 0);
+    if (denominator <= 0) return;
+    const currentNumerator =
+      currentInput?.denominator === denominator
+        ? currentInput.numerator
+        : Math.round(
+            Math.min(
+              1,
+              Math.max(0, (Number(getQuantitativeCriterionValue(offer, criterion)) || 0) / (criterion.quantityInput.kind === "percent" ? 100 : 1)),
+            ) * denominator,
+          );
+    const nextInput = {
+      numerator: Math.min(denominator, Math.max(0, currentNumerator + direction * units)),
+      denominator,
+    };
+    offer.quantityInputs = { ...offer.quantityInputs, [criterion.id]: nextInput };
+    offer.qValues[criterion.id] = computeQuantityInputValue(criterion, nextInput);
+    return;
+  }
+
+  if (criterion.input === "ratio") {
+    const denominator = Math.max(0, lever.denominator || 0);
+    if (denominator <= 0) return;
+    const currentValue = Number(getQuantitativeCriterionValue(offer, criterion)) || 0;
+    offer.qValues[criterion.id] = Math.min(1, Math.max(0, currentValue + direction * (units / denominator)));
+    return;
+  }
+
+  const currentValue = Number(getQuantitativeCriterionValue(offer, criterion)) || 0;
+  offer.qValues[criterion.id] = Math.max(0, currentValue + direction * units);
 };
 
 const resolvedMaxUnits = (
@@ -430,6 +627,19 @@ const nextEconomicStepUnits = (baselineOffer: Bidder["lots"][LotId], currentOffe
   return Math.min(step, Math.max(0, maxDelta - usedDelta));
 };
 
+const fundedEconomicStepUnits = (
+  baselineOffer: Bidder["lots"][LotId],
+  currentOffer: Bidder["lots"][LotId],
+  economic: OptimizationEconomicInput,
+  lotTotalBase: number,
+  availableFunding: number,
+) => {
+  if (lotTotalBase <= 0 || availableFunding <= 0) return 0;
+  const nextStep = nextEconomicStepUnits(baselineOffer, currentOffer, economic);
+  const fundedStep = (availableFunding * 100) / lotTotalBase;
+  return round4(Math.min(nextStep, fundedStep));
+};
+
 const averageDiscount = (discounts: [number, number, number]) => discounts.reduce((sum, value) => sum + value, 0) / discounts.length;
 
 const efficiency = (delta: number, cost: number) => (cost > 0 ? delta / cost : delta);
@@ -437,8 +647,8 @@ const efficiency = (delta: number, cost: number) => (cost > 0 ? delta / cost : d
 const summarizeAreas = (steps: OptimizationStep[]): OptimizationAreaSummary[] => {
   const map = new Map<string, OptimizationAreaSummary>();
   for (const step of steps) {
-    const key = step.kind === "economic" ? "economica" : step.ambit ?? "tecnica";
-    const label = step.kind === "economic" ? "Offerta economica" : `Ambito ${key}`;
+    const key = step.kind === "economic" || step.kind === "reallocation" ? "economica" : step.ambit ?? "tecnica";
+    const label = step.kind === "economic" || step.kind === "reallocation" ? "Offerta economica" : `Ambito ${key}`;
     const current = map.get(key) ?? { key, label, cost: 0, objectiveDelta: 0 };
     current.cost = round4(current.cost + step.cost);
     current.objectiveDelta = round4(current.objectiveDelta + step.objectiveDelta);

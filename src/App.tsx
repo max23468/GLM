@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  ArrowLeft,
   BarChart3,
   BookOpen,
   CheckCircle2,
@@ -14,8 +15,8 @@ import {
   Route,
   SlidersHorizontal,
   Sun,
-  Trash2,
   Trophy,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -115,7 +116,7 @@ const themeOptions: { value: ThemePreference; label: string; icon: LucideIcon }[
 const workspaceTabs: { value: WorkspaceTab; label: string; icon: LucideIcon }[] = [
   { value: "tecnica", label: "Tecnica", icon: BarChart3 },
   { value: "economica", label: "Economica", icon: CircleDollarSign },
-  { value: "ottimizza", label: "Ottimizzazione offerta", icon: Sparkles },
+  { value: "ottimizza", label: "Ottimizzazione", icon: Sparkles },
   { value: "combinatorie", label: "Combinatorie", icon: Route },
   { value: "risultati", label: "Risultati", icon: Trophy },
 ];
@@ -240,6 +241,7 @@ function App() {
   const [activeSavedScenarioId, setActiveSavedScenarioId] = useState<string | undefined>(initialWorkspace?.activeSavedScenarioId);
   const [compareScenarioId, setCompareScenarioId] = useState("");
   const [scenarioNotice, setScenarioNotice] = useState("");
+  const [isWorkspaceManagementOpen, setWorkspaceManagementOpen] = useState(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>(getStoredTheme);
   const [systemPrefersDark, setSystemPrefersDark] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(prefers-color-scheme: dark)").matches : false,
@@ -300,11 +302,12 @@ function App() {
   const selectedLotScore = selectedBidder ? result.lotScores[selectedBidder.id][selectedLotId] : undefined;
   const selectedComboScore = selectedBidder ? result.comboScores[selectedBidder.id][selectedPairId] : undefined;
   const selectedLotLabel = LOTS.find((lot) => lot.id === selectedLotId)?.label ?? selectedLotId;
+  const selectedPairLabel = PAIRS.find((pair) => pair.id === selectedPairId)?.label ?? selectedPairId;
   const activeTabLabel = workspaceTabs.find((tab) => tab.value === activeTab)?.label ?? "Tecnica";
   const workspaceTitle =
     activeTab === "risultati" ? `Risultati - ${selectedLotLabel}` :
     activeTab === "combinatorie" ? `Offerte combinatorie - ${selectedLotLabel}` :
-    activeTab === "ottimizza" ? `Ottimizzazione offerta - ${selectedLotLabel}` :
+    activeTab === "ottimizza" ? `Ottimizzazione - ${selectedLotLabel}` :
     `Offerta ${activeTabLabel.toLowerCase()} - ${selectedLotLabel}`;
   const selectedAmbit = AMBITS.find((ambit) => ambit.id === selectedAmbitId) ?? AMBITS[0];
   const selectedAmbitCriteria = useMemo(() => CRITERIA.filter((criterion) => criterion.ambit === selectedAmbit.id), [selectedAmbit.id]);
@@ -366,10 +369,10 @@ function App() {
   const focusWarnings = useMemo(() => {
     const warnings: string[] = [];
     if (selectedLotScore?.warnings.length) {
-      warnings.push(...selectedLotScore.warnings.map((warning) => `${selectedBidder?.name ?? "Offerente"} ${selectedLotId}: ${warning}`));
+      warnings.push(...selectedLotScore.warnings.map((warning) => `${selectedBidder?.name ?? "Concorrente"} ${selectedLotId}: ${warning}`));
     }
     if (activeTab === "combinatorie" && selectedComboScore?.warnings.length) {
-      warnings.push(...selectedComboScore.warnings.map((warning) => `${selectedBidder?.name ?? "Offerente"} ${selectedPairId}: ${warning}`));
+      warnings.push(...selectedComboScore.warnings.map((warning) => `${selectedBidder?.name ?? "Concorrente"} ${selectedPairId}: ${warning}`));
     }
     if (selectedBidder) {
       warnings.push(...result.warnings.filter((warning) => warning.includes(selectedBidder.name) || warning.includes(selectedLotId)).slice(0, 3));
@@ -459,7 +462,7 @@ function App() {
 
   const addBidder = () => {
     const nextId = `offerente-${Date.now()}`;
-    const next = createBidder(nextId, `Nuovo offerente ${bidders.length + 1}`);
+    const next = createBidder(nextId, `Nuovo concorrente ${bidders.length + 1}`);
     next.lots.L1.enabled = true;
     setBidders((current) => [...current, next]);
     setSelectedBidderId(nextId);
@@ -556,6 +559,41 @@ function App() {
     setScenarioNotice(`Scenario base ripristinato: ${selectedBaseScenario.title}`);
   };
 
+  const renameCurrentScenario = (name: string) => {
+    setScenarioName(name);
+    if (!activeSavedScenarioId) return;
+    setSavedScenarios((current) =>
+      current.map((scenario) => (scenario.id === activeSavedScenarioId ? { ...scenario, name: name.trim() || "Scenario senza nome" } : scenario)),
+    );
+  };
+
+  const createNewScenario = () => {
+    const nextBidders = selectedBaseScenario.buildBidders();
+    setScenarioName("Nuovo scenario");
+    setActiveSavedScenarioId(undefined);
+    setBidders(nextBidders);
+    setOptimizationConfig(defaultOptimizationConfig());
+    setSettings(selectedBaseScenario.settings);
+    setSelectedBidderId(nextBidders.some((bidder) => bidder.id === selectedBaseScenario.defaultBidderId) ? selectedBaseScenario.defaultBidderId : nextBidders[0]?.id ?? "");
+    setSelectedLotId(selectedBaseScenario.defaultLotId);
+    setSelectedPairId(selectedBaseScenario.defaultPairId);
+    setCompareScenarioId("");
+    setScenarioNotice("Nuovo scenario creato: salvalo in libreria quando vuoi conservarlo.");
+  };
+
+  const deleteSavedScenario = (scenarioId?: string) => {
+    const targetId = scenarioId ?? activeSavedScenarioId;
+    if (!targetId) {
+      setScenarioNotice("Seleziona uno scenario salvato prima di eliminarlo.");
+      return;
+    }
+    const removed = savedScenarios.find((scenario) => scenario.id === targetId);
+    setSavedScenarios((current) => current.filter((scenario) => scenario.id !== targetId));
+    if (compareScenarioId === targetId) setCompareScenarioId("");
+    if (activeSavedScenarioId === targetId) setActiveSavedScenarioId(undefined);
+    setScenarioNotice(`Eliminato: ${removed?.name ?? "scenario salvato"}`);
+  };
+
   const navigateToInstructions = () => {
     window.history.pushState({}, "", "/istruzioni/");
     setView("istruzioni");
@@ -616,148 +654,272 @@ function App() {
       </header>
 
       <div className="layout">
-        <aside className="left-rail">
-          <ScenarioTools
-            scenarioName={scenarioName}
-            savedScenarios={savedScenarios}
-            activeSavedScenarioId={activeSavedScenarioId}
-            scenarioNotice={scenarioNotice}
-            onScenarioNameChange={(name) => {
-              setScenarioName(name);
-              setActiveSavedScenarioId(undefined);
-            }}
-            onSave={saveCurrentScenario}
-            onDuplicate={duplicateCurrentScenario}
-            onExport={exportCurrentScenario}
-            onImportFile={importScenarioFile}
-            onLoadSaved={loadSavedScenario}
-            onResetBaseScenario={resetCurrentBaseScenario}
-          />
-
-          <section className="panel base-panel">
-            <div className="section-title">
-              <ClipboardList size={18} />
-              Scenari base
-              <HelpTooltip>Parti da uno scenario precompilato solo come base di lavoro: non rappresenta un'offerta ufficiale.</HelpTooltip>
-            </div>
-            <div className="base-list">
-              {BASE_SCENARIOS.map((scenario) => (
-                <button
-                  key={scenario.id}
-                  className={`base-card ${scenario.id === baseScenarioId ? "active" : ""}`}
-                  onClick={() => loadBaseScenario(scenario)}
-                >
-                  <strong>{scenario.title}</strong>
-                  <span>{scenario.body}</span>
+        <aside className={`left-rail ${isWorkspaceManagementOpen ? "manager-open" : "manager-closed"}`}>
+          {isWorkspaceManagementOpen ? (
+            <>
+              <section className="panel workspace-management-head">
+                <button className="action-button subtle" onClick={() => setWorkspaceManagementOpen(false)}>
+                  <ArrowLeft size={16} />
+                  Indietro
                 </button>
-              ))}
-            </div>
-            <div className="hint">Profili simulati da fonti pubbliche e modelli locali: servono per confrontare scenari, non rappresentano offerte ufficiali.</div>
-          </section>
+                <div className="hint">Gestione scenario, concorrenti, lotti e opzioni del workspace.</div>
+              </section>
 
-          <section className="panel">
-            <div className="section-title">
-              <SlidersHorizontal size={18} />
-              Parametri
-              <HelpTooltip>Qui scegli la soglia Q/T e l'eventuale deroga: cambia prima questi parametri se vuoi testare una lettura più o meno selettiva.</HelpTooltip>
-            </div>
-            <div className="active-scenario">
-              <span>Scenario attivo</span>
-              <strong>{selectedBaseScenario.title}</strong>
-              <ul className="scenario-basis" aria-label="Base scenario">
-                {selectedBaseScenario.basis.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-            <label className="field">
-              <span>
-                Soglia Q/T
-                <HelpTooltip>Un'offerta sotto soglia non passa alla valutazione economica. Le tre opzioni corrispondono alle letture già richiamate nelle istruzioni.</HelpTooltip>
-              </span>
-              <select
-                value={settings.threshold}
-                onChange={(event) => setSettings((current) => ({ ...current, threshold: Number(event.target.value) }))}
-              >
-                {THRESHOLD_OPTIONS.map((option) => (
-                  <option key={option.id} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="toggle-row">
-              <input
-                type="checkbox"
-                checked={settings.applyAwardLimitDerogation}
-                onChange={(event) => setSettings((current) => ({ ...current, applyAwardLimitDerogation: event.target.checked }))}
+              <ScenarioTools
+                scenarioName={scenarioName}
+                savedScenarios={savedScenarios}
+                activeSavedScenarioId={activeSavedScenarioId}
+                scenarioNotice={scenarioNotice}
+                onScenarioNameChange={renameCurrentScenario}
+                onNew={createNewScenario}
+                onSave={saveCurrentScenario}
+                onDuplicate={duplicateCurrentScenario}
+                onDelete={() => deleteSavedScenario()}
+                onDeleteSaved={deleteSavedScenario}
+                onExport={exportCurrentScenario}
+                onImportFile={importScenarioFile}
+                onLoadSaved={loadSavedScenario}
+                onResetBaseScenario={resetCurrentBaseScenario}
               />
-              <span>Applica deroga al limite di due lotti se necessaria per evitare lotti non assegnati</span>
-            </label>
-            <div className="hint">Soglia attiva: scenario disciplinare se resta a 37 pt. Q/T max ricostruito: {formatPoints(maxQtPoints())} punti. Le incongruenze sono nel pannello criticità.</div>
-          </section>
 
-          <section className="panel">
-            <div className="section-title between">
-              <span>
-                <Route size={18} />
-                Offerenti
-                <HelpTooltip>Seleziona un operatore prima di compilare valori tecnici o ribassi: ogni modifica riguarda l'offerente attivo.</HelpTooltip>
-              </span>
-              <button className="icon-button" onClick={addBidder} aria-label="Aggiungi offerente" title="Aggiungi offerente">
-                <Plus size={17} />
-              </button>
-            </div>
-            <div className="offeror-list">
-              {bidders.map((bidder) => {
-                const activeLots = LOTS.filter((lot) => bidder.lots[lot.id].enabled).length;
-                const isSelected = bidder.id === selectedBidder?.id;
-                return (
-                  <button key={bidder.id} className={`offeror-row ${isSelected ? "selected" : ""}`} onClick={() => setSelectedBidderId(bidder.id)}>
-                    <span>{bidder.name}</span>
-                    <small>
-                      {activeLots} {activeLots === 1 ? "lotto" : "lotti"}
-                    </small>
+              <section className="panel base-panel">
+                <div className="section-title">
+                  <ClipboardList size={18} />
+                  Scenari base
+                  <HelpTooltip>Parti da uno scenario precompilato solo come base di lavoro: non rappresenta un'offerta ufficiale.</HelpTooltip>
+                </div>
+                <div className="base-list">
+                  {BASE_SCENARIOS.map((scenario) => (
+                    <button
+                      key={scenario.id}
+                      className={`base-card ${scenario.id === baseScenarioId ? "active" : ""}`}
+                      onClick={() => loadBaseScenario(scenario)}
+                    >
+                      <strong>{scenario.title}</strong>
+                      <span>{scenario.body}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="hint">Profili simulati da fonti pubbliche e modelli locali: servono per confrontare scenari, non rappresentano offerte ufficiali.</div>
+              </section>
+
+              <section className="panel">
+                <div className="section-title">
+                  <SlidersHorizontal size={18} />
+                  Parametri
+                  <HelpTooltip>Qui scegli la soglia Q/T e l'eventuale deroga: cambia prima questi parametri se vuoi testare una lettura più o meno selettiva.</HelpTooltip>
+                </div>
+                <div className="active-scenario">
+                  <span>Scenario attivo</span>
+                  <strong>{selectedBaseScenario.title}</strong>
+                  <ul className="scenario-basis" aria-label="Base scenario">
+                    {selectedBaseScenario.basis.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+                <label className="field">
+                  <span>
+                    Soglia Q/T
+                    <HelpTooltip>Un'offerta sotto soglia non passa alla valutazione economica. Le tre opzioni corrispondono alle letture già richiamate nelle istruzioni.</HelpTooltip>
+                  </span>
+                  <select
+                    value={settings.threshold}
+                    onChange={(event) => setSettings((current) => ({ ...current, threshold: Number(event.target.value) }))}
+                  >
+                    {THRESHOLD_OPTIONS.map((option) => (
+                      <option key={option.id} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="toggle-row">
+                  <input
+                    type="checkbox"
+                    checked={settings.applyAwardLimitDerogation}
+                    onChange={(event) => setSettings((current) => ({ ...current, applyAwardLimitDerogation: event.target.checked }))}
+                  />
+                  <span>Applica deroga al limite di due lotti se necessaria per evitare lotti non assegnati</span>
+                </label>
+                <div className="hint">Soglia attiva: scenario disciplinare se resta a 37 pt. Q/T max ricostruito: {formatPoints(maxQtPoints())} punti. Le incongruenze sono nel pannello criticità.</div>
+              </section>
+
+              <section className="panel">
+                <div className="section-title between">
+                  <span>
+                    <Route size={18} />
+                    Concorrenti
+                    <HelpTooltip>Da qui aggiungi, rinomini, selezioni o elimini i concorrenti. La compilazione centrale lavora sempre sul concorrente attivo.</HelpTooltip>
+                  </span>
+                  <button className="icon-button primary" onClick={addBidder} aria-label="Aggiungi concorrente" title="Aggiungi concorrente">
+                    <Plus size={17} />
                   </button>
-                );
-              })}
-            </div>
-          </section>
+                </div>
+                {selectedBidder && (
+                  <div className="sidebar-admin-block">
+                    <label className="field compact">
+                      <span>
+                        Nome concorrente
+                        <HelpTooltip>Il nome serve a rendere leggibili classifica, confronto ed export. Non incide sui punteggi.</HelpTooltip>
+                      </span>
+                      <input
+                        value={selectedBidder.name}
+                        onChange={(event) =>
+                          updateBidder(selectedBidder.id, (bidder) => {
+                            bidder.name = event.target.value;
+                            return bidder;
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                )}
+                <div className="offeror-list">
+                  {bidders.map((bidder) => {
+                    const activeLots = LOTS.filter((lot) => bidder.lots[lot.id].enabled).length;
+                    const isSelected = bidder.id === selectedBidder?.id;
+                    return (
+                      <div key={bidder.id} className={`sidebar-row-actions ${isSelected ? "selected" : ""}`}>
+                        <button className="offeror-row" onClick={() => setSelectedBidderId(bidder.id)}>
+                          <span>{bidder.name}</span>
+                          <small>
+                            {activeLots} {activeLots === 1 ? "lotto" : "lotti"}
+                          </small>
+                        </button>
+                        <button
+                          className="icon-button mini danger"
+                          disabled={bidders.length <= 1}
+                          onClick={() => removeBidder(bidder.id)}
+                          aria-label={`Elimina concorrente ${bidder.name}`}
+                          title="Elimina concorrente"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
 
-          <section className="panel">
-            <div className="section-title">
-              Lotti
-              <HelpTooltip>Il lotto selezionato decide quale scheda tecnica ed economica stai compilando per l'offerente attivo.</HelpTooltip>
-            </div>
-            <div className="chip-grid">
-              {LOTS.map((lot) => (
-                <button key={lot.id} className={`chip ${selectedLotId === lot.id ? "active" : ""}`} onClick={() => setSelectedLotId(lot.id)}>
-                  {lot.shortLabel}
-                </button>
-              ))}
-            </div>
-            <div className="lot-context">
-              <strong>{selectedLotContext.territory}</strong>
-              <span>
-                Base d'asta {euroFormatter.format(LOTS.find((lot) => lot.id === selectedLotId)?.totalBase ?? 0)}.{" "}
-                {selectedLotContext.operatingHint}
-              </span>
-              <a href={selectedLotContext.sourceUrl} target="_blank" rel="noreferrer">
-                {selectedLotContext.source}
-              </a>
-            </div>
-            <div className="section-title compact">
-              Combinatorie ammesse
-              <HelpTooltip>Attiva una combinatoria solo se nello scenario sono presentati anche entrambi i lotti singoli collegati.</HelpTooltip>
-            </div>
-            <div className="chip-grid two">
-              {PAIRS.map((pair) => (
-                <button key={pair.id} className={`chip ${selectedPairId === pair.id ? "active" : ""}`} onClick={() => setSelectedPairId(pair.id)}>
-                  {pair.label.replace("Lotti ", "")}
-                </button>
-              ))}
-            </div>
-          </section>
+              {selectedBidder && (
+                <section className="panel">
+                  <div className="section-title">
+                    <BarChart3 size={18} />
+                    Partecipazione
+                    <HelpTooltip>Attiva lotti e combinatorie del concorrente selezionato. Queste opzioni si gestiscono solo dalla barra laterale.</HelpTooltip>
+                  </div>
+                  <div className="sidebar-participation-grid" aria-label={`Partecipazione ${selectedBidder.name}`}>
+                    {LOTS.map((lot) => {
+                      const lotScore = result.lotScores[selectedBidder.id][lot.id];
+                      return (
+                        <label key={lot.id} className={selectedBidder.lots[lot.id].enabled ? lotScore.admitted ? "ok" : "warn" : ""}>
+                          <span>{lot.shortLabel}</span>
+                          <input
+                            type="checkbox"
+                            checked={selectedBidder.lots[lot.id].enabled}
+                            onChange={(event) =>
+                              updateBidder(selectedBidder.id, (draft) => {
+                                draft.lots[lot.id].enabled = event.target.checked;
+                                return draft;
+                              })
+                            }
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <div className="section-title compact">Combinatorie presentate</div>
+                  <div className="sidebar-participation-grid two" aria-label={`Combinatorie ${selectedBidder.name}`}>
+                    {PAIRS.map((pair) => {
+                      const comboScore = result.comboScores[selectedBidder.id][pair.id];
+                      return (
+                        <label key={pair.id} className={selectedBidder.combos[pair.id].enabled ? comboScore.admissible ? "ok" : "warn" : ""}>
+                          <span>{pair.label.replace("Lotti ", "")}</span>
+                          <input
+                            type="checkbox"
+                            checked={selectedBidder.combos[pair.id].enabled}
+                            onChange={(event) =>
+                              updateBidder(selectedBidder.id, (draft) => {
+                                draft.combos[pair.id].enabled = event.target.checked;
+                                return draft;
+                              })
+                            }
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <div className="hint">Per una combinatoria servono anche i due lotti singoli collegati.</div>
+                </section>
+              )}
+
+              <section className="panel">
+                <div className="section-title">
+                  Lotti
+                  <HelpTooltip>Il lotto selezionato decide quale scheda tecnica ed economica stai compilando per il concorrente attivo.</HelpTooltip>
+                </div>
+                <div className="chip-grid">
+                  {LOTS.map((lot) => (
+                    <button key={lot.id} className={`chip ${selectedLotId === lot.id ? "active" : ""}`} onClick={() => setSelectedLotId(lot.id)}>
+                      {lot.shortLabel}
+                    </button>
+                  ))}
+                </div>
+                <div className="lot-context">
+                  <strong>{selectedLotContext.territory}</strong>
+                  <span>
+                    Base d'asta {euroFormatter.format(LOTS.find((lot) => lot.id === selectedLotId)?.totalBase ?? 0)}.{" "}
+                    {selectedLotContext.operatingHint}
+                  </span>
+                  <a href={selectedLotContext.sourceUrl} target="_blank" rel="noreferrer">
+                    {selectedLotContext.source}
+                  </a>
+                </div>
+                <div className="section-title compact">
+                  Combinatorie ammesse
+                  <HelpTooltip>Attiva una combinatoria solo se nello scenario sono presentati anche entrambi i lotti singoli collegati.</HelpTooltip>
+                </div>
+                <div className="chip-grid two">
+                  {PAIRS.map((pair) => (
+                    <button key={pair.id} className={`chip ${selectedPairId === pair.id ? "active" : ""}`} onClick={() => setSelectedPairId(pair.id)}>
+                      {pair.label.replace("Lotti ", "")}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            </>
+          ) : (
+            <section className="panel workspace-entry-panel">
+              <div className="section-title">
+                <SlidersHorizontal size={18} />
+                Workspace
+                <HelpTooltip>Apri la gestione laterale per aggiungere, rinominare o eliminare scenari e concorrenti, oltre a modificare lotti e opzioni.</HelpTooltip>
+              </div>
+              <div className="workspace-summary-grid">
+                <div>
+                  <span>Scenario</span>
+                  <strong>{scenarioName}</strong>
+                </div>
+                <div>
+                  <span>Concorrente</span>
+                  <strong>{selectedBidder?.name ?? "n/d"}</strong>
+                </div>
+                <div>
+                  <span>Lotto</span>
+                  <strong>{selectedLotId}</strong>
+                </div>
+                <div>
+                  <span>Combinatoria</span>
+                  <strong>{selectedPairLabel.replace("Lotti ", "")}</strong>
+                </div>
+              </div>
+              <button className="action-button primary" onClick={() => setWorkspaceManagementOpen(true)}>
+                <SlidersHorizontal size={16} />
+                Gestisci workspace
+              </button>
+            </section>
+          )}
         </aside>
 
         <main className="workspace">
@@ -775,163 +937,12 @@ function App() {
                 onOpenResults={() => setActiveTab("risultati")}
               />
 
-              <section className="panel identity-panel">
-                <div>
-                  <div className="section-title">
-                    Offerente
-                    <HelpTooltip>Rinomina l'operatore per rendere leggibili classifica, confronto ed export.</HelpTooltip>
-                  </div>
-                  <div className="identity-grid">
-                    <label className="field">
-                      <span>
-                        Nome
-                        <HelpTooltip>Il nome non incide sui punteggi: serve solo a riconoscere l'ipotesi nella simulazione.</HelpTooltip>
-                      </span>
-                      <input
-                        value={selectedBidder.name}
-                        onChange={(event) =>
-                          updateBidder(selectedBidder.id, (bidder) => {
-                            bidder.name = event.target.value;
-                            return bidder;
-                          })
-                        }
-                      />
-                    </label>
-                  </div>
-                </div>
-                <button className="ghost danger" disabled={bidders.length <= 1} onClick={() => removeBidder(selectedBidder.id)}>
-                  <Trash2 size={16} />
-                  Rimuovi
-                </button>
-              </section>
-
-              <section className="panel lot-switchboard">
-                <div className="section-title">
-                  <BarChart3 size={18} />
-                  Gare di partecipazione
-                  <HelpTooltip>Spunta i lotti che l'offerente presenta. Per una combinatoria servono anche i due lotti singoli attivi.</HelpTooltip>
-                </div>
-                <div className="participation-matrix">
-                  <div className="matrix-head">
-                    <span>Operatore</span>
-                    {LOTS.map((lot) => (
-                      <span key={lot.id}>{lot.shortLabel}</span>
-                    ))}
-                    {PAIRS.map((pair) => (
-                      <span key={pair.id}>{pair.label.replace("Lotti ", "")}</span>
-                    ))}
-                  </div>
-                  {bidders.map((bidder) => (
-                    <div key={bidder.id} className={`matrix-row ${bidder.id === selectedBidder.id ? "selected" : ""}`}>
-                      <button className="matrix-name" onClick={() => setSelectedBidderId(bidder.id)}>
-                        {bidder.name}
-                      </button>
-                      {LOTS.map((lot) => {
-                        const lotScore = result.lotScores[bidder.id][lot.id];
-                        return (
-                          <label key={lot.id} className={`matrix-check ${bidder.lots[lot.id].enabled ? lotScore.admitted ? "ok" : "warn" : ""}`} title={bidder.lots[lot.id].enabled ? lotScore.admitted ? "Offerta ammessa" : "Offerta da verificare" : "Non partecipa"}>
-                            <input
-                              type="checkbox"
-                              checked={bidder.lots[lot.id].enabled}
-                              onChange={(event) =>
-                                updateBidder(bidder.id, (draft) => {
-                                  draft.lots[lot.id].enabled = event.target.checked;
-                                  return draft;
-                                })
-                              }
-                            />
-                            <span>{lotScore.admitted ? "✓" : bidder.lots[lot.id].enabled ? "!" : ""}</span>
-                          </label>
-                        );
-                      })}
-                      {PAIRS.map((pair) => {
-                        const comboScore = result.comboScores[bidder.id][pair.id];
-                        return (
-                          <label key={pair.id} className={`matrix-check combo ${bidder.combos[pair.id].enabled ? comboScore.admissible ? "ok" : "warn" : ""}`} title={bidder.combos[pair.id].enabled ? comboScore.admissible ? "Combinatoria ammissibile" : "Combinatoria da verificare" : "Non presentata"}>
-                            <input
-                              type="checkbox"
-                              checked={bidder.combos[pair.id].enabled}
-                              onChange={(event) =>
-                                updateBidder(bidder.id, (draft) => {
-                                  draft.combos[pair.id].enabled = event.target.checked;
-                                  return draft;
-                                })
-                              }
-                            />
-                            <span>{comboScore.admissible ? "✓" : bidder.combos[pair.id].enabled ? "!" : ""}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
-                <div className="mobile-participation-cards" aria-label="Partecipazioni per offerente">
-                  {bidders.map((bidder) => (
-                    <article key={bidder.id} className={`mobile-bidder-card ${bidder.id === selectedBidder.id ? "selected" : ""}`}>
-                      <button className="mobile-bidder-name" onClick={() => setSelectedBidderId(bidder.id)}>
-                        {bidder.name}
-                      </button>
-                      <div className="mobile-check-grid">
-                        {LOTS.map((lot) => {
-                          const lotScore = result.lotScores[bidder.id][lot.id];
-                          return (
-                            <label key={lot.id} className={bidder.lots[lot.id].enabled ? lotScore.admitted ? "ok" : "warn" : ""}>
-                              <span>{lot.shortLabel}</span>
-                              <input
-                                type="checkbox"
-                                checked={bidder.lots[lot.id].enabled}
-                                onChange={(event) =>
-                                  updateBidder(bidder.id, (draft) => {
-                                    draft.lots[lot.id].enabled = event.target.checked;
-                                    return draft;
-                                  })
-                                }
-                              />
-                            </label>
-                          );
-                        })}
-                        {PAIRS.map((pair) => {
-                          const comboScore = result.comboScores[bidder.id][pair.id];
-                          return (
-                            <label key={pair.id} className={bidder.combos[pair.id].enabled ? comboScore.admissible ? "ok" : "warn" : ""}>
-                              <span>{pair.label.replace("Lotti ", "")}</span>
-                              <input
-                                type="checkbox"
-                                checked={bidder.combos[pair.id].enabled}
-                                onChange={(event) =>
-                                  updateBidder(bidder.id, (draft) => {
-                                    draft.combos[pair.id].enabled = event.target.checked;
-                                    return draft;
-                                  })
-                                }
-                              />
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </article>
-                  ))}
-                </div>
-                <div className="hint">Le combinatorie restano valide solo per coppie ammesse, senza sovrapposizioni e con offerte singole attive sui due lotti.</div>
-                <div className="lot-toggle-grid compact">
-                  {LOTS.map((lot) => {
-                    const lotScore = result.lotScores[selectedBidder.id][lot.id];
-                    return (
-                      <button key={lot.id} className={`lot-toggle ${selectedLotId === lot.id ? "focus" : ""} ${selectedBidder.lots[lot.id].enabled ? "on" : ""}`} onClick={() => setSelectedLotId(lot.id)}>
-                        <strong>{lot.label}</strong>
-                        <span>{lotScore.admitted ? "ammesso" : selectedBidder.lots[lot.id].enabled ? "da verificare" : "non partecipa"}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-
               <section className="panel workbench-panel">
                 <div className="editor-header">
                   <div>
                     <div className="section-title">
                       {workspaceTitle}
-                      <HelpTooltip>Cambia tab per compilare tecnica, economica, ottimizzazione offerta, combinatorie e risultati. I punteggi si aggiornano subito.</HelpTooltip>
+                      <HelpTooltip>Cambia tab per compilare tecnica, economica, ottimizzazione, combinatorie e risultati. I punteggi si aggiornano subito.</HelpTooltip>
                     </div>
                     <p>Vista operativa per compilare valori, ribassi, combinatorie e leggere subito l'impatto sul punteggio.</p>
                   </div>
@@ -1953,7 +1964,7 @@ function EconomicsWorkbench({
             ))}
           </div>
         ) : (
-          <div className="hint">La combinatoria è letta rispetto alle offerte singole correnti dello stesso offerente.</div>
+          <div className="hint">La combinatoria è letta rispetto alle offerte singole correnti dello stesso concorrente.</div>
         )}
       </section>
 
@@ -1984,6 +1995,8 @@ function OptimizationWorkbench({
     : LOTS.filter((lot) => bidder.lots[lot.id].enabled).map((lot) => lot.id);
   const disabledByScope = !targetLots.length;
   const technicalCriteria = CRITERIA.filter((criterion) => criterion.kind !== "D");
+  const grossPlanCost = result.steps.reduce((sum, step) => sum + step.cost, 0);
+  const reallocatedBudget = result.steps.reduce((sum, step) => sum + (step.releasedBudget ?? 0), 0);
 
   return (
     <div className="optimization-board">
@@ -2066,13 +2079,13 @@ function OptimizationWorkbench({
           </label>
         </div>
         <div className="optimization-hint">
-          Di base il piano massimizza il punteggio partendo dall'offerta corrente. Attiva il budget massimo solo per simulare un tetto di spesa o di minore ricavo.
+          Di base il piano massimizza il punteggio partendo dall'offerta corrente. Se una leva tecnica ha un costo, il motore può anche ridurla per finanziare più ribasso.
         </div>
 
         <div className={`economic-optimizer ${config.budgetMode === "technical" ? "disabled" : ""}`}>
           <div>
             <strong>Leva economica</strong>
-            <span>Il costo è il minore corrispettivo offerto; il budget massimo è facoltativo.</span>
+            <span>Il ribasso può essere diretto oppure finanziato da una rinuncia tecnica valorizzata nel catalogo leve.</span>
           </div>
           <label className="switch">
             <input
@@ -2112,16 +2125,20 @@ function OptimizationWorkbench({
         <div className="section-title compact">
           <LineChart size={16} />
           Piano consigliato
-          <HelpTooltip>Senza budget il motore cerca il maggior incremento di punteggio; con budget attivo privilegia l'incremento per euro. Dopo ogni mossa ricalcola tutto lo scenario.</HelpTooltip>
+          <HelpTooltip>Il motore valuta miglioramenti tecnici, ribasso diretto e riallocazioni tecnica-ribasso. Dopo ogni mossa ricalcola tutto lo scenario.</HelpTooltip>
         </div>
         <div className="optimization-summary-grid">
           <div>
-            <span>Costo piano</span>
-            <strong>{euroFormatter.format(result.usedBudget)}</strong>
+            <span>Impegno piano</span>
+            <strong>{euroFormatter.format(grossPlanCost)}</strong>
           </div>
           <div>
-            <span>{result.budgetEnabled ? "Residuo budget" : "Vincolo budget"}</span>
-            <strong>{result.budgetEnabled ? euroFormatter.format(result.remainingBudget ?? 0) : "non attivo"}</strong>
+            <span>Riallocato da tecnica</span>
+            <strong>{euroFormatter.format(reallocatedBudget)}</strong>
+          </div>
+          <div>
+            <span>{result.budgetEnabled ? "Residuo budget" : "Budget esterno"}</span>
+            <strong>{result.budgetEnabled ? euroFormatter.format(result.remainingBudget ?? 0) : result.usedBudget > 0 ? euroFormatter.format(result.usedBudget) : "non attivo"}</strong>
           </div>
           <div>
             <span>Mosse</span>
@@ -2148,9 +2165,17 @@ function OptimizationWorkbench({
                 <span>{index + 1}</span>
                 <div>
                   <strong>{step.title}</strong>
-                  <small>
-                    {step.units.toLocaleString("it-IT", { maximumFractionDigits: 2 })} {step.unitLabel} - {euroFormatter.format(step.cost)} - {signedPoints(step.objectiveDelta)}
-                  </small>
+                  {step.kind === "reallocation" ? (
+                    <small>
+                      riduci {step.units.toLocaleString("it-IT", { maximumFractionDigits: 2 })} {step.unitLabel};
+                      {" "}libera {euroFormatter.format(step.releasedBudget ?? 0)}; finanzia +{(step.economicUnits ?? 0).toLocaleString("it-IT", { maximumFractionDigits: 4 })} p.p. ribasso;
+                      {" "}tecnica {signedPoints(step.technicalDelta ?? 0)}, economia {signedPoints(step.economicDelta ?? 0)}, netto {signedPoints(step.objectiveDelta)}
+                    </small>
+                  ) : (
+                    <small>
+                      {step.units.toLocaleString("it-IT", { maximumFractionDigits: 2 })} {step.unitLabel} - {euroFormatter.format(step.cost)} - {signedPoints(step.objectiveDelta)}
+                    </small>
+                  )}
                 </div>
               </article>
             ))}

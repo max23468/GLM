@@ -4,11 +4,13 @@ import {
   Download,
   FileJson,
   GitCompareArrows,
+  Plus,
   Printer,
   RotateCcw,
   Save,
   Trophy,
   Upload,
+  X,
 } from "lucide-react";
 import { useRef } from "react";
 import { LOTS } from "../data/tender";
@@ -22,8 +24,11 @@ type ScenarioToolsProps = {
   activeSavedScenarioId?: string;
   scenarioNotice?: string;
   onScenarioNameChange: (name: string) => void;
+  onNew: () => void;
   onSave: () => void;
   onDuplicate: () => void;
+  onDelete: () => void;
+  onDeleteSaved: (scenarioId: string) => void;
   onExport: () => void;
   onImportFile: (file: File) => void;
   onLoadSaved: (scenarioId: string) => void;
@@ -36,8 +41,11 @@ export function ScenarioTools({
   activeSavedScenarioId,
   scenarioNotice,
   onScenarioNameChange,
+  onNew,
   onSave,
   onDuplicate,
+  onDelete,
+  onDeleteSaved,
   onExport,
   onImportFile,
   onLoadSaved,
@@ -59,22 +67,24 @@ export function ScenarioTools({
         </span>
         <input value={scenarioName} onChange={(event) => onScenarioNameChange(event.target.value)} />
       </label>
-      <div className="scenario-actions">
-        <button className="action-button primary" onClick={onSave}>
+      <div className="scenario-actions" aria-label="Azioni rapide scenario">
+        <button className="icon-button" onClick={onNew} aria-label="Nuovo scenario" title="Nuovo scenario">
+          <Plus size={16} />
+        </button>
+        <button className="icon-button primary" onClick={onSave} aria-label="Salva scenario in libreria" title="Salva in libreria">
           <Save size={16} />
-          Salva in libreria
         </button>
-        <button className="action-button" onClick={onDuplicate}>
+        <button className="icon-button" onClick={onDuplicate} aria-label="Duplica scenario" title="Duplica scenario">
           <CopyPlus size={16} />
-          Duplica
         </button>
-        <button className="action-button" onClick={onExport}>
+        <button className="icon-button danger" onClick={onDelete} disabled={!activeSavedScenarioId} aria-label="Elimina scenario attivo" title="Elimina scenario attivo">
+          <X size={16} />
+        </button>
+        <button className="icon-button" onClick={onExport} aria-label="Esporta scenario JSON" title="Esporta JSON">
           <Download size={16} />
-          Esporta
         </button>
-        <button className="action-button" onClick={() => fileInputRef.current?.click()}>
+        <button className="icon-button" onClick={() => fileInputRef.current?.click()} aria-label="Importa scenario JSON" title="Importa JSON">
           <Upload size={16} />
-          Importa
         </button>
       </div>
       <div className="autosave-note">
@@ -92,20 +102,34 @@ export function ScenarioTools({
           event.currentTarget.value = "";
         }}
       />
-      <label className="field">
+      <div className="field">
         <span>
           Scenari salvati
           <HelpTooltip>La libreria resta nel browser corrente. Per archiviare o condividere uno scenario, usa sempre Esporta.</HelpTooltip>
         </span>
-        <select value={activeSavedScenarioId ?? ""} onChange={(event) => onLoadSaved(event.target.value)} disabled={!savedScenarios.length}>
-          <option value="">{savedScenarios.length ? "Seleziona scenario salvato" : "Nessuno scenario salvato"}</option>
-          {savedScenarios.map((scenario) => (
-            <option key={scenario.id} value={scenario.id}>
-              {scenario.name}
-            </option>
-          ))}
-        </select>
-      </label>
+        <div className="saved-scenario-list">
+          {savedScenarios.length ? (
+            savedScenarios.map((scenario) => (
+              <div key={scenario.id} className={`saved-scenario-row ${scenario.id === activeSavedScenarioId ? "selected" : ""}`}>
+                <button className="saved-scenario-main" onClick={() => onLoadSaved(scenario.id)}>
+                  <span>{scenario.name}</span>
+                  <small>{new Date(scenario.savedAt).toLocaleDateString("it-IT")}</small>
+                </button>
+                <button
+                  className="icon-button mini danger"
+                  onClick={() => onDeleteSaved(scenario.id)}
+                  aria-label={`Elimina scenario ${scenario.name}`}
+                  title="Elimina scenario"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))
+          ) : (
+            <div className="empty-sidebar-note">Nessuno scenario salvato</div>
+          )}
+        </div>
+      </div>
       <button className="action-button subtle" onClick={onResetBaseScenario}>
         <RotateCcw size={16} />
         Ripristina scenario base

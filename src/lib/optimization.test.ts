@@ -103,6 +103,44 @@ describe("offer optimization", () => {
     expect(result.objectiveDelta).toBeGreaterThan(0);
   });
 
+  it("può riallocare una rinuncia tecnica per finanziare più ribasso", () => {
+    const bidder = createBidder("a", "A");
+    const competitor = createBidder("b", "B");
+    enableLot(bidder, "L1", 2);
+    enableLot(competitor, "L1", 4);
+    bidder.lots.L1.quantityInputs["C.1.2"] = { numerator: 100, denominator: 100 };
+    bidder.lots.L1.qValues["C.1.2"] = 1;
+    competitor.lots.L1.quantityInputs["C.1.2"] = { numerator: 100, denominator: 100 };
+    competitor.lots.L1.qValues["C.1.2"] = 1;
+
+    const config: OptimizationConfig = {
+      ...defaultOptimizationConfig(),
+      budgetEnabled: false,
+      budget: 0,
+      budgetMode: "strategic",
+      scope: "active-lot",
+      economic: { enabled: true, stepPercent: 0.5, maxDeltaPercent: 1 },
+      levers: {
+        L1: {
+          "C.1.2": { enabled: true, stepUnits: 10, maxUnits: 100, unitCost: 100_000, denominator: 100 },
+        },
+      },
+    };
+
+    const result = optimizeOffer([bidder, competitor], settings, bidder.id, "L1", config);
+    const reallocation = result.steps.find((step) => step.kind === "reallocation");
+
+    expect(reallocation).toBeDefined();
+    expect(reallocation?.criterionId).toBe("C.1.2");
+    expect(reallocation?.releasedBudget).toBeGreaterThan(0);
+    expect(reallocation?.economicUnits).toBeGreaterThan(0);
+    expect(reallocation?.technicalDelta).toBeLessThan(0);
+    expect(reallocation?.economicDelta).toBeGreaterThan(0);
+    expect(result.optimizedBidders[0].lots.L1.quantityInputs["C.1.2"].numerator).toBeLessThan(100);
+    expect(result.optimizedBidders[0].lots.L1.phaseDiscounts[0]).toBeGreaterThan(2);
+    expect(result.objectiveDelta).toBeGreaterThan(0);
+  });
+
   it("esclude i criteri discrezionali dal piano automatico", () => {
     const bidder = createBidder("a", "A");
     const competitor = createBidder("b", "B");
