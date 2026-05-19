@@ -30,6 +30,7 @@ npm run preview -- --port 4173
 - Permette salvataggio locale, duplicazione, import/export JSON e confronto fra scenari.
 - Mostra tradeoff tecnico/economici per sub-criterio, con costo stimato e impatto su punteggio/ribasso.
 - Genera un report stampabile o salvabile in PDF dal browser.
+- Espone una pagina web di istruzioni raggiungibile dal pulsante `Istruzioni` nella testata e dall'URL `/istruzioni`.
 - Supporta tema chiaro/scuro/automatico e layout responsive.
 
 ## Scenari base
@@ -53,7 +54,9 @@ src/data/tender.ts                     Lotti, coppie, criteri, soglie, fonti e c
 src/lib/scenario-persistence.ts        Normalizzazione snapshot, migrazione storage e import JSON
 src/lib/scoring.ts                     Motore di scoring e selezione scenario
 src/lib/*.test.ts                      Test Vitest su scoring e persistenza
+src/components/instructions-page.tsx   Pagina web navigabile con istruzioni di compilazione
 src/styles.css                         Design system locale e layout responsive
+public/_redirects                      Fallback Cloudflare Pages per URL /istruzioni
 docs/LOGICA_SIMULATORE.md              Logica e assunzioni operative del simulatore
 docs/milano-lotti-extraurbani-om/      Allegati di gara versionati con Git LFS
 wrangler.toml                          Configurazione Cloudflare Pages

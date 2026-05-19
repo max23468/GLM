@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   BarChart3,
+  BookOpen,
   CheckCircle2,
   CircleDollarSign,
   ClipboardList,
@@ -64,6 +65,8 @@ import {
   ScenarioTools,
   StrategicSummary,
 } from "./components/scenario-panels";
+import { InstructionsPage } from "./components/instructions-page";
+import { HelpTooltip } from "./components/help-tooltip";
 import {
   LEGACY_STORAGE_KEYS,
   STORAGE_KEYS,
@@ -84,6 +87,7 @@ const euroPerKmFormatter = new Intl.NumberFormat("it-IT", {
 type ThemePreference = "auto" | "light" | "dark";
 type WorkspaceTab = "tecnica" | "economica" | "combinatorie" | "risultati";
 type CriterionFilter = "all" | "work" | "warn" | "open";
+type AppView = "simulatore" | "istruzioni";
 
 const themeOptions: { value: ThemePreference; label: string; icon: LucideIcon }[] = [
   { value: "auto", label: "Auto", icon: Monitor },
@@ -119,6 +123,11 @@ const getStoredTheme = (): ThemePreference => {
   } catch {
     return "auto";
   }
+};
+
+const currentView = (): AppView => {
+  if (typeof window === "undefined") return "simulatore";
+  return window.location.pathname === "/istruzioni" || window.location.pathname === "/istruzioni/" ? "istruzioni" : "simulatore";
 };
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
@@ -237,6 +246,7 @@ const matchesCriterionFilter = (criterion: Criterion, score: number, note: strin
 
 function App() {
   const [initialWorkspace] = useState(() => readStoredWorkspace());
+  const [view, setView] = useState<AppView>(currentView);
   const [baseScenarioId, setBaseScenarioId] = useState<BaseScenarioId>(initialWorkspace?.baseScenarioId ?? "market");
   const [bidders, setBidders] = useState<Bidder[]>(() => initialWorkspace?.bidders ?? BASE_SCENARIOS[0].buildBidders());
   const [selectedBidderId, setSelectedBidderId] = useState(initialWorkspace?.selectedBidderId ?? BASE_SCENARIOS[0].defaultBidderId);
@@ -272,6 +282,12 @@ function App() {
     document.documentElement.style.colorScheme = resolvedTheme;
     window.localStorage.setItem(STORAGE_KEYS.theme, themePreference);
   }, [resolvedTheme, themePreference]);
+
+  useEffect(() => {
+    const handleNavigation = () => setView(currentView());
+    window.addEventListener("popstate", handleNavigation);
+    return () => window.removeEventListener("popstate", handleNavigation);
+  }, []);
 
   useEffect(() => {
     window.localStorage.setItem(
@@ -545,6 +561,22 @@ function App() {
     setScenarioNotice(`Scenario base ripristinato: ${selectedBaseScenario.title}`);
   };
 
+  const navigateToInstructions = () => {
+    window.history.pushState({}, "", "/istruzioni");
+    setView("istruzioni");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const navigateToSimulator = () => {
+    window.history.pushState({}, "", "/");
+    setView("simulatore");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  if (view === "istruzioni") {
+    return <InstructionsPage onBack={navigateToSimulator} />;
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -574,6 +606,17 @@ function App() {
             <ClipboardList size={16} />
             Fonti: web pubbliche, Disciplinare, All. 13, All. 18
           </div>
+          <a
+            className="doc-link"
+            href="/istruzioni"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateToInstructions();
+            }}
+          >
+            <BookOpen size={16} />
+            Istruzioni
+          </a>
         </div>
       </header>
 
@@ -600,6 +643,7 @@ function App() {
             <div className="section-title">
               <ClipboardList size={18} />
               Scenari base
+              <HelpTooltip>Parti da uno scenario precompilato solo come base di lavoro: non rappresenta un'offerta ufficiale.</HelpTooltip>
             </div>
             <div className="base-list">
               {BASE_SCENARIOS.map((scenario) => (
@@ -620,6 +664,7 @@ function App() {
             <div className="section-title">
               <SlidersHorizontal size={18} />
               Parametri
+              <HelpTooltip>Qui scegli la soglia Q/T e l'eventuale deroga: cambia prima questi parametri se vuoi testare una lettura più o meno selettiva.</HelpTooltip>
             </div>
             <div className="active-scenario">
               <span>Scenario attivo</span>
@@ -631,7 +676,10 @@ function App() {
               </ul>
             </div>
             <label className="field">
-              <span>Soglia Q/T</span>
+              <span>
+                Soglia Q/T
+                <HelpTooltip>Un'offerta sotto soglia non passa alla valutazione economica. Le tre opzioni corrispondono alle letture già richiamate nelle istruzioni.</HelpTooltip>
+              </span>
               <select
                 value={settings.threshold}
                 onChange={(event) => setSettings((current) => ({ ...current, threshold: Number(event.target.value) }))}
@@ -659,6 +707,7 @@ function App() {
               <span>
                 <Route size={18} />
                 Offerenti
+                <HelpTooltip>Seleziona un operatore prima di compilare valori tecnici o ribassi: ogni modifica riguarda l'offerente attivo.</HelpTooltip>
               </span>
               <button className="icon-button" onClick={addBidder} aria-label="Aggiungi offerente" title="Aggiungi offerente">
                 <Plus size={17} />
@@ -681,7 +730,10 @@ function App() {
           </section>
 
           <section className="panel">
-            <div className="section-title">Lotti</div>
+            <div className="section-title">
+              Lotti
+              <HelpTooltip>Il lotto selezionato decide quale scheda tecnica ed economica stai compilando per l'offerente attivo.</HelpTooltip>
+            </div>
             <div className="chip-grid">
               {LOTS.map((lot) => (
                 <button key={lot.id} className={`chip ${selectedLotId === lot.id ? "active" : ""}`} onClick={() => setSelectedLotId(lot.id)}>
@@ -699,7 +751,10 @@ function App() {
                 {selectedLotContext.source}
               </a>
             </div>
-            <div className="section-title compact">Combinatorie ammesse</div>
+            <div className="section-title compact">
+              Combinatorie ammesse
+              <HelpTooltip>Attiva una combinatoria solo se nello scenario sono presentati anche entrambi i lotti singoli collegati.</HelpTooltip>
+            </div>
             <div className="chip-grid two">
               {PAIRS.map((pair) => (
                 <button key={pair.id} className={`chip ${selectedPairId === pair.id ? "active" : ""}`} onClick={() => setSelectedPairId(pair.id)}>
@@ -727,10 +782,16 @@ function App() {
 
               <section className="panel identity-panel">
                 <div>
-                  <div className="section-title">Offerente</div>
+                  <div className="section-title">
+                    Offerente
+                    <HelpTooltip>Rinomina l'operatore per rendere leggibili classifica, confronto ed export.</HelpTooltip>
+                  </div>
                   <div className="identity-grid">
                     <label className="field">
-                      <span>Nome</span>
+                      <span>
+                        Nome
+                        <HelpTooltip>Il nome non incide sui punteggi: serve solo a riconoscere l'ipotesi nella simulazione.</HelpTooltip>
+                      </span>
                       <input
                         value={selectedBidder.name}
                         onChange={(event) =>
@@ -753,6 +814,7 @@ function App() {
                 <div className="section-title">
                   <BarChart3 size={18} />
                   Gare di partecipazione
+                  <HelpTooltip>Spunta i lotti che l'offerente presenta. Per una combinatoria servono anche i due lotti singoli attivi.</HelpTooltip>
                 </div>
                 <div className="participation-matrix">
                   <div className="matrix-head">
@@ -872,7 +934,10 @@ function App() {
               <section className="panel workbench-panel">
                 <div className="editor-header">
                   <div>
-                    <div className="section-title">{workspaceTitle}</div>
+                    <div className="section-title">
+                      {workspaceTitle}
+                      <HelpTooltip>Cambia tab per compilare tecnica, economica, combinatorie e risultati. I punteggi si aggiornano subito.</HelpTooltip>
+                    </div>
                     <p>Vista operativa per compilare valori, ribassi, combinatorie e leggere subito l'impatto sul punteggio.</p>
                   </div>
                   {selectedLotScore && (
@@ -1281,7 +1346,10 @@ function TechnicalWorkbench({
 
       <div className="criteria-filter-bar">
         <div>
-          <strong>Criteri {selectedAmbit.id}</strong>
+          <strong>
+            Criteri {selectedAmbit.id}
+            <HelpTooltip>Usa i filtri per ridurre la lista: "Da lavorare" mostra criteri con margine o avvisi, "Scoperti" quelli ancora senza punti.</HelpTooltip>
+          </strong>
           <span>
             {filteredCriteria} di {totalCriteria} visibili
           </span>
@@ -1434,12 +1502,22 @@ function CriterionInspector({
           <div className="inspector-section">
             <div className="inspector-section-title">
               {criterion.kind === "Q" && criterion.quantityInput ? "Dati proposta tecnica" : "Valore offerta"}
+              <HelpTooltip>
+                {criterion.kind === "Q" && criterion.quantityInput
+                  ? "Compila numeratore e denominatore: il simulatore calcola il rapporto usato per il punteggio."
+                  : criterion.kind === "T"
+                    ? "Imposta Sì solo se il requisito è presente nello scenario tecnico."
+                    : "Inserisci un valore simulato entro la scala discrezionale: non è una valutazione della Commissione."}
+              </HelpTooltip>
             </div>
             {criterion.kind === "Q" && criterion.quantityInput && (
               <div className="quantity-input-panel">
                 <div className="quantity-input-grid">
                   <label className="field compact">
-                    <span>{criterion.quantityInput.numeratorLabel}</span>
+                    <span>
+                      {criterion.quantityInput.numeratorLabel}
+                      <HelpTooltip>Inserisci le unità che soddisfano il requisito, per esempio mezzi o corse coperte.</HelpTooltip>
+                    </span>
                     <input
                       type="number"
                       min={0}
@@ -1449,7 +1527,10 @@ function CriterionInspector({
                     />
                   </label>
                   <label className="field compact">
-                    <span>{criterion.quantityInput.denominatorLabel}</span>
+                    <span>
+                      {criterion.quantityInput.denominatorLabel}
+                      <HelpTooltip>Inserisci la base totale coerente con il criterio; senza denominatore il rapporto non è affidabile.</HelpTooltip>
+                    </span>
                     <input
                       type="number"
                       min={0}
@@ -1518,13 +1599,19 @@ function CriterionInspector({
       {criterion.kind !== "D" ? (
         <div className="tradeoff-box">
           <div className="tradeoff-title">
-            <span>Tradeoff tecnico/economico</span>
+            <span>
+              Tradeoff tecnico/economico
+              <HelpTooltip>Stima se un miglioramento tecnico compensa il costo e la riduzione implicita del ribasso. Sono ipotesi utente, non dati di gara.</HelpTooltip>
+            </span>
             <small>costi come ipotesi utente</small>
           </div>
           <div className="tradeoff-grid">
             {criterion.kind === "Q" && (
               <label className="field compact">
-                <span>Delta {criterion.tradeoffUnit}</span>
+                <span>
+                  Delta {criterion.tradeoffUnit}
+                  <HelpTooltip>Unità operative aggiunte o migliorate rispetto al valore corrente del criterio.</HelpTooltip>
+                </span>
                 <input
                   type="number"
                   step={criterion.quantityInput || criterion.input === "ratio" ? 1 : criterion.input === "percent" ? 0.01 : 1}
@@ -1536,7 +1623,10 @@ function CriterionInspector({
             )}
             {criterion.kind === "Q" && (criterion.input === "ratio" || criterion.quantityInput) && (
               <label className="field compact">
-                <span>{criterion.quantityInput ? "Base di calcolo tradeoff" : "Base Nbus/fermate"}</span>
+                <span>
+                  {criterion.quantityInput ? "Base di calcolo tradeoff" : "Base Nbus/fermate"}
+                  <HelpTooltip>Base su cui trasformare il delta in rapporto percentuale o quota tecnica.</HelpTooltip>
+                </span>
                 <input
                   type="number"
                   min={0}
@@ -1547,7 +1637,10 @@ function CriterionInspector({
               </label>
             )}
             <label className="field compact">
-              <span>{criterion.kind === "T" ? "Costo totale impegno" : "Costo unitario"}</span>
+              <span>
+                {criterion.kind === "T" ? "Costo totale impegno" : "Costo unitario"}
+                <HelpTooltip>Importo stimato dall'utente. Il simulatore lo traduce in minore margine di ribasso.</HelpTooltip>
+              </span>
               <input
                 type="number"
                 min={0}
@@ -1670,7 +1763,10 @@ function EconomicsWorkbench({
 
       <div className="economic-detail-grid">
         <section className="economic-card">
-          <div className="section-title compact">Modello All. 18 - valori comp.</div>
+          <div className="section-title compact">
+            Modello All. 18 - valori comp.
+            <HelpTooltip>Controlla qui come i tre ribassi di fase producono ribasso medio, corrispettivo offerto e peso ponderato.</HelpTooltip>
+          </div>
           <div className="economic-table-wrap">
             <table className="economic-table">
               <thead>
@@ -1714,7 +1810,10 @@ function EconomicsWorkbench({
         </section>
 
         <section className="economic-card">
-          <div className="section-title compact">Formula punteggio</div>
+          <div className="section-title compact">
+            Formula punteggio
+            <HelpTooltip>Il punteggio economico dipende dal rapporto tra il ribasso medio dell'offerta e il miglior ribasso medio corrente.</HelpTooltip>
+          </div>
           <div className="formula-box">
             <span>Punteggio = 30 x R(i) / Rmax</span>
             <strong>{formatPoints(lotScore.singleEconomic)} / 30,00</strong>
@@ -1738,7 +1837,10 @@ function EconomicsWorkbench({
             </div>
           </div>
           <label className="target-control">
-            <span>Target punteggio economico</span>
+            <span>
+              Target punteggio economico
+              <HelpTooltip>Inserisci il punteggio obiettivo: il simulatore stima il ribasso medio necessario rispetto all'Rmax corrente.</HelpTooltip>
+            </span>
             <input
               type="number"
               min={0}
@@ -1770,7 +1872,10 @@ function EconomicsWorkbench({
 
       <div className="economic-detail-grid">
         <section className="economic-card">
-          <div className="section-title compact">Corrispettivi unitari €/km</div>
+          <div className="section-title compact">
+            Corrispettivi unitari €/km
+            <HelpTooltip>Dato di lettura gestionale basato sulle vett*km dei modelli All. 18: non entra nel calcolo del punteggio.</HelpTooltip>
+          </div>
           <div className="unit-rate-grid">
             {ECONOMIC_PHASES.map((phase, index) => {
               const offered = unitBreakdown.phases[index].offered;
@@ -1788,7 +1893,10 @@ function EconomicsWorkbench({
         </section>
 
         <section className="economic-card">
-          <div className="section-title compact">Guardrail economici</div>
+          <div className="section-title compact">
+            Guardrail economici
+            <HelpTooltip>Segnali rapidi per intercettare ribassi negativi, profili di fase sbilanciati o costi tradeoff aperti.</HelpTooltip>
+          </div>
           <div className="guardrail-list">
             {guardrails.map((item) => (
               <div key={item.label} className={`guardrail ${item.tone}`}>
@@ -1801,7 +1909,10 @@ function EconomicsWorkbench({
       </div>
 
       <section className="economic-card">
-        <div className="section-title compact">Vista economica combinatoria</div>
+        <div className="section-title compact">
+          Vista economica combinatoria
+          <HelpTooltip>Legge la coppia selezionata contro le offerte singole correnti: la combinatoria deve essere migliorativa e coerente.</HelpTooltip>
+        </div>
         <div className="combo-economic-grid">
           <div>
             <span>Coppia</span>
@@ -1892,7 +2003,10 @@ function ComboWorkbench({
 
       <div className="combo-box elevated">
         <div className="combo-title">
-          <strong>Combinatoria {selectedPairId.replace("L", "").replace("+L", "+")}</strong>
+          <strong>
+            Combinatoria {selectedPairId.replace("L", "").replace("+L", "+")}
+            <HelpTooltip>Attiva la coppia solo se i due lotti singoli sono presentati e la proposta è migliorativa rispetto alle singole.</HelpTooltip>
+          </strong>
           <label className="switch">
             <input type="checkbox" checked={combo.enabled} onChange={(event) => onEnabledChange(event.target.checked)} />
             <span>attiva</span>
@@ -1908,11 +2022,17 @@ function ComboWorkbench({
         <div className="combo-checks">
           <label className="toggle-row">
             <input type="checkbox" checked={combo.insertedInBothBuste} onChange={(event) => onInsertedChange(event.target.checked)} />
-            Inserita in entrambe le buste
+            <span>
+              Inserita in entrambe le buste
+              <HelpTooltip>Serve a simulare il controllo formale: la combinatoria deve risultare presente dove previsto dalla gara.</HelpTooltip>
+            </span>
           </label>
           <label className="toggle-row">
             <input type="checkbox" checked={combo.pefCoherent} onChange={(event) => onPefChange(event.target.checked)} />
-            PEF combinatorio presente e coerente
+            <span>
+              PEF combinatorio presente e coerente
+              <HelpTooltip>Usa questo flag solo se nello scenario assumi un PEF della coppia completo e coerente con i ribassi inseriti.</HelpTooltip>
+            </span>
           </label>
         </div>
         {comboScore.warnings.length ? (
@@ -1947,7 +2067,10 @@ function ResultsWorkbench({ result, selectedLotId }: { result: SimulationResult;
 
       <div className="results-grid">
         <section>
-          <div className="section-title compact">Assegnazioni scenario</div>
+          <div className="section-title compact">
+            Assegnazioni scenario
+            <HelpTooltip>Mostra il miglior scenario calcolato: controlla sempre lotti non assegnati e warning prima di usarlo.</HelpTooltip>
+          </div>
           <div className="assignment-list">
             {result.selectedScenario?.assignments.map((assignment) => (
               <div key={assignment.id} className="assignment-row">
@@ -1961,7 +2084,10 @@ function ResultsWorkbench({ result, selectedLotId }: { result: SimulationResult;
         </section>
 
         <section>
-          <div className="section-title compact">Classifica {selectedLotId}</div>
+          <div className="section-title compact">
+            Classifica {selectedLotId}
+            <HelpTooltip>Ordina i candidati ammessi per il lotto selezionato; le combinatorie possono comparire accanto alle offerte singole.</HelpTooltip>
+          </div>
           <div className="ranking-list">
             {result.lotRankings[selectedLotId].slice(0, 8).map((candidate, index) => (
               <div key={candidate.id} className="ranking-row">
@@ -1997,7 +2123,10 @@ function EconomicEditor({
   return (
     <div className={`economic-editor ${disabled ? "disabled" : ""}`}>
       <div className="economic-title">
-        <strong>{title}</strong>
+        <strong>
+          {title}
+          <HelpTooltip>Compila i ribassi delle tre fasi. Il ribasso medio è ponderato sulle basi economiche dei periodi.</HelpTooltip>
+        </strong>
         <span>R medio {formatPercent(ribasso)}</span>
       </div>
       <div className="phase-grid">

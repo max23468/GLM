@@ -14,6 +14,7 @@ import { useRef } from "react";
 import { LOTS } from "../data/tender";
 import { candidateLotScore, formatPoints, type AssignmentCandidate, type SimulationResult } from "../lib/scoring";
 import type { SavedScenarioSnapshot } from "../lib/scenario-persistence";
+import { HelpTooltip } from "./help-tooltip";
 
 type ScenarioToolsProps = {
   scenarioName: string;
@@ -49,9 +50,13 @@ export function ScenarioTools({
       <div className="section-title">
         <FileJson size={18} />
         Scenario
+        <HelpTooltip>Rinomina lo scenario prima di salvarlo: il nome resta nella libreria, nel confronto e negli export JSON.</HelpTooltip>
       </div>
       <label className="field">
-        <span>Nome scenario</span>
+        <span>
+          Nome scenario
+          <HelpTooltip>Usa un nome descrittivo dell'ipotesi, per esempio soglia, lotto o strategia economica testata.</HelpTooltip>
+        </span>
         <input value={scenarioName} onChange={(event) => onScenarioNameChange(event.target.value)} />
       </label>
       <div className="scenario-actions">
@@ -88,7 +93,10 @@ export function ScenarioTools({
         }}
       />
       <label className="field">
-        <span>Scenari salvati</span>
+        <span>
+          Scenari salvati
+          <HelpTooltip>La libreria resta nel browser corrente. Per archiviare o condividere uno scenario, usa sempre Esporta.</HelpTooltip>
+        </span>
         <select value={activeSavedScenarioId ?? ""} onChange={(event) => onLoadSaved(event.target.value)} disabled={!savedScenarios.length}>
           <option value="">{savedScenarios.length ? "Seleziona scenario salvato" : "Nessuno scenario salvato"}</option>
           {savedScenarios.map((scenario) => (
@@ -225,9 +233,13 @@ export function ScenarioComparison({
       <div className="section-title">
         <GitCompareArrows size={18} />
         Confronto scenari
+        <HelpTooltip>Salva prima una fotografia dello scenario, poi selezionala qui per leggere delta di punteggio e assegnazioni.</HelpTooltip>
       </div>
       <label className="field">
-        <span>Scenario salvato da confrontare</span>
+        <span>
+          Scenario salvato da confrontare
+          <HelpTooltip>Il confronto usa uno scenario già salvato o importato nella libreria del browser.</HelpTooltip>
+        </span>
         <select value={compareScenarioId} onChange={(event) => onCompareScenarioChange(event.target.value)} disabled={!savedScenarios.length}>
           <option value="">{savedScenarios.length ? "Seleziona scenario" : "Salva uno scenario per confrontare"}</option>
           {savedScenarios.map((scenario) => (
@@ -304,6 +316,7 @@ export function ReportPanel({ scenarioName, result, selectedLotId, sourceCount, 
       <div className="section-title">
         <Printer size={18} />
         Report scenario
+        <HelpTooltip>Usa il report per stampare o salvare in PDF una sintesi dopo aver controllato warning e lotti non assegnati.</HelpTooltip>
       </div>
       <div className="report-summary">
         <div>
