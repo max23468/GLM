@@ -110,7 +110,14 @@ npm run deploy:cloudflare
 
 Il comando compila l'app con Vite e pubblica la cartella `dist` sul branch `main`.
 
-Eseguire il deploy solo quando richiesto esplicitamente e dopo aver verificato build, test e stato Git.
+Eseguire il deploy solo quando richiesto esplicitamente. Quando la richiesta è `pubblica`, `rilascia`, `deploya` o equivalente, il flusso atteso è una pubblicazione completa:
+
+1. verificare `git status --short` e il diff;
+2. portare su `main` solo modifiche intenzionali, con commit e PR/merge se necessari;
+3. eseguire i check pertinenti (`git diff --check` per documenti, `npm test` e `npm run build` per codice/logica, preview e verifica browser per UI);
+4. controllare che `dist/`, `tmp/`, allegati e file generati non contengano modifiche indesiderate;
+5. eseguire `npm run deploy:cloudflare`;
+6. verificare la produzione su `https://gare-lotti-milanesi.pages.dev` e comunicare risultato, controlli e rischi residui.
 
 ## Limiti noti
 

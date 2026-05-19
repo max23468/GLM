@@ -141,19 +141,26 @@ Poi verifica nel browser i flussi coinvolti: preset demo, cambio offerente/lotto
 - Se non resta un prossimo passo utile, dichiaralo esplicitamente invece di forzare una lista artificiale.
 - Evita riepiloghi rituali sui check: cita verifiche, limiti e rischi residui solo quando aiutano a capire lo stato reale del lavoro.
 
-## Deploy
+## Deploy e pubblicazione
 
 Deploy solo su richiesta esplicita.
 
-Prima del deploy:
+Quando l'utente dice `pubblica`, `rilascia`, `deploya` o formule equivalenti, interpreta la richiesta come flusso completo di pubblicazione, non come solo comando locale. In questa repository il flusso resta specifico di GLM: Cloudflare Pages progetto `gare-lotti-milanesi`, output Vite `dist`, niente Vercel.
+
+Prima di pubblicare:
 
 1. Verifica `git status --short`.
-2. Esegui test/build pertinenti.
-3. Controlla che non ci siano modifiche indesiderate a `dist/`, `tmp/`, allegati o file generati.
-4. Esegui:
+2. Rileggi il diff e assicurati che siano presenti solo modifiche intenzionali.
+3. Se ci sono modifiche di codice o documentazione da portare in produzione, committale in modo esplicito e assicurati che il codice da pubblicare sia su `main` o sia stato mergeato secondo il flusso GitHub della repo. Non pubblicare codice non committato o una branch feature usando il flag `--branch main`.
+4. Esegui le verifiche pertinenti:
+   - documentazione: `git diff --check`;
+   - codice/logica: `npm test` e `npm run build`;
+   - UI: `npm run build`, `npm run preview -- --port 4173` e verifica browser dei flussi coinvolti.
+5. Controlla che non ci siano modifiche indesiderate a `dist/`, `tmp/`, allegati o file generati.
+6. Esegui:
 
 ```bash
 npm run deploy:cloudflare
 ```
 
-Al termine comunica URL/risultato del deploy se il comando lo fornisce, controlli eseguiti e rischi residui.
+Al termine verifica la produzione, di norma su `https://gare-lotti-milanesi.pages.dev`, almeno caricamento app, preset demo principale, salvataggio scenario, confronto/report se coinvolti e tema chiaro/scuro per modifiche UI. Comunica URL/risultato del deploy se il comando lo fornisce, commit o PR/merge rilevanti, controlli eseguiti e rischi residui.
