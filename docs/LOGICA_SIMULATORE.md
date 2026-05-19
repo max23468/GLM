@@ -60,6 +60,20 @@ Il pannello tradeoff simula l'effetto di un miglioramento operativo:
 
 Il costo totale non arriva dai documenti di gara. È un'ipotesi dell'utente e viene trattato come riduzione del ribasso medio del lotto. Per questo la UI deve continuare a presentarlo come stima, non come dato ufficiale.
 
+## Offerta economica
+
+La sezione economica replica in forma navigabile la struttura dell'All. 18:
+
+- tre ribassi di fase, sui periodi 1-12, 13-24 e 25-84 mesi;
+- ribasso medio ponderato sulle basi di fase;
+- corrispettivo offerto per fase;
+- punteggio economico calcolato come `30 x R(i) / Rmax`;
+- lettura dei corrispettivi unitari medi €/km usando le vett*km dei modelli All. 18.1-18.8.
+
+I corrispettivi unitari sono una lettura di gestione della flessibilità contrattuale. Non modificano il punteggio economico e non vanno presentati come valore ufficiale di offerta se l'utente non ha compilato un'offerta reale.
+
+Il simulatore inverso del target economico usa lo scenario corrente come fotografia statica: stima il ribasso medio necessario a raggiungere un punteggio economico scelto rispetto all'`Rmax` corrente. Se l'offerente selezionato è già il riferimento `Rmax`, un ulteriore ribasso non aumenta il suo punteggio oltre 30, ma può ridurre il punteggio relativo degli altri concorrenti.
+
 ## Persistenza e scambio scenari
 
 Lo stato vive nel browser:

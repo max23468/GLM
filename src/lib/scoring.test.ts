@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CRITERIA, LOTS, PAIRS } from "../data/tender";
-import { candidateLotScore, createBidder, round4, simulate, type Bidder, type Settings } from "./scoring";
+import { candidateLotScore, createBidder, economicBreakdown, pairBaseByPhase, round4, simulate, type Bidder, type Settings } from "./scoring";
 
 const settings: Settings = {
   threshold: 0,
@@ -172,6 +172,25 @@ describe("TPL tender scoring", () => {
     expect(result.comboScores[bidder.id]["L1+L2"].admissible).toBe(true);
     expect(result.rMaxByLot.L1).toBe(0.06);
     expect(result.rMaxByLot.L2).toBe(0.06);
+  });
+
+  it("builds the All. 18 economic breakdown from phase bases and discounts", () => {
+    const breakdown = economicBreakdown(LOTS[0].baseByPhase, [5, 5, 5]);
+
+    expect(breakdown.baseTotal).toBe(LOTS[0].totalBase);
+    expect(breakdown.ribasso).toBe(0.05);
+    expect(breakdown.offeredTotal).toBe(LOTS[0].totalBase * 0.95);
+    expect(round4(breakdown.phases.reduce((sum, phase) => sum + phase.weight, 0))).toBe(1);
+  });
+
+  it("uses documented phase bases for combinatory economic views", () => {
+    const bases = pairBaseByPhase("L1+L2");
+
+    expect(bases).toEqual([
+      LOTS.find((lot) => lot.id === "L1")!.baseByPhase[0] + LOTS.find((lot) => lot.id === "L2")!.baseByPhase[0],
+      LOTS.find((lot) => lot.id === "L1")!.baseByPhase[1] + LOTS.find((lot) => lot.id === "L2")!.baseByPhase[1],
+      LOTS.find((lot) => lot.id === "L1")!.baseByPhase[2] + LOTS.find((lot) => lot.id === "L2")!.baseByPhase[2],
+    ]);
   });
 
   it("flags a draw when total and technical scores are tied", () => {

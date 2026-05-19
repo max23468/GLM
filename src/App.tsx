@@ -20,6 +20,11 @@ import {
   CRITERIA,
   DISCRETIONARY_SCALE,
   DOCUMENT_WARNINGS,
+  ECONOMIC_PHASES,
+  ECONOMIC_UNIT_BASE_BY_LOT,
+  ECONOMIC_UNIT_BASE_BY_PAIR,
+  ECONOMIC_UNIT_KM_BY_LOT,
+  ECONOMIC_UNIT_KM_BY_PAIR,
   LOT_CONTEXT,
   LOTS,
   PAIRS,
@@ -34,11 +39,13 @@ import {
   computeQuantityInputValue,
   createBidder,
   criteriaByParent,
+  economicBreakdown,
   formatPercent,
   formatPoints,
   candidateLotScore,
   getQuantitativeCriterionValue,
   maxQtPoints,
+  pairBaseByPhase,
   round4,
   simulate,
   type Bidder,
@@ -68,6 +75,12 @@ import {
 } from "./lib/scenario-persistence";
 
 const euroFormatter = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+const euroPerKmFormatter = new Intl.NumberFormat("it-IT", {
+  style: "currency",
+  currency: "EUR",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 4,
+});
 type ThemePreference = "auto" | "light" | "dark";
 type WorkspaceTab = "tecnica" | "economica" | "combinatorie" | "risultati";
 type CriterionFilter = "all" | "work" | "warn" | "open";
@@ -180,6 +193,12 @@ const signedPoints = (amount: number) => `${amount >= 0 ? "+" : ""}${formatPoint
 
 const signedPercent = (amount: number) =>
   `${amount >= 0 ? "+" : ""}${amount.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} pt`;
+
+const formatInputPercent = (value: number) =>
+  `${value.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+
+const formatPercentPointsFromDecimal = (value: number) =>
+  `${(value * 100).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} p.p.`;
 
 const formatCriterionValue = (criterion: Criterion, value: number | boolean | undefined) => {
   if (criterion.kind === "T") return value ? "Sì" : "No";
@@ -946,9 +965,14 @@ function App() {
 
                     {activeTab === "economica" && selectedLotScore && (
                       <EconomicsWorkbench
+                        bidder={selectedBidder}
                         selectedLotId={selectedLotId}
+                        selectedPairId={selectedPairId}
                         lotScore={selectedLotScore}
+                        comboScore={selectedComboScore}
+                        rMax={result.rMaxByLot[selectedLotId]}
                         discounts={selectedBidder.lots[selectedLotId].phaseDiscounts}
+                        lotOffer={selectedBidder.lots[selectedLotId]}
                         disabled={!selectedBidder.lots[selectedLotId].enabled}
                         onChange={(index, value) =>
                           updateLotOffer(selectedLotId, (offer) => {
@@ -1562,18 +1586,71 @@ function CriterionInspector({
 }
 
 function EconomicsWorkbench({
+  bidder,
   selectedLotId,
+  selectedPairId,
   lotScore,
+  comboScore,
+  rMax,
   discounts,
+  lotOffer,
   disabled,
   onChange,
 }: {
+  bidder: Bidder;
   selectedLotId: LotId;
+  selectedPairId: PairId;
   lotScore: LotScore;
+  comboScore?: ComboScore;
+  rMax: number;
   discounts: [number, number, number];
+  lotOffer: LotOffer;
   disabled?: boolean;
   onChange: (index: number, value: number) => void;
 }) {
+  const [targetEconomic, setTargetEconomic] = useState(30);
+  const selectedLot = LOTS.find((lot) => lot.id === selectedLotId) ?? LOTS[0];
+  const selectedPair = PAIRS.find((pair) => pair.id === selectedPairId) ?? PAIRS[0];
+  const breakdown = economicBreakdown(selectedLot.baseByPhase, discounts);
+  const unitBreakdown = economicBreakdown(ECONOMIC_UNIT_BASE_BY_LOT[selectedLotId], discounts);
+  const unitKm = ECONOMIC_UNIT_KM_BY_LOT[selectedLotId];
+  const targetRibasso = rMax > 0 ? round4((Math.min(30, Math.max(0, targetEconomic)) / 30) * rMax) : 0;
+  const targetDelta = Math.max(0, targetRibasso - lotScore.singleRibasso);
+  const onePointDelta = rMax > 0 && lotScore.singleEconomic < 30 ? rMax / 30 : 0;
+  const phaseSpread = Math.max(...discounts) - Math.min(...discounts);
+  const plannedTradeoffCost = CRITERIA.reduce((sum, criterion) => {
+    const plan = lotOffer.tradeoffs[criterion.id];
+    return sum + (plan ? tradeoffCost(criterion, plan) : 0);
+  }, 0);
+  const comboBreakdown = economicBreakdown(pairBaseByPhase(selectedPairId), bidder.combos[selectedPairId].phaseDiscounts);
+  const comboUnitBreakdown = economicBreakdown(ECONOMIC_UNIT_BASE_BY_PAIR[selectedPairId], bidder.combos[selectedPairId].phaseDiscounts);
+  const comboUnitKm = ECONOMIC_UNIT_KM_BY_PAIR[selectedPairId];
+  const singleOfferedForPair = selectedPair.lots.reduce((sum, lotId) => {
+    const lot = LOTS.find((item) => item.id === lotId);
+    return lot ? sum + economicBreakdown(lot.baseByPhase, bidder.lots[lotId].phaseDiscounts).offeredTotal : sum;
+  }, 0);
+  const comboSaving = singleOfferedForPair - comboBreakdown.offeredTotal;
+  const guardrails = [
+    {
+      label: "Ribassi >= 0",
+      tone: discounts.every((discount) => discount >= 0) ? "ok" : "warn",
+      body: discounts.every((discount) => discount >= 0) ? "Vincolo formale rispettato." : "Correggi i valori negativi prima di usare lo scenario.",
+    },
+    {
+      label: "Profilo fasi",
+      tone: phaseSpread > 1.5 ? "warn" : "ok",
+      body: phaseSpread > 1.5 ? "Scarto oltre 1,50 p.p.: verifica tenuta PEF e motivazione industriale." : "Ribassi allineati fra le tre fasi.",
+    },
+    {
+      label: "Costi tradeoff",
+      tone: plannedTradeoffCost > 0 ? "warn" : "ok",
+      body:
+        plannedTradeoffCost > 0
+          ? `${euroFormatter.format(plannedTradeoffCost)} di costi stimati riducono il margine del ribasso.`
+          : "Nessun costo tradeoff aperto sul lotto selezionato.",
+    },
+  ];
+
   return (
     <div className="economics-board">
       <div className="metric-grid">
@@ -1590,6 +1667,99 @@ function EconomicsWorkbench({
           <strong>{formatPoints(lotScore.singleTotal)}</strong>
         </div>
       </div>
+
+      <div className="economic-detail-grid">
+        <section className="economic-card">
+          <div className="section-title compact">Modello All. 18 - valori comp.</div>
+          <div className="economic-table-wrap">
+            <table className="economic-table">
+              <thead>
+                <tr>
+                  <th>Fase</th>
+                  <th>Base</th>
+                  <th>Ribasso</th>
+                  <th>Corrispettivo</th>
+                  <th>Peso</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ECONOMIC_PHASES.map((phase, index) => {
+                  const item = breakdown.phases[index];
+                  return (
+                    <tr key={phase.id}>
+                      <td>
+                        <strong>{phase.label}</strong>
+                        <small>{phase.period}</small>
+                      </td>
+                      <td>{euroFormatter.format(item.base)}</td>
+                      <td>{formatInputPercent(item.discount)}</td>
+                      <td>{euroFormatter.format(item.offered)}</td>
+                      <td>{formatPercent(item.weight)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td>Totale</td>
+                  <td>{euroFormatter.format(breakdown.baseTotal)}</td>
+                  <td>{formatPercent(breakdown.ribasso)}</td>
+                  <td>{euroFormatter.format(breakdown.offeredTotal)}</td>
+                  <td>100,00%</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <div className="hint">La tabella replica la lettura operativa del foglio valori complessivi: il ribasso medio resta ponderato sulle basi delle tre fasi.</div>
+        </section>
+
+        <section className="economic-card">
+          <div className="section-title compact">Formula punteggio</div>
+          <div className="formula-box">
+            <span>Punteggio = 30 x R(i) / Rmax</span>
+            <strong>{formatPoints(lotScore.singleEconomic)} / 30,00</strong>
+          </div>
+          <div className="economic-kpis">
+            <div>
+              <span>R(i)</span>
+              <strong>{formatPercent(lotScore.singleRibasso)}</strong>
+            </div>
+            <div>
+              <span>Rmax scenario</span>
+              <strong>{rMax > 0 ? formatPercent(rMax) : "n/d"}</strong>
+            </div>
+            <div>
+              <span>Gap da Rmax</span>
+              <strong>{rMax > 0 ? formatPercentPointsFromDecimal(Math.max(0, rMax - lotScore.singleRibasso)) : "n/d"}</strong>
+            </div>
+            <div>
+              <span>+1 punto econ.</span>
+              <strong>{onePointDelta > 0 ? formatPercentPointsFromDecimal(onePointDelta) : "già al massimo"}</strong>
+            </div>
+          </div>
+          <label className="target-control">
+            <span>Target punteggio economico</span>
+            <input
+              type="number"
+              min={0}
+              max={30}
+              step={0.5}
+              value={targetEconomic}
+              onChange={(event) => setTargetEconomic(Math.min(30, Math.max(0, Number(event.target.value) || 0)))}
+            />
+          </label>
+          <div className="target-result">
+            <span>Ribasso medio richiesto</span>
+            <strong>{rMax > 0 ? formatPercent(targetRibasso) : "n/d"}</strong>
+            <small>
+              {targetDelta > 0
+                ? `Servono circa ${formatPercentPointsFromDecimal(targetDelta)} aggiuntivi, pari a ${euroFormatter.format(breakdown.baseTotal * targetDelta)} di minore corrispettivo.`
+                : "Il target è già raggiunto nello scenario corrente."}
+            </small>
+          </div>
+        </section>
+      </div>
+
       <EconomicEditor
         title={`Ribasso singolo - ${selectedLotId}`}
         discounts={discounts}
@@ -1597,7 +1767,79 @@ function EconomicsWorkbench({
         disabled={disabled}
         onChange={onChange}
       />
-      <div className="hint">Il ribasso medio è ponderato sulle tre fasi e alimenta il punteggio economico del lotto singolo.</div>
+
+      <div className="economic-detail-grid">
+        <section className="economic-card">
+          <div className="section-title compact">Corrispettivi unitari €/km</div>
+          <div className="unit-rate-grid">
+            {ECONOMIC_PHASES.map((phase, index) => {
+              const offered = unitBreakdown.phases[index].offered;
+              const rate = unitKm[index] > 0 ? offered / unitKm[index] : 0;
+              return (
+                <div key={phase.id} className="unit-rate">
+                  <span>{phase.label}</span>
+                  <strong>{euroPerKmFormatter.format(rate)}</strong>
+                  <small>{formatPlainNumber(unitKm[index])} vett*km</small>
+                </div>
+              );
+            })}
+          </div>
+          <div className="hint">Vett*km da modelli All. 18.1-18.4, foglio valori unitari. Il dato serve per leggere la flessibilità contrattuale, non cambia il punteggio.</div>
+        </section>
+
+        <section className="economic-card">
+          <div className="section-title compact">Guardrail economici</div>
+          <div className="guardrail-list">
+            {guardrails.map((item) => (
+              <div key={item.label} className={`guardrail ${item.tone}`}>
+                <strong>{item.label}</strong>
+                <span>{item.body}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <section className="economic-card">
+        <div className="section-title compact">Vista economica combinatoria</div>
+        <div className="combo-economic-grid">
+          <div>
+            <span>Coppia</span>
+            <strong>{selectedPair.label.replace("Lotti ", "")}</strong>
+          </div>
+          <div>
+            <span>Ribasso combinatorio</span>
+            <strong>{formatPercent(comboBreakdown.ribasso)}</strong>
+          </div>
+          <div>
+            <span>Minimo migliorativo</span>
+            <strong>{comboScore ? formatPercent(comboScore.minRequiredRibasso) : "n/d"}</strong>
+          </div>
+          <div className={comboSaving > 0 ? "ok" : "warn"}>
+            <span>Risparmio vs singole</span>
+            <strong>{euroFormatter.format(comboSaving)}</strong>
+          </div>
+          <div>
+            <span>€/km medio F1</span>
+            <strong>{euroPerKmFormatter.format(comboUnitBreakdown.phases[0].offered / comboUnitKm[0])}</strong>
+          </div>
+          <div className={comboScore?.admissible ? "ok" : bidder.combos[selectedPairId].enabled ? "warn" : ""}>
+            <span>Stato</span>
+            <strong>{comboScore?.admissible ? "Ammissibile" : bidder.combos[selectedPairId].enabled ? "Da verificare" : "Non attiva"}</strong>
+          </div>
+        </div>
+        {comboScore?.warnings.length ? (
+          <div className="warning-list compact">
+            {comboScore.warnings.map((warning) => (
+              <div key={warning} className="inline-warning">{warning}</div>
+            ))}
+          </div>
+        ) : (
+          <div className="hint">La combinatoria è letta rispetto alle offerte singole correnti dello stesso offerente.</div>
+        )}
+      </section>
+
+      <div className="hint">I valori economici sono simulazioni operative basate su All. 18 e sui ribassi inseriti: restano distinti da offerte ufficiali e PEF reali.</div>
     </div>
   );
 }

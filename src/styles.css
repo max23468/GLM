@@ -1618,6 +1618,206 @@ input[type="checkbox"] {
   min-height: 34px;
 }
 
+.economic-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  gap: 12px;
+  min-width: 0;
+}
+
+.economic-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 12px;
+}
+
+.economic-table-wrap {
+  overflow-x: auto;
+}
+
+.economic-table {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.economic-table th,
+.economic-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 8px 7px;
+  text-align: right;
+  vertical-align: top;
+}
+
+.economic-table th:first-child,
+.economic-table td:first-child {
+  text-align: left;
+}
+
+.economic-table th {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 820;
+  text-transform: uppercase;
+}
+
+.economic-table td {
+  color: var(--text);
+  font-size: 0.86rem;
+}
+
+.economic-table td small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+  margin-top: 2px;
+}
+
+.economic-table tfoot td {
+  border-bottom: 0;
+  color: var(--strong-text);
+  font-weight: 820;
+}
+
+.formula-box {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--teal-border);
+  border-radius: 7px;
+  background: var(--teal-soft);
+  padding: 10px;
+}
+
+.formula-box span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 760;
+}
+
+.formula-box strong {
+  color: var(--teal);
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.economic-kpis,
+.combo-economic-grid,
+.unit-rate-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.economic-kpis div,
+.combo-economic-grid div,
+.unit-rate {
+  display: grid;
+  gap: 3px;
+  min-height: 62px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  padding: 9px;
+}
+
+.economic-kpis span,
+.combo-economic-grid span,
+.unit-rate span,
+.target-control span,
+.target-result span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 780;
+}
+
+.economic-kpis strong,
+.combo-economic-grid strong,
+.unit-rate strong,
+.target-result strong {
+  color: var(--strong-text);
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.combo-economic-grid .ok {
+  border-color: var(--teal-border);
+  background: var(--teal-soft);
+}
+
+.combo-economic-grid .warn {
+  border-color: var(--amber-border);
+  background: var(--amber-soft);
+}
+
+.target-control {
+  display: grid;
+  gap: 6px;
+}
+
+.target-control input {
+  min-height: 36px;
+  max-width: 160px;
+}
+
+.target-result {
+  display: grid;
+  gap: 3px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  padding: 9px;
+}
+
+.target-result small,
+.unit-rate small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.guardrail-list {
+  display: grid;
+  gap: 8px;
+}
+
+.guardrail {
+  display: grid;
+  gap: 3px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  padding: 9px;
+}
+
+.guardrail strong {
+  color: var(--strong-text);
+  font-size: 0.82rem;
+}
+
+.guardrail span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.guardrail.ok {
+  border-color: var(--teal-border);
+  background: var(--teal-soft);
+}
+
+.guardrail.warn {
+  border-color: var(--amber-border);
+  background: var(--amber-soft);
+}
+
 .combo-box {
   display: grid;
   gap: 10px;
@@ -2035,16 +2235,20 @@ input[type="checkbox"] {
   .quantity-input-grid,
   .strategic-grid,
   .contextual-grid,
-  .comparison-grid,
-  .comparison-lots,
-  .report-summary,
-  .tradeoff-grid,
-  .tradeoff-preview,
-  .metric-grid,
-  .phase-grid,
-  .combo-checks,
-  .lot-toggle-grid {
-    grid-template-columns: 1fr;
+	  .comparison-grid,
+	  .comparison-lots,
+	  .report-summary,
+	  .tradeoff-grid,
+	  .tradeoff-preview,
+	  .economic-detail-grid,
+	  .economic-kpis,
+	  .combo-economic-grid,
+	  .unit-rate-grid,
+	  .metric-grid,
+	  .phase-grid,
+	  .combo-checks,
+	  .lot-toggle-grid {
+	    grid-template-columns: 1fr;
   }
 
   .workspace-tabs {

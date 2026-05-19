@@ -31,6 +31,13 @@ export type Pair = {
   label: string;
 };
 
+export type EconomicPhase = {
+  id: "phase1" | "phase2" | "phase3";
+  label: string;
+  period: string;
+  months: number;
+};
+
 export type Criterion = {
   id: string;
   ambit: string;
@@ -126,6 +133,40 @@ export const PAIRS: Pair[] = [
   { id: "L3+L4", lots: ["L3", "L4"], label: "Lotti 3+4" },
   { id: "L1+L4", lots: ["L1", "L4"], label: "Lotti 1+4" },
 ];
+
+export const ECONOMIC_PHASES: EconomicPhase[] = [
+  { id: "phase1", label: "Fase 1", period: "Mesi 1-12", months: 12 },
+  { id: "phase2", label: "Fase 2", period: "Mesi 13-24", months: 12 },
+  { id: "phase3", label: "Fase 3", period: "Mesi 25-84", months: 60 },
+];
+
+export const ECONOMIC_UNIT_KM_BY_LOT: Record<LotId, [number, number, number]> = {
+  L1: [5756000, 6664500, 7573000],
+  L2: [9555000, 10752500, 11950000],
+  L3: [10414000, 10753500, 11093000],
+  L4: [10843000, 12048500, 13253000],
+};
+
+export const ECONOMIC_UNIT_BASE_BY_LOT: Record<LotId, [number, number, number]> = {
+  L1: [20106000, 22692000, 26438000],
+  L2: [42623000, 48108000, 53479000],
+  L3: [40954000, 44417000, 48072000],
+  L4: [42116000, 47783000, 53283000],
+};
+
+export const ECONOMIC_UNIT_KM_BY_PAIR: Record<PairId, [number, number, number]> = {
+  "L1+L2": [15311000, 17417000, 19523000],
+  "L2+L3": [19969000, 21506000, 23043000],
+  "L3+L4": [21257000, 22801500, 24346000],
+  "L1+L4": [16599000, 18712500, 20826000],
+};
+
+export const ECONOMIC_UNIT_BASE_BY_PAIR: Record<PairId, [number, number, number]> = {
+  "L1+L2": [62729000, 70800000, 79917000],
+  "L2+L3": [83577000, 92525000, 101551000],
+  "L3+L4": [83070000, 92200000, 101355000],
+  "L1+L4": [62222000, 70475000, 79721000],
+};
 
 export const LOT_CONTEXT: Record<LotId, LotContext> = {
   L1: {

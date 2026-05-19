@@ -134,6 +134,21 @@ export type SimulationResult = {
   suggestions: Suggestion[];
 };
 
+export type EconomicPhaseBreakdown = {
+  base: number;
+  discount: number;
+  roundedDiscount: number;
+  offered: number;
+  weight: number;
+};
+
+export type EconomicBreakdown = {
+  phases: [EconomicPhaseBreakdown, EconomicPhaseBreakdown, EconomicPhaseBreakdown];
+  baseTotal: number;
+  offeredTotal: number;
+  ribasso: number;
+};
+
 export const emptyQuantityInputs = () =>
   Object.fromEntries(
     CRITERIA.filter((criterion) => criterion.quantityInput).map((criterion) => [criterion.id, { numerator: 0, denominator: 0 } satisfies QuantityInputValue]),
@@ -215,7 +230,7 @@ const getPair = (pairId: PairId) => {
 
 const discountToDecimal = (percent: number) => clamp(percent / 100, 0, 1);
 
-const computeOfferedAmount = (baseByPhase: [number, number, number], phaseDiscounts: [number, number, number]) => {
+export const computeOfferedAmount = (baseByPhase: [number, number, number], phaseDiscounts: [number, number, number]) => {
   const roundedDiscounts = phaseDiscounts.map((item) => round4(discountToDecimal(item))) as [number, number, number];
   return baseByPhase.reduce((sum, base, index) => sum + base * (1 - roundedDiscounts[index]), 0);
 };
@@ -226,7 +241,27 @@ export const computeWeightedRibasso = (baseByPhase: [number, number, number], ph
   return round4(1 - offered / baseTotal);
 };
 
-const pairBaseByPhase = (pairId: PairId): [number, number, number] => {
+export const economicBreakdown = (baseByPhase: [number, number, number], phaseDiscounts: [number, number, number]): EconomicBreakdown => {
+  const baseTotal = baseByPhase.reduce((sum, value) => sum + value, 0);
+  const phases = baseByPhase.map((base, index) => {
+    const roundedDiscount = round4(discountToDecimal(phaseDiscounts[index]));
+    return {
+      base,
+      discount: phaseDiscounts[index],
+      roundedDiscount,
+      offered: base * (1 - roundedDiscount),
+      weight: baseTotal > 0 ? base / baseTotal : 0,
+    };
+  }) as [EconomicPhaseBreakdown, EconomicPhaseBreakdown, EconomicPhaseBreakdown];
+  return {
+    phases,
+    baseTotal,
+    offeredTotal: phases.reduce((sum, phase) => sum + phase.offered, 0),
+    ribasso: computeWeightedRibasso(baseByPhase, phaseDiscounts),
+  };
+};
+
+export const pairBaseByPhase = (pairId: PairId): [number, number, number] => {
   const pair = getPair(pairId);
   const first = getLot(pair.lots[0]).baseByPhase;
   const second = getLot(pair.lots[1]).baseByPhase;
