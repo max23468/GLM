@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useRef } from "react";
 import { LOTS } from "../data/tender";
-import { formatPoints, type SimulationResult } from "../lib/scoring";
+import { candidateLotScore, formatPoints, type AssignmentCandidate, type SimulationResult } from "../lib/scoring";
 import type { SavedScenarioSnapshot } from "../lib/scenario-persistence";
 
 type ScenarioToolsProps = {
@@ -57,7 +57,7 @@ export function ScenarioTools({
       <div className="scenario-actions">
         <button className="action-button primary" onClick={onSave}>
           <Save size={16} />
-          Salva
+          Salva in libreria
         </button>
         <button className="action-button" onClick={onDuplicate}>
           <CopyPlus size={16} />
@@ -71,6 +71,10 @@ export function ScenarioTools({
           <Upload size={16} />
           Importa
         </button>
+      </div>
+      <div className="autosave-note">
+        <strong>Workspace autosalvato</strong>
+        <span>Le modifiche restano in questo browser. Salva in libreria per confrontarle o esportarle.</span>
       </div>
       <input
         ref={fileInputRef}
@@ -109,6 +113,9 @@ type StrategicSummaryProps = {
   selectedLotLabel: string;
   result: SimulationResult;
   selectedLotQt?: number;
+  activeSectionLabel: string;
+  onOpenTechnical: () => void;
+  onOpenEconomic: () => void;
   onOpenResults: () => void;
 };
 
@@ -118,6 +125,9 @@ export function StrategicSummary({
   selectedLotLabel,
   result,
   selectedLotQt,
+  activeSectionLabel,
+  onOpenTechnical,
+  onOpenEconomic,
   onOpenResults,
 }: StrategicSummaryProps) {
   const selected = result.selectedScenario;
@@ -140,10 +150,18 @@ export function StrategicSummary({
           <span>Totale migliore</span>
           <strong>{selected ? formatPoints(selected.totalScore) : "n/d"}</strong>
         </div>
-        <button className="action-button compact" onClick={onOpenResults}>
-          <Trophy size={16} />
-          Risultati
-        </button>
+        <div className="summary-actions" aria-label="Azioni rapide">
+          <button className="action-button compact" onClick={onOpenTechnical}>
+            Tecnica
+          </button>
+          <button className="action-button compact" onClick={onOpenEconomic}>
+            Economica
+          </button>
+          <button className="action-button compact primary" onClick={onOpenResults}>
+            <Trophy size={16} />
+            Risultati
+          </button>
+        </div>
       </div>
       <div className="strategic-grid">
         {assignmentsByLot.map(({ lot, assignment }) => (
@@ -156,7 +174,7 @@ export function StrategicSummary({
       </div>
       <div className="strategic-footer">
         <span>
-          Focus: {selectedBidderName ?? "n/d"} su {selectedLotLabel}
+          Focus: {selectedBidderName ?? "n/d"} su {selectedLotLabel}, sezione {activeSectionLabel}
           {typeof selectedLotQt === "number" ? `, Q/T ${formatPoints(selectedLotQt)}` : ""}
         </span>
         {result.warnings[0] ? (
@@ -192,6 +210,15 @@ export function ScenarioComparison({
   const currentTotal = currentResult.selectedScenario?.totalScore ?? 0;
   const compareTotal = compareResult?.selectedScenario?.totalScore ?? 0;
   const delta = currentTotal - compareTotal;
+  const currentAssignments = assignmentsByLot(currentResult.selectedScenario?.assignments ?? []);
+  const compareAssignments = assignmentsByLot(compareResult?.selectedScenario?.assignments ?? []);
+  const changedLots = LOTS.filter((lot) => {
+    const current = currentAssignments[lot.id];
+    const compared = compareAssignments[lot.id];
+    return current?.bidderName !== compared?.bidderName || current?.kind !== compared?.kind || current?.pairId !== compared?.pairId;
+  });
+  const newWarnings = currentResult.warnings.filter((warning) => !(compareResult?.warnings ?? []).includes(warning));
+  const resolvedWarnings = (compareResult?.warnings ?? []).filter((warning) => !currentResult.warnings.includes(warning));
 
   return (
     <section className="panel comparison-panel">
@@ -211,23 +238,49 @@ export function ScenarioComparison({
         </select>
       </label>
       {compareScenario && compareResult ? (
-        <div className="comparison-grid">
-          <div>
-            <span>Scenario corrente</span>
-            <strong>{formatPoints(currentTotal)}</strong>
+        <>
+          <div className="comparison-grid">
+            <div>
+              <span>Scenario corrente</span>
+              <strong>{formatPoints(currentTotal)}</strong>
+            </div>
+            <div>
+              <span>{compareScenario.name}</span>
+              <strong>{formatPoints(compareTotal)}</strong>
+            </div>
+            <div className={delta >= 0 ? "positive" : "negative"}>
+              <span>Differenza</span>
+              <strong>
+                {delta >= 0 ? "+" : ""}
+                {formatPoints(delta)}
+              </strong>
+            </div>
           </div>
-          <div>
-            <span>{compareScenario.name}</span>
-            <strong>{formatPoints(compareTotal)}</strong>
+          <div className="comparison-lots" aria-label="Delta per lotto">
+            {LOTS.map((lot) => {
+              const current = currentAssignments[lot.id];
+              const compared = compareAssignments[lot.id];
+              const currentScore = current ? candidateLotScore(current, lot.id) : 0;
+              const comparedScore = compared ? candidateLotScore(compared, lot.id) : 0;
+              const lotDelta = currentScore - comparedScore;
+              return (
+                <div key={lot.id} className={current?.bidderName === compared?.bidderName && current?.kind === compared?.kind ? "" : "changed"}>
+                  <span>{lot.shortLabel}</span>
+                  <strong>{current?.bidderName ?? "non assegnato"}</strong>
+                  <small>
+                    {lotDelta >= 0 ? "+" : ""}
+                    {formatPoints(lotDelta)} pt rispetto al confronto
+                  </small>
+                </div>
+              );
+            })}
           </div>
-          <div className={delta >= 0 ? "positive" : "negative"}>
-            <span>Differenza</span>
-            <strong>
-              {delta >= 0 ? "+" : ""}
-              {formatPoints(delta)}
-            </strong>
+          <div className="comparison-notes">
+            <span>{changedLots.length ? `Assegnazioni cambiate: ${changedLots.map((lot) => lot.shortLabel).join(", ")}` : "Assegnazioni invariate per tutti i lotti."}</span>
+            <span>{newWarnings.length ? `Nuovi warning: ${newWarnings.length}` : "Nessun nuovo warning rispetto allo scenario confrontato."}</span>
+            <span>{resolvedWarnings.length ? `Warning risolti: ${resolvedWarnings.length}` : "Nessun warning risolto nel confronto."}</span>
           </div>
-        </div>
+        </>
       ) : (
         <div className="empty-state compact">Salva o importa uno scenario, poi selezionalo qui per vedere la differenza.</div>
       )}
@@ -244,6 +297,8 @@ type ReportPanelProps = {
 };
 
 export function ReportPanel({ scenarioName, result, selectedLotId, sourceCount, onPrint }: ReportPanelProps) {
+  const assignments = result.selectedScenario?.assignments ?? [];
+  const topWarnings = result.warnings.slice(0, 3);
   return (
     <section className="panel report-panel">
       <div className="section-title">
@@ -272,6 +327,24 @@ export function ReportPanel({ scenarioName, result, selectedLotId, sourceCount, 
         <Printer size={16} />
         Stampa / salva PDF
       </button>
+      <div className="report-executive">
+        <div>
+          <span>Assegnazioni</span>
+          <strong>{assignments.length ? assignments.map((item) => item.lotIds.join("+")).join(", ") : "n/d"}</strong>
+        </div>
+        <div>
+          <span>Criticità scenario</span>
+          <strong>{topWarnings.length ? `${topWarnings.length} da verificare` : "nessuna prioritaria"}</strong>
+        </div>
+        <p>
+          Output esplorativo: scenari base e profili simulati non rappresentano offerte ufficiali. Verificare documenti e fonti prima di usare il report come base decisionale.
+        </p>
+      </div>
     </section>
   );
 }
+
+const assignmentsByLot = (assignments: AssignmentCandidate[]) =>
+  Object.fromEntries(
+    LOTS.map((lot) => [lot.id, assignments.find((assignment) => assignment.lotIds.includes(lot.id))]),
+  ) as Partial<Record<(typeof LOTS)[number]["id"], AssignmentCandidate>>;

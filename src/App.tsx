@@ -48,6 +48,7 @@ import {
   type QuantityInputValue,
   type Settings,
   type SimulationResult,
+  type Suggestion,
   type TradeoffPlan,
 } from "./lib/scoring";
 import {
@@ -69,6 +70,7 @@ import {
 const euroFormatter = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 type ThemePreference = "auto" | "light" | "dark";
 type WorkspaceTab = "tecnica" | "economica" | "combinatorie" | "risultati";
+type CriterionFilter = "all" | "work" | "warn" | "open";
 
 const themeOptions: { value: ThemePreference; label: string; icon: LucideIcon }[] = [
   { value: "auto", label: "Auto", icon: Monitor },
@@ -81,6 +83,13 @@ const workspaceTabs: { value: WorkspaceTab; label: string; icon: LucideIcon }[] 
   { value: "economica", label: "Economica", icon: CircleDollarSign },
   { value: "combinatorie", label: "Combinatorie", icon: Route },
   { value: "risultati", label: "Risultati", icon: Trophy },
+];
+
+const criterionFilterOptions: { value: CriterionFilter; label: string }[] = [
+  { value: "all", label: "Tutti" },
+  { value: "work", label: "Da lavorare" },
+  { value: "warn", label: "Verifica" },
+  { value: "open", label: "Scoperti" },
 ];
 
 const criterionKindLabel: Record<Criterion["kind"], string> = {
@@ -200,6 +209,13 @@ const criterionStatus = (criterion: Criterion, score: number, note?: string) => 
   return { label: "Parziale", tone: "mid" };
 };
 
+const matchesCriterionFilter = (criterion: Criterion, score: number, note: string | undefined, filter: CriterionFilter) => {
+  if (filter === "all") return true;
+  if (filter === "warn") return Boolean(note);
+  if (filter === "open") return score <= 0 && criterion.maxPoints > 0;
+  return Boolean(note) || (criterion.maxPoints > 0 && score < criterion.maxPoints * 0.9);
+};
+
 function App() {
   const [initialWorkspace] = useState(() => readStoredWorkspace());
   const [baseScenarioId, setBaseScenarioId] = useState<BaseScenarioId>(initialWorkspace?.baseScenarioId ?? "market");
@@ -208,6 +224,7 @@ function App() {
   const [selectedLotId, setSelectedLotId] = useState<LotId>(initialWorkspace?.selectedLotId ?? "L1");
   const [selectedPairId, setSelectedPairId] = useState<PairId>(initialWorkspace?.selectedPairId ?? BASE_SCENARIOS[0].defaultPairId);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("tecnica");
+  const [criterionFilter, setCriterionFilter] = useState<CriterionFilter>("all");
   const [selectedAmbitId, setSelectedAmbitId] = useState(AMBITS[0].id);
   const [selectedCriterionId, setSelectedCriterionId] = useState(CRITERIA[0].id);
   const [settings, setSettings] = useState<Settings>(initialWorkspace?.settings ?? DEFAULT_SETTINGS);
@@ -335,6 +352,30 @@ function App() {
         plan.deltaUnits > 0,
     };
   };
+
+  const focusWarnings = useMemo(() => {
+    const warnings: string[] = [];
+    if (selectedLotScore?.warnings.length) {
+      warnings.push(...selectedLotScore.warnings.map((warning) => `${selectedBidder?.name ?? "Offerente"} ${selectedLotId}: ${warning}`));
+    }
+    if (activeTab === "combinatorie" && selectedComboScore?.warnings.length) {
+      warnings.push(...selectedComboScore.warnings.map((warning) => `${selectedBidder?.name ?? "Offerente"} ${selectedPairId}: ${warning}`));
+    }
+    if (selectedBidder) {
+      warnings.push(...result.warnings.filter((warning) => warning.includes(selectedBidder.name) || warning.includes(selectedLotId)).slice(0, 3));
+    }
+    return [...new Set(warnings)].slice(0, 5);
+  }, [activeTab, result.warnings, selectedBidder, selectedComboScore, selectedLotId, selectedLotScore, selectedPairId]);
+
+  const focusSuggestions = useMemo(() => {
+    const direct = result.suggestions.filter((suggestion) => {
+      if (!selectedBidder || suggestion.bidderId !== selectedBidder.id) return false;
+      if (suggestion.lotId && suggestion.lotId !== selectedLotId) return false;
+      if (suggestion.pairId && suggestion.pairId !== selectedPairId) return false;
+      return true;
+    });
+    return (direct.length ? direct : result.suggestions).slice(0, 3);
+  }, [result.suggestions, selectedBidder, selectedLotId, selectedPairId]);
 
   const updateBidder = (bidderId: string, updater: (bidder: Bidder) => Bidder) => {
     setBidders((current) => current.map((bidder) => (bidder.id === bidderId ? updater(structuredClone(bidder)) : bidder)));
@@ -659,6 +700,9 @@ function App() {
                 selectedLotLabel={selectedLotLabel}
                 result={result}
                 selectedLotQt={selectedLotScore?.qtRaw}
+                activeSectionLabel={activeTabLabel}
+                onOpenTechnical={() => setActiveTab("tecnica")}
+                onOpenEconomic={() => setActiveTab("economica")}
                 onOpenResults={() => setActiveTab("risultati")}
               />
 
@@ -820,6 +864,13 @@ function App() {
                   )}
                 </div>
 
+                <ContextualActionPanel
+                  warnings={focusWarnings}
+                  suggestions={focusSuggestions}
+                  selectedBidderName={selectedBidder.name}
+                  selectedLotLabel={selectedLotLabel}
+                />
+
                 <div className="workspace-tabs" role="tablist" aria-label="Sezioni offerta">
                   {workspaceTabs.map((tab) => {
                     const Icon = tab.icon;
@@ -849,8 +900,10 @@ function App() {
                         lotScore={selectedLotScore}
                         selectedAmbitId={selectedAmbit.id}
                         selectedCriterion={selectedCriterion}
+                        criterionFilter={criterionFilter}
                         onAmbitSelect={setSelectedAmbitId}
                         onCriterionSelect={setSelectedCriterionId}
+                        onCriterionFilterChange={setCriterionFilter}
                         onCriterionChange={(criterion, value) =>
                           updateLotOffer(selectedLotId, (offer) => {
                             if (criterion.kind === "Q") offer.qValues[criterion.id] = Number(value);
@@ -1076,14 +1129,78 @@ function App() {
   );
 }
 
+function ContextualActionPanel({
+  warnings,
+  suggestions,
+  selectedBidderName,
+  selectedLotLabel,
+}: {
+  warnings: string[];
+  suggestions: Suggestion[];
+  selectedBidderName: string;
+  selectedLotLabel: string;
+}) {
+  return (
+    <section className={`contextual-panel ${warnings.length ? "has-warnings" : "clear"}`} aria-label="Azioni e avvisi sul focus corrente">
+      <div className="contextual-head">
+        <div>
+          <span>Focus operativo</span>
+          <strong>
+            {selectedBidderName} su {selectedLotLabel}
+          </strong>
+        </div>
+        <div className={`status-badge ${warnings.length ? "warn" : "ok"}`}>
+          {warnings.length ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
+          {warnings.length ? `${warnings.length} verifiche` : "nessun blocco"}
+        </div>
+      </div>
+      <div className="contextual-grid">
+        <div className="contextual-column">
+          <span className="contextual-label">Avvisi contestuali</span>
+          {warnings.length ? (
+            <div className="inline-warning-list">
+              {warnings.map((warning) => (
+                <div key={warning} className="inline-warning-item">
+                  {warning}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="inline-ok">Nessun warning prioritario sul focus corrente.</div>
+          )}
+        </div>
+        <div className="contextual-column">
+          <span className="contextual-label">Prossime leve</span>
+          {suggestions.length ? (
+            <div className="inline-suggestion-list">
+              {suggestions.map((suggestion) => (
+                <article key={`${suggestion.title}-${suggestion.body}`} className="inline-suggestion">
+                  <strong>{suggestion.title}</strong>
+                  <span>
+                    {formatPoints(suggestion.impact)} pt, sforzo {suggestion.effort}
+                  </span>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="inline-ok">Nessun suggerimento calcolato per lo scenario corrente.</div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function TechnicalWorkbench({
   bidder,
   lotId,
   lotScore,
   selectedAmbitId,
   selectedCriterion,
+  criterionFilter,
   onAmbitSelect,
   onCriterionSelect,
+  onCriterionFilterChange,
   onCriterionChange,
   onQuantityInputChange,
   tradeoff,
@@ -1096,8 +1213,10 @@ function TechnicalWorkbench({
   lotScore: LotScore;
   selectedAmbitId: string;
   selectedCriterion: Criterion;
+  criterionFilter: CriterionFilter;
   onAmbitSelect: (ambitId: string) => void;
   onCriterionSelect: (criterionId: string) => void;
+  onCriterionFilterChange: (filter: CriterionFilter) => void;
   onCriterionChange: (criterion: Criterion, value: number | boolean) => void;
   onQuantityInputChange: (criterion: Criterion, patch: Partial<QuantityInputValue>) => void;
   tradeoff: TradeoffPlan;
@@ -1107,6 +1226,18 @@ function TechnicalWorkbench({
 }) {
   const selectedSubScore = lotScore.subScores[selectedCriterion.id];
   const selectedAmbit = AMBITS.find((ambit) => ambit.id === selectedAmbitId) ?? AMBITS[0];
+  const parentSections = criteriaByParent(selectedAmbit);
+  const filteredParentSections = parentSections
+    .map((parent) => ({
+      ...parent,
+      criteria: parent.criteria.filter((criterion) => {
+        const subScore = lotScore.subScores[criterion.id];
+        return matchesCriterionFilter(criterion, subScore?.rawScore ?? 0, subScore?.note, criterionFilter);
+      }),
+    }))
+    .filter((parent) => parent.criteria.length > 0);
+  const totalCriteria = parentSections.reduce((sum, parent) => sum + parent.criteria.length, 0);
+  const filteredCriteria = filteredParentSections.reduce((sum, parent) => sum + parent.criteria.length, 0);
 
   return (
     <div className="technical-workbench">
@@ -1122,6 +1253,27 @@ function TechnicalWorkbench({
             <strong>{formatPoints(lotScore.riparamByAmbit[ambit.id] ?? 0)} / {formatPoints(ambit.maxPoints)}</strong>
           </button>
         ))}
+      </div>
+
+      <div className="criteria-filter-bar">
+        <div>
+          <strong>Criteri {selectedAmbit.id}</strong>
+          <span>
+            {filteredCriteria} di {totalCriteria} visibili
+          </span>
+        </div>
+        <div className="filter-pills" role="group" aria-label="Filtro criteri">
+          {criterionFilterOptions.map((option) => (
+            <button
+              key={option.value}
+              className={criterionFilter === option.value ? "active" : ""}
+              onClick={() => onCriterionFilterChange(option.value)}
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <CriterionInspector
@@ -1145,7 +1297,7 @@ function TechnicalWorkbench({
           <span>Punti</span>
           <span>Stato</span>
         </div>
-        {criteriaByParent(selectedAmbit).map((parent) => {
+        {filteredParentSections.map((parent) => {
           const parentScore = parent.criteria.reduce((sum, criterion) => sum + (lotScore.subScores[criterion.id]?.rawScore ?? 0), 0);
           const parentMax = parent.criteria.reduce((sum, criterion) => sum + criterion.maxPoints, 0);
           return (
@@ -1175,6 +1327,7 @@ function TechnicalWorkbench({
             </div>
           );
         })}
+        {!filteredParentSections.length && <div className="empty-state compact">Nessun criterio corrisponde al filtro selezionato.</div>}
       </div>
     </div>
   );
