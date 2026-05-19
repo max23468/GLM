@@ -85,6 +85,7 @@ import {
   type OptimizationConfig,
   type OptimizationLeverInput,
   type OptimizationResult,
+  type OptimizationStep,
 } from "./lib/optimization";
 import {
   applyTradeoffPlanToOffer,
@@ -176,6 +177,116 @@ type TradeoffPreview = {
 };
 
 const signedPoints = (amount: number) => `${amount >= 0 ? "+" : ""}${formatPoints(amount)}`;
+
+type OptimizationInvestmentRow = {
+  key: string;
+  label: string;
+  focus: string;
+  objectiveDelta: number;
+  technicalDelta: number;
+  economicDelta: number;
+  cost: number;
+  moves: number;
+  efficiency: number;
+};
+
+const emptyInvestmentRow = (key: string, label: string): OptimizationInvestmentRow => ({
+  key,
+  label,
+  focus: "",
+  objectiveDelta: 0,
+  technicalDelta: 0,
+  economicDelta: 0,
+  cost: 0,
+  moves: 0,
+  efficiency: 0,
+});
+
+const buildOptimizationInvestmentRows = (steps: OptimizationStep[]) => {
+  const rows = new Map<string, OptimizationInvestmentRow>();
+  const getRow = (key: string, label: string) => {
+    const current = rows.get(key) ?? emptyInvestmentRow(key, label);
+    rows.set(key, current);
+    return current;
+  };
+
+  for (const step of steps) {
+    if (step.kind === "reallocation") {
+      const row = getRow("economica", "Offerta economica");
+      row.focus = "Riallocare tecnica verso ribasso";
+      row.objectiveDelta = round4(row.objectiveDelta + step.objectiveDelta);
+      row.technicalDelta = round4(row.technicalDelta + (step.technicalDelta ?? 0));
+      row.economicDelta = round4(row.economicDelta + (step.economicDelta ?? 0));
+      row.cost = round4(row.cost + step.cost);
+      row.moves += 1;
+      continue;
+    }
+
+    const ambit = AMBITS.find((item) => item.id === step.ambit);
+    const row = getRow(step.ambit ?? "tecnica", ambit ? `Ambito ${ambit.id}` : "Offerta tecnica");
+    row.focus = ambit?.label ?? "Investimenti tecnici";
+    row.objectiveDelta = round4(row.objectiveDelta + step.objectiveDelta);
+    row.technicalDelta = round4(row.technicalDelta + (step.technicalDelta ?? step.objectiveDelta));
+    row.economicDelta = round4(row.economicDelta + (step.economicDelta ?? 0));
+    row.cost = round4(row.cost + step.cost);
+    row.moves += 1;
+  }
+
+  return [...rows.values()]
+    .map((row) => ({
+      ...row,
+      efficiency: row.objectiveDelta > 0 ? row.cost / row.objectiveDelta : 0,
+    }))
+    .sort((a, b) => {
+      if (b.objectiveDelta !== a.objectiveDelta) return b.objectiveDelta - a.objectiveDelta;
+      return a.efficiency - b.efficiency;
+    });
+};
+
+const buildOptimizationImpactRows = (steps: OptimizationStep[]) => {
+  const rows = new Map<string, Omit<OptimizationInvestmentRow, "focus" | "efficiency">>();
+  const getRow = (key: string, label: string) => {
+    const current = rows.get(key) ?? { key, label, objectiveDelta: 0, technicalDelta: 0, economicDelta: 0, cost: 0, moves: 0 };
+    rows.set(key, current);
+    return current;
+  };
+
+  for (const step of steps) {
+    if (step.kind === "reallocation") {
+      const sourceAmbit = AMBITS.find((item) => item.id === step.ambit);
+      const sourceRow = getRow(step.ambit ?? "tecnica", sourceAmbit ? `${sourceAmbit.id} - ${sourceAmbit.label}` : "Offerta tecnica");
+      sourceRow.technicalDelta = round4(sourceRow.technicalDelta + (step.technicalDelta ?? 0));
+      sourceRow.objectiveDelta = round4(sourceRow.objectiveDelta + (step.technicalDelta ?? 0));
+      sourceRow.cost = round4(sourceRow.cost + (step.releasedValue ?? 0));
+      sourceRow.moves += 1;
+
+      const economicRow = getRow("economica", "Offerta economica");
+      economicRow.economicDelta = round4(economicRow.economicDelta + (step.economicDelta ?? 0));
+      economicRow.objectiveDelta = round4(economicRow.objectiveDelta + (step.economicDelta ?? 0));
+      economicRow.cost = round4(economicRow.cost + step.cost);
+      economicRow.moves += 1;
+      continue;
+    }
+
+    const ambit = AMBITS.find((item) => item.id === step.ambit);
+    const row = getRow(step.ambit ?? "tecnica", ambit ? `${ambit.id} - ${ambit.label}` : "Offerta tecnica");
+    row.technicalDelta = round4(row.technicalDelta + (step.technicalDelta ?? step.objectiveDelta));
+    row.economicDelta = round4(row.economicDelta + (step.economicDelta ?? 0));
+    row.objectiveDelta = round4(row.objectiveDelta + step.objectiveDelta);
+    row.cost = round4(row.cost + step.cost);
+    row.moves += 1;
+  }
+
+  const impactRows = AMBITS.map((ambit) => {
+    const row = rows.get(ambit.id);
+    return row ?? { key: ambit.id, label: `${ambit.id} - ${ambit.label}`, technicalDelta: 0, economicDelta: 0, objectiveDelta: 0, cost: 0, moves: 0 };
+  });
+  const economic = rows.get("economica");
+  return [
+    ...impactRows,
+    economic ?? { key: "economica", label: "Offerta economica", technicalDelta: 0, economicDelta: 0, objectiveDelta: 0, cost: 0, moves: 0 },
+  ];
+};
 
 const signedPercent = (amount: number) =>
   `${amount >= 0 ? "+" : ""}${amount.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} pt`;
@@ -2000,6 +2111,9 @@ function OptimizationWorkbench({
   const reallocatedValue = result.steps.reduce((sum, step) => sum + Math.min(step.cost, step.releasedValue ?? 0), 0);
   const unusedReleasedValue = Math.max(0, releasedTechnicalValue - reallocatedValue);
   const netPlanCost = Math.max(0, grossPlanCost - reallocatedValue);
+  const investmentRows = buildOptimizationInvestmentRows(result.steps);
+  const impactRows = buildOptimizationImpactRows(result.steps);
+  const maxImpact = Math.max(0.01, ...impactRows.map((row) => Math.abs(row.objectiveDelta)));
   return (
     <div className="optimization-board">
       <div className="metric-grid">
@@ -2063,6 +2177,86 @@ function OptimizationWorkbench({
         </div>
         <div className="optimization-hint">
           Il piano massimizza il punteggio partendo dall'offerta corrente. Il ribasso aumenta solo se una rinuncia tecnica libera risorse sufficienti.
+        </div>
+      </section>
+
+      <section className="optimization-card">
+        <div className="section-title compact">
+          <BarChart3 size={16} />
+          Dashboard dove investire
+          <HelpTooltip>Ordina le aree del piano per punti stimati, costo e rendimento. I costi sono assunzioni di scenario, non dati di gara.</HelpTooltip>
+        </div>
+        {investmentRows.length ? (
+          <div className="investment-dashboard">
+            {investmentRows.slice(0, 5).map((row, index) => (
+              <article key={row.key} className="investment-card">
+                <div>
+                  <span>{index + 1}</span>
+                  <strong>{row.label}</strong>
+                </div>
+                <p>{row.focus || "Area tecnica del piano consigliato"}</p>
+                <dl>
+                  <div>
+                    <dt>Punti netti</dt>
+                    <dd>{signedPoints(row.objectiveDelta)}</dd>
+                  </div>
+                  <div>
+                    <dt>Costo / valore</dt>
+                    <dd>{euroFormatter.format(row.cost)}</dd>
+                  </div>
+                  <div>
+                    <dt>€/punto</dt>
+                    <dd>{row.objectiveDelta > 0 ? euroFormatter.format(row.efficiency) : "n/d"}</dd>
+                  </div>
+                  <div>
+                    <dt>Mosse</dt>
+                    <dd>{row.moves}</dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state compact">Nessuna area di investimento positiva con gli input correnti.</div>
+        )}
+      </section>
+
+      <section className="optimization-card">
+        <div className="section-title compact">
+          <LineChart size={16} />
+          Mappa impatto per ambito
+          <HelpTooltip>Mostra dove il piano aggiunge o sacrifica punti tecnici e dove converte valore in punti economici.</HelpTooltip>
+        </div>
+        <div className="impact-map">
+          {impactRows.map((row) => {
+            const width = `${Math.min(100, Math.max(4, (Math.abs(row.objectiveDelta) / maxImpact) * 100))}%`;
+            const style = { "--impact-width": width } as CSSProperties;
+            return (
+              <article key={row.key} className={`impact-row ${row.objectiveDelta > 0 ? "positive" : row.objectiveDelta < 0 ? "negative" : "neutral"}`}>
+                <div>
+                  <strong>{row.label}</strong>
+                  <small>{row.moves ? `${row.moves} mosse - ${euroFormatter.format(row.cost)}` : "nessuna mossa"}</small>
+                </div>
+                <div className="impact-bars" style={style}>
+                  <span />
+                </div>
+                <dl>
+                  <div>
+                    <dt>Tecnica</dt>
+                    <dd>{signedPoints(row.technicalDelta)}</dd>
+                  </div>
+                  <div>
+                    <dt>Economica</dt>
+                    <dd>{signedPoints(row.economicDelta)}</dd>
+                  </div>
+                  <div>
+                    <dt>Saldo</dt>
+                    <dd>{signedPoints(row.objectiveDelta)}</dd>
+                  </div>
+                </dl>
+              </article>
+            );
+          })}
         </div>
       </section>
 

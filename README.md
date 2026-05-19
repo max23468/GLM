@@ -74,10 +74,13 @@ Per i dettagli sul calcolo, vedi [`docs/LOGICA_SIMULATORE.md`](docs/LOGICA_SIMUL
 npm run dev -- --port 4173
 npm test
 npm run build
+npm run validate:demo
+npm run smoke
+npm run prepublish:check
 npm run preview -- --port 4173
 ```
 
-`npm test` esegue i test Vitest su scoring e persistenza. `npm run build` esegue TypeScript e build Vite.
+`npm test` esegue i test Vitest su scoring, persistenza e dati demo. `npm run build` esegue TypeScript e build Vite. `npm run smoke` avvia una preview locale e verifica con Playwright i flussi principali della tab `Ottimizzazione`; `npm run prepublish:check` raggruppa i controlli prima della pubblicazione.
 
 ## Fonti e allegati
 
@@ -110,12 +113,14 @@ Per cambiare l'ottimizzazione:
 2. Rivaluta le mosse tramite `simulate()` invece di duplicare formule di scoring.
 3. Non includere criteri discrezionali `D` nell'ottimizzazione automatica.
 4. Aggiorna `src/lib/optimization.test.ts`, persistenza e documentazione quando cambiano input o output del piano.
+5. Verifica la leggibilità di `Dashboard dove investire`, `Mappa impatto per ambito` e `Piano consigliato`.
 
 Prima di cambiare UI o testi:
 
 1. Mantieni la lingua italiana e il tono operativo.
 2. Non presentare scenari base o profili simulati come offerte ufficiali.
 3. Verifica che i pannelli restino leggibili su desktop e mobile.
+4. Esegui `npm run smoke` per intercettare regressioni su salvataggio scenario, schema storage e microcopy rimossa.
 
 ## Deploy
 

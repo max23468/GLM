@@ -1,0 +1,169 @@
+import { spawn } from "node:child_process";
+import process from "node:process";
+import { chromium } from "playwright";
+
+const localPort = process.env.SMOKE_PORT ?? "4173";
+const externalUrl = process.env.SMOKE_URL;
+const baseUrl = externalUrl ?? `http://127.0.0.1:${localPort}`;
+const forbiddenTexts = [
+  "Leva economica",
+  "Step %",
+  "Max %",
+  "includi ribasso",
+  "p.p.",
+  "punti percentuali",
+  "Budget massimo",
+  "budget esterno",
+  "Residuo budget",
+  "L'eccedenza",
+  "non viene riutilizzata",
+];
+
+const waitForServer = async (url, timeoutMs = 20000) => {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) return;
+    } catch {
+      // Server not ready yet.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  }
+  throw new Error(`Preview non raggiungibile su ${url}`);
+};
+
+const startPreview = async () => {
+  if (externalUrl) return undefined;
+  const child = spawn(
+    "npm",
+    ["run", "preview", "--", "--host", "127.0.0.1", "--port", localPort, "--strictPort"],
+    { stdio: ["ignore", "pipe", "pipe"] },
+  );
+  let output = "";
+  child.stdout.on("data", (chunk) => {
+    output += chunk.toString();
+  });
+  child.stderr.on("data", (chunk) => {
+    output += chunk.toString();
+  });
+  child.once("exit", (code) => {
+    if (code && code !== 0) {
+      console.error(output);
+    }
+  });
+  await waitForServer(baseUrl);
+  return child;
+};
+
+const clickWorkspaceTab = async (page, name) => {
+  const tab = page.locator("button.workspace-tab").filter({ hasText: name });
+  const count = await tab.count();
+  if (count !== 1) throw new Error(`Tab ${name}: attesi 1, trovati ${count}`);
+  await tab.click();
+};
+
+const verifyOptimization = async (page, suffix, theme) => {
+  await page.goto(baseUrl, { waitUntil: "networkidle" });
+  await page.evaluate((themeValue) => {
+    localStorage.clear();
+    localStorage.setItem("tpl-lotti-1-4-theme", themeValue);
+  }, theme);
+  await page.reload({ waitUntil: "networkidle" });
+
+  for (const tab of ["Tecnica", "Economica", "Ottimizzazione", "Combinatorie", "Risultati"]) {
+    if ((await page.locator("button.workspace-tab").filter({ hasText: tab }).count()) !== 1) {
+      throw new Error(`${suffix}: tab ${tab} non trovata`);
+    }
+  }
+
+  await clickWorkspaceTab(page, "Ottimizzazione");
+  const text = await page.locator("body").innerText();
+  const lowerText = text.toLocaleLowerCase("it-IT");
+  const foundForbidden = forbiddenTexts.filter((item) => text.includes(item));
+  if (foundForbidden.length) throw new Error(`${suffix}: testi vietati: ${foundForbidden.join(", ")}`);
+
+  for (const expected of [
+    "dashboard dove investire",
+    "mappa impatto per ambito",
+    "tecnica + ribasso",
+    "solo tecnica",
+    "quantità max",
+    "non previsto",
+  ]) {
+    if (!lowerText.includes(expected)) throw new Error(`${suffix}: manca ${expected}`);
+  }
+
+  const planText = await page.locator(".optimization-card").filter({ hasText: "Piano consigliato" }).innerText();
+  const spacingIssues = [/€\S/g, /\.Delta/g, /,\+/g].flatMap((pattern) => planText.match(pattern) ?? []);
+  if (spacingIssues.length) throw new Error(`${suffix}: spaziatura sospetta ${spacingIssues.join(", ")}`);
+
+  const baseRows = await page.locator(".lever-table tbody tr").evaluateAll((rows) => rows.map((row) => {
+    const cells = Array.from(row.querySelectorAll("td"));
+    const id = cells[0]?.querySelector("strong")?.textContent?.trim();
+    const baseCell = cells[4];
+    return { id, text: baseCell?.textContent?.trim(), inputCount: baseCell?.querySelectorAll("input").length ?? 0 };
+  }));
+  const nonBase = baseRows.find((row) => row.id === "C.2.2");
+  const ratioBase = baseRows.find((row) => row.id === "C.1.2");
+  if (!nonBase || nonBase.text !== "non previsto" || nonBase.inputCount !== 0) {
+    throw new Error(`${suffix}: cella base non prevista inattesa ${JSON.stringify(nonBase)}`);
+  }
+  if (!ratioBase || ratioBase.inputCount !== 1) {
+    throw new Error(`${suffix}: cella base prevista inattesa ${JSON.stringify(ratioBase)}`);
+  }
+
+  await page.getByRole("button", { name: "Gestisci workspace" }).click();
+  await page.getByRole("button", { name: "Salva scenario in libreria" }).click();
+  const saved = await page.evaluate(() => {
+    const scenarios = JSON.parse(localStorage.getItem("tpl-lotti-1-4-scenarios") || "[]");
+    const optimization = scenarios[0]?.optimization;
+    const lever = optimization?.levers?.L1?.["C.1.2"];
+    return {
+      count: scenarios.length,
+      version: scenarios[0]?.schemaVersion,
+      hasEconomic: Boolean(optimization && "economic" in optimization),
+      hasStepUnits: Boolean(lever && "stepUnits" in lever),
+      hasGranularityUnits: Boolean(lever && "granularityUnits" in lever),
+    };
+  });
+  if (saved.count < 1 || saved.version !== 7 || saved.hasEconomic || saved.hasStepUnits || !saved.hasGranularityUnits) {
+    throw new Error(`${suffix}: snapshot inatteso ${JSON.stringify(saved)}`);
+  }
+
+  const activeTheme = await page.evaluate(() => document.documentElement.dataset.theme);
+  if (activeTheme !== theme) throw new Error(`${suffix}: tema atteso ${theme}, trovato ${activeTheme}`);
+};
+
+const main = async () => {
+  const preview = await startPreview();
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const checks = [
+      { suffix: "desktop-light", viewport: { width: 1440, height: 1000 }, theme: "light" },
+      { suffix: "mobile-dark", viewport: { width: 390, height: 844 }, theme: "dark" },
+    ];
+    for (const check of checks) {
+      const page = await browser.newPage({ viewport: check.viewport });
+      const messages = [];
+      page.on("console", (msg) => {
+        if (["error", "warning"].includes(msg.type())) messages.push(`${msg.type()}: ${msg.text()}`);
+      });
+      page.on("pageerror", (error) => messages.push(`pageerror: ${error.message}`));
+      await verifyOptimization(page, check.suffix, check.theme);
+      await page.close();
+      if (messages.length) throw new Error(`${check.suffix}: console non pulita: ${messages.join(" | ")}`);
+      console.log(`smoke ok: ${check.suffix}`);
+    }
+  } finally {
+    await browser.close();
+    if (preview) {
+      preview.kill("SIGTERM");
+    }
+  }
+};
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

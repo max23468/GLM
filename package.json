@@ -9,7 +9,10 @@
     "deploy": "npm run deploy:cloudflare",
     "deploy:cloudflare": "npm run build && wrangler pages deploy dist --project-name gare-lotti-milanesi --branch main",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "vitest run"
+    "prepublish:check": "git diff --check && npm test && npm run build && npm run smoke",
+    "smoke": "node scripts/smoke.mjs",
+    "test": "vitest run",
+    "validate:demo": "vitest run src/data/demo-data.validation.test.ts"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^6.0.2",
@@ -22,6 +25,7 @@
   "devDependencies": {
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "playwright": "^1.57.0",
     "vitest": "^4.1.6",
     "wrangler": "^4.92.0"
   },

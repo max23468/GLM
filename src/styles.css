@@ -2086,6 +2086,139 @@ input[type="checkbox"] {
   font-variant-numeric: tabular-nums;
 }
 
+.investment-dashboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.investment-card {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--control-bg);
+  padding: 10px;
+}
+
+.investment-card > div:first-child {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.investment-card > div:first-child span {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--teal-soft);
+  color: var(--teal);
+  font-weight: 850;
+  font-size: 0.74rem;
+}
+
+.investment-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.investment-card dl,
+.impact-row dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.investment-card dl {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.investment-card div,
+.impact-row dl div {
+  min-width: 0;
+}
+
+.investment-card dt,
+.impact-row dt {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.investment-card dd,
+.impact-row dd {
+  margin: 0;
+  color: var(--strong-text);
+  font-size: 0.86rem;
+  font-weight: 820;
+  font-variant-numeric: tabular-nums;
+}
+
+.impact-map {
+  display: grid;
+  gap: 8px;
+}
+
+.impact-row {
+  display: grid;
+  grid-template-columns: minmax(210px, 1.2fr) minmax(120px, 0.8fr) minmax(220px, 1fr);
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--control-bg);
+  padding: 10px;
+}
+
+.impact-row > div:first-child {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.impact-row > div:first-child strong,
+.investment-card strong {
+  overflow-wrap: anywhere;
+}
+
+.impact-row > div:first-child small {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.impact-bars {
+  position: relative;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.impact-bars span {
+  display: block;
+  width: var(--impact-width);
+  height: 100%;
+  border-radius: inherit;
+  background: var(--muted);
+}
+
+.impact-row.positive .impact-bars span {
+  background: var(--teal);
+}
+
+.impact-row.negative .impact-bars span {
+  background: var(--red);
+}
+
+.impact-row dl {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .optimization-plan-list {
   display: grid;
   gap: 8px;
@@ -2985,6 +3118,9 @@ input[type="checkbox"] {
   .optimization-controls,
   .optimization-summary-grid,
   .area-summary,
+  .impact-row,
+  .impact-row dl,
+  .investment-card dl,
   .lot-toggle-grid {
     grid-template-columns: 1fr;
   }

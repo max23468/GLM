@@ -84,6 +84,11 @@ Le modalità considerate sono:
 
 Il costo complessivo stimato del piano resta una lettura gestionale delle mosse consigliate. Per le riallocazioni, il simulatore mostra quante risorse vengono liberate dalla rinuncia tecnica e quanta parte finanzia il maggiore ribasso. Non ci sono step o massimi di ribasso da configurare: il limite operativo è dato dal valore liberato dalla rinuncia tecnica e dal fatto che i ribassi di fase non possono superare il 100%.
 
+La tab `Ottimizzazione` affianca al piano due letture sintetiche:
+
+- `Dashboard dove investire`: ordina le aree del piano per incremento di punteggio, costo/valore, rendimento e numero di mosse;
+- `Mappa impatto per ambito`: mostra per ambito A-G e offerta economica dove il piano aggiunge punti, dove sacrifica tecnica e dove genera punti economici.
+
 I criteri discrezionali `D` sono esclusi dall'ottimizzazione automatica perché dipendono dal giudizio della Commissione e non hanno una funzione deterministica costo-punteggio nel disciplinare. Restano compilabili manualmente nella tab `Tecnica`.
 
 Per ogni leva tecnica l'utente può indicare:
@@ -138,7 +143,9 @@ Gli scenari base sono definiti in `src/data/base-scenarios.ts`:
 
 Usano basi ricavate dagli allegati locali e segnali pubblici per operatori reali. Non rappresentano offerte ufficiali e non devono essere descritti come tali in UI, README o report.
 
-Ogni scenario base genera anche una configurazione completa di ottimizzazione: modalità, leva economica, scope di default, granularità interna, quantità massime, basi e costi unitari per tutti i lotti. La normalizzazione di workspace e JSON usa questi valori come fallback quando uno scenario salvato non contiene ancora i campi introdotti dall'ottimizzazione.
+Ogni scenario base genera anche una configurazione completa di ottimizzazione: modalità, scope di default, granularità interna, quantità massime, basi e costi unitari per tutti i lotti. La normalizzazione di workspace e JSON usa questi valori come fallback quando uno scenario salvato non contiene ancora i campi introdotti dall'ottimizzazione.
+
+I dati demo sono protetti da validator automatici: `npm run validate:demo` controlla che scenari base, tradeoff puntuali e catalogo leve tecniche restino completi e coerenti. `npm run smoke` verifica in browser i flussi principali della tab `Ottimizzazione`; `npm run prepublish:check` unisce controlli statici, test, build e smoke prima della pubblicazione.
 
 ## Criticità documentali
 

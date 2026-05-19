@@ -152,9 +152,11 @@ const sections: InstructionSection[] = [
       "`Solo tecnica` esclude il ribasso e usa solo leve tecniche.",
       "Il ribasso aumenta solo se una rinuncia tecnica libera risorse sufficienti e il saldo netto è positivo.",
       "Il piano mostra quanti punti tecnici perdi e quanti punti economici guadagni nelle riallocazioni.",
+      "`Dashboard dove investire` ordina le aree più interessanti per punti, costo e rendimento.",
+      "`Mappa impatto per ambito` evidenzia dove il piano aggiunge punti o sacrifica tecnica.",
       "Compila costo unitario, quantità massima e base per le leve che vuoi rendere ottimizzabili.",
     ],
-    checks: ["Obiettivo scelto", "Costi e massimali motivati", "Ribasso finanziato da rinuncia tecnica", "Piano applicato dopo lettura di delta e costo"],
+    checks: ["Obiettivo scelto", "Costi e massimali motivati", "Mappa impatto letta", "Piano applicato dopo lettura di delta e costo"],
   },
   {
     id: "istruzioni-combinatorie",
