@@ -32,7 +32,7 @@ Stack principale:
 - Vite
 - Vitest
 - Cloudflare Pages
-- Git LFS per `milano-lotti-extraurbani-om/**`
+- Git LFS per `docs/milano-lotti-extraurbani-om/**`
 
 Comandi utili:
 
@@ -55,7 +55,7 @@ npm run deploy:cloudflare
 - `src/App.tsx`: UI principale, preset demo, persistenza locale, import/export, tradeoff.
 - `src/components/scenario-panels.tsx`: pannelli scenario, confronto, report.
 - `src/styles.css`: token CSS e layout responsive.
-- `milano-lotti-extraurbani-om/`: allegati gara, da trattare come fonti e non come file da riscrivere.
+- `docs/milano-lotti-extraurbani-om/`: allegati gara, da trattare come fonti e non come file da riscrivere.
 - `wrangler.toml`: configurazione Cloudflare Pages.
 
 ## Regole sui dati di gara
@@ -69,7 +69,7 @@ npm run deploy:cloudflare
 
 ## Regole sugli allegati
 
-La cartella `milano-lotti-extraurbani-om/` contiene file binari e documenti ufficiali in Git LFS.
+La cartella `docs/milano-lotti-extraurbani-om/` contiene file binari e documenti ufficiali in Git LFS.
 
 - Non modificare, convertire o rinominare allegati senza richiesta esplicita.
 - Usa path quotati nei comandi shell perché molti file hanno spazi, apostrofi o maiuscole.

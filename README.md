@@ -46,14 +46,15 @@ Le basi operative dei preset derivano da documenti locali di gara e segnali pubb
 ## Mappa del repository
 
 ```text
-src/App.tsx                         UI principale, stato workspace, preset demo, import/export
-src/components/scenario-panels.tsx  Pannelli scenario, confronto, riepilogo e report
-src/data/tender.ts                  Lotti, coppie, criteri, soglie, fonti e criticità documentali
-src/lib/scoring.ts                  Motore di scoring e selezione scenario
-src/lib/scoring.test.ts             Test Vitest sulla logica di simulazione
-src/styles.css                      Design system locale e layout responsive
-milano-lotti-extraurbani-om/        Allegati di gara versionati con Git LFS
-wrangler.toml                       Configurazione Cloudflare Pages
+src/App.tsx                            UI principale, stato workspace, preset demo, import/export
+src/components/scenario-panels.tsx     Pannelli scenario, confronto, riepilogo e report
+src/data/tender.ts                     Lotti, coppie, criteri, soglie, fonti e criticità documentali
+src/lib/scoring.ts                     Motore di scoring e selezione scenario
+src/lib/scoring.test.ts                Test Vitest sulla logica di simulazione
+src/styles.css                         Design system locale e layout responsive
+docs/LOGICA_SIMULATORE.md              Logica e assunzioni operative del simulatore
+docs/milano-lotti-extraurbani-om/      Allegati di gara versionati con Git LFS
+wrangler.toml                          Configurazione Cloudflare Pages
 ```
 
 Per i dettagli sul calcolo, vedi [`docs/LOGICA_SIMULATORE.md`](docs/LOGICA_SIMULATORE.md).
@@ -71,7 +72,7 @@ npm run preview -- --port 4173
 
 ## Fonti e allegati
 
-La logica è ricostruita dai documenti nella cartella `milano-lotti-extraurbani-om`, versionata tramite Git LFS perché contiene allegati binari pesanti. Per clonare il repository con i documenti completi serve Git LFS attivo.
+La logica è ricostruita dai documenti nella cartella `docs/milano-lotti-extraurbani-om`, versionata tramite Git LFS perché contiene allegati binari pesanti. Per clonare il repository con i documenti completi serve Git LFS attivo.
 
 Documenti principali:
 
