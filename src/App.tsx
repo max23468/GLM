@@ -562,7 +562,7 @@ function App() {
   };
 
   const navigateToInstructions = () => {
-    window.history.pushState({}, "", "/istruzioni");
+    window.history.pushState({}, "", "/istruzioni/");
     setView("istruzioni");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -608,7 +608,7 @@ function App() {
           </div>
           <a
             className="doc-link"
-            href="/istruzioni"
+            href="/istruzioni/"
             onClick={(event) => {
               event.preventDefault();
               navigateToInstructions();

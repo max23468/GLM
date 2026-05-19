@@ -30,7 +30,7 @@ npm run preview -- --port 4173
 - Permette salvataggio locale, duplicazione, import/export JSON e confronto fra scenari.
 - Mostra tradeoff tecnico/economici per sub-criterio, con costo stimato e impatto su punteggio/ribasso.
 - Genera un report stampabile o salvabile in PDF dal browser.
-- Espone una pagina web di istruzioni raggiungibile dal pulsante `Istruzioni` nella testata e dall'URL `/istruzioni`.
+- Espone una pagina web di istruzioni raggiungibile dal pulsante `Istruzioni` nella testata e dall'URL `/istruzioni/`.
 - Supporta tema chiaro/scuro/automatico e layout responsive.
 
 ## Scenari base
