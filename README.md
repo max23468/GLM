@@ -28,7 +28,8 @@ npm run preview -- --port 4173
 - Evidenzia warning su soglie, dipendenze, combinatorie non ammissibili, sorteggio e deroga al limite di due lotti.
 - Offre scenari base con profili simulati ispirati a fonti pubbliche e allegati locali, senza trasformarli in offerte reali.
 - Permette salvataggio locale, duplicazione, import/export JSON e confronto fra scenari.
-- Mostra tradeoff tecnico/economici per sub-criterio, con costo stimato e impatto su punteggio/ribasso.
+- Mostra l'analisi puntuale criterio per sub-criterio, con costo stimato e impatto su punteggio/ribasso.
+- Usa l'ottimizzazione offerta per partire da un'offerta iniziale e confrontare budget tecnico, investimenti su criteri Q/T e maggiore ribasso economico.
 - Genera un report stampabile o salvabile in PDF dal browser.
 - Espone una pagina web di istruzioni raggiungibile dal pulsante `Istruzioni` nella testata e dall'URL `/istruzioni/`.
 - Supporta tema chiaro/scuro/automatico e layout responsive.
@@ -47,12 +48,14 @@ Le basi operative degli scenari derivano da documenti locali di gara e segnali p
 ## Mappa del repository
 
 ```text
-src/App.tsx                            UI principale, stato workspace, import/export e tradeoff
+src/App.tsx                            UI principale, stato workspace, import/export, analisi puntuale criterio e ottimizzazione offerta
 src/components/scenario-panels.tsx     Pannelli scenario, confronto, riepilogo e report
 src/data/base-scenarios.ts             Scenari base, profili simulati e baseline operative
 src/data/tender.ts                     Lotti, coppie, criteri, soglie, fonti e criticità documentali
+src/lib/optimization.ts                Motore di ottimizzazione budget, leve tecniche e ribasso
 src/lib/scenario-persistence.ts        Normalizzazione snapshot, migrazione storage e import JSON
 src/lib/scoring.ts                     Motore di scoring e selezione scenario
+src/lib/tradeoff.ts                    Logica interna di analisi puntuale criterio e costo tecnico
 src/lib/*.test.ts                      Test Vitest su scoring e persistenza
 src/components/instructions-page.tsx   Pagina web navigabile con istruzioni di compilazione
 src/styles.css                         Design system locale e layout responsive
@@ -87,7 +90,7 @@ Documenti principali:
 - `All 18 - Offerta economica.pdf`
 - modelli `All 18.1` - `All 18.8`
 
-I costi unitari dei tradeoff non sono contenuti nei documenti di gara: sono ipotesi dell'utente e vengono trattati come riduzione del ribasso medio del lotto.
+I costi unitari dell'analisi puntuale criterio e delle leve di ottimizzazione offerta non sono contenuti nei documenti di gara: sono ipotesi dell'utente. Nella modalità strategica il ribasso economico viene trattato come minore corrispettivo offerto; nella modalità investimenti tecnici il budget viene usato solo su criteri tecnici Q/T.
 
 Le fonti pubbliche citate negli scenari base includono Agenzia TPL, ARIA/Sintel, Autoguidovie, Arriva Italia, Gruppo ATM/NET/Movibus e STAR Mobility. Se cambiano metriche, URL o claim pubblici, verificare la fonte e aggiornare anche la data `verifiedAt` in `src/data/tender.ts`.
 
@@ -99,6 +102,13 @@ Prima di cambiare la logica di gara:
 2. Verifica se il comportamento è già coperto in `src/lib/*.test.ts`.
 3. Aggiorna o aggiungi test quando cambiano soglie, formule, combinatorie, ammissibilità o import/export.
 4. Esegui almeno `npm test` e `npm run build`.
+
+Per cambiare l'ottimizzazione:
+
+1. Mantieni separata la logica in `src/lib/optimization.ts`.
+2. Rivaluta le mosse tramite `simulate()` invece di duplicare formule di scoring.
+3. Non includere criteri discrezionali `D` nell'ottimizzazione automatica.
+4. Aggiorna `src/lib/optimization.test.ts`, persistenza e documentazione quando cambiano input o output del piano.
 
 Prima di cambiare UI o testi:
 
@@ -138,4 +148,4 @@ Eseguire il deploy solo quando richiesto esplicitamente. Quando la richiesta è 
 
 Le chiavi attive di `localStorage` sono `tpl-lotti-1-4-theme`, `tpl-lotti-1-4-workspace` e `tpl-lotti-1-4-scenarios`.
 
-Gli export e gli scenari salvati con le vecchie chiavi `tpl-simulator-*` restano leggibili: la normalizzazione in `src/lib/scenario-persistence.ts` migra i campi legacy, inclusi `demoScenarioId` e snapshot incompleti.
+Gli export correnti usano `schemaVersion: 3` e includono anche la configurazione della tab `Ottimizzazione offerta`. Gli scenari salvati con le vecchie chiavi `tpl-simulator-*` o senza configurazione di ottimizzazione restano leggibili: la normalizzazione in `src/lib/scenario-persistence.ts` migra i campi legacy, inclusi `demoScenarioId`, snapshot incompleti e input mancanti.

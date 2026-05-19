@@ -11,6 +11,7 @@ import {
   Save,
   ShieldCheck,
   SlidersHorizontal,
+  Sparkles,
   Trophy,
 } from "lucide-react";
 
@@ -32,6 +33,7 @@ const quickSteps = [
   "Seleziona offerente, lotto e combinatoria.",
   "Compila la parte tecnica e verifica la soglia Q/T.",
   "Compila ribassi e controlli economici.",
+  "Usa Ottimizzazione offerta per confrontare investimenti tecnici e ribasso.",
   "Salva lo scenario, confrontalo e genera il report.",
 ];
 
@@ -107,10 +109,10 @@ const sections: InstructionSection[] = [
     checks: ["Soglia scelta consapevolmente", "Lotti sotto soglia individuati", "Eventuale deroga al limite due lotti valutata"],
   },
   {
-    id: "istruzioni-tradeoff",
-    eyebrow: "Tradeoff",
-    title: "Stimare costo e impatto dei miglioramenti",
-    body: "I tradeoff aiutano a capire se un miglioramento tecnico conviene rispetto al costo stimato e alla riduzione implicita del ribasso economico.",
+    id: "istruzioni-analisi-puntuale",
+    eyebrow: "Analisi puntuale criterio",
+    title: "Stimare costo e impatto di un criterio",
+    body: "L'analisi puntuale criterio aiuta a capire se un singolo miglioramento tecnico conviene rispetto al costo stimato e alla riduzione implicita del ribasso economico.",
     bullets: [
       "Inserisci unità aggiunte o migliorate.",
       "Inserisci un costo unitario realistico per la tua ipotesi interna.",
@@ -133,6 +135,21 @@ const sections: InstructionSection[] = [
       "La tabella €/km serve a leggere i corrispettivi unitari medi, ma non modifica il punteggio.",
     ],
     checks: ["Tre fasi compilate", "Ribasso medio confrontato con Rmax", "€/km letto come controllo gestionale, non come nuova formula"],
+  },
+  {
+    id: "istruzioni-ottimizza",
+    eyebrow: "Ottimizzazione offerta",
+    title: "Ottimizzazione offerta",
+    body: "La tab `Ottimizzazione offerta` parte dall'offerta corrente e cerca un piano di miglioramento con concorrenti fermi. Può usare solo investimenti tecnici oppure confrontare tecnica e ribasso economico.",
+    bullets: [
+      "Scegli `Lotto attivo` per ottimizzare solo il lotto selezionato.",
+      "Scegli `Tutti i lotti attivi` per distribuire il budget sulle offerte singole dell'offerente.",
+      "Scegli `Scenario complessivo` per misurare il contributo dell'offerente nello scenario vincente simulato.",
+      "`Budget strategico offerta` confronta miglioramenti tecnici e maggiore ribasso.",
+      "`Budget investimenti tecnici` esclude il ribasso e usa solo leve tecniche.",
+      "Compila costo unitario, step, massimo e base per le leve che vuoi rendere ottimizzabili.",
+    ],
+    checks: ["Budget inserito", "Costi e massimali motivati", "Piano applicato solo dopo lettura di delta e residuo"],
   },
   {
     id: "istruzioni-combinatorie",
@@ -183,6 +200,8 @@ const sectionIcon = (id: string) => {
   if (id.includes("scenario")) return <FileJson size={iconSize} />;
   if (id.includes("offerenti")) return <Route size={iconSize} />;
   if (id.includes("tecnica")) return <SlidersHorizontal size={iconSize} />;
+  if (id.includes("analisi-puntuale")) return <SlidersHorizontal size={iconSize} />;
+  if (id.includes("ottimizza")) return <Sparkles size={iconSize} />;
   if (id.includes("economica")) return <CircleDollarSign size={iconSize} />;
   if (id.includes("combinatorie")) return <GitCompareArrows size={iconSize} />;
   if (id.includes("risultati")) return <Trophy size={iconSize} />;

@@ -52,9 +52,11 @@ npm run deploy:cloudflare
 - `src/data/tender.ts`: lotti, coppie, criteri, soglie, fonti, warning documentali.
 - `src/data/base-scenarios.ts`: scenari base, profili simulati e baseline operative.
 - `src/lib/scoring.ts`: calcolo punteggi, combinatorie, ranking, scenario vincente.
+- `src/lib/optimization.ts`: motore di ottimizzazione budget, leve tecniche e ribasso.
+- `src/lib/tradeoff.ts`: logica interna dell'analisi puntuale criterio e costo stimato.
 - `src/lib/scenario-persistence.ts`: normalizzazione workspace, migrazione storage e import/export JSON.
 - `src/lib/*.test.ts`: test Vitest del motore di scoring e della persistenza.
-- `src/App.tsx`: UI principale, persistenza locale, import/export, tradeoff.
+- `src/App.tsx`: UI principale, persistenza locale, import/export, analisi puntuale criterio e ottimizzazione offerta.
 - `src/components/scenario-panels.tsx`: pannelli scenario, confronto, report.
 - `src/styles.css`: token CSS e layout responsive.
 - `docs/milano-lotti-extraurbani-om/`: allegati gara, da trattare come fonti e non come file da riscrivere.
@@ -67,7 +69,8 @@ npm run deploy:cloudflare
 - Non presentare scenari base o profili simulati come offerte ufficiali.
 - Se aggiorni una fonte pubblica, verifica l'URL e aggiorna anche `verifiedAt`.
 - Se cambi criteri, massimi, soglie o warning, aggiorna i test e la documentazione collegata.
-- I costi dei tradeoff sono ipotesi dell'utente: non trattarli come dati di gara.
+- I costi dell'analisi puntuale criterio sono ipotesi dell'utente: non trattarli come dati di gara.
+- I costi delle leve di ottimizzazione sono ipotesi dell'utente: non trattarli come dati di gara.
 
 ## Regole sugli allegati
 
@@ -99,6 +102,14 @@ Quando tocchi `src/lib/scoring.ts` o `src/data/tender.ts`:
    - limite di due lotti;
    - import/export o normalizzazione dati, se coinvolti.
 4. Esegui `npm test` e `npm run build`.
+
+Quando tocchi `src/lib/optimization.ts`:
+
+1. Mantieni i concorrenti fermi salvo richiesta esplicita diversa.
+2. Non includere criteri discrezionali `D` nell'ottimizzazione automatica.
+3. Rivaluta le mosse tramite `simulate()` invece di duplicare formule di scoring.
+4. Aggiorna `src/lib/optimization.test.ts`.
+5. Esegui `npm test` e `npm run build`.
 
 ## Persistenza locale
 

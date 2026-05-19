@@ -1314,7 +1314,7 @@ input[type="checkbox"] {
 
 .workspace-tabs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
   border-bottom: 1px solid var(--border);
   padding-bottom: 10px;
@@ -1333,6 +1333,10 @@ input[type="checkbox"] {
   cursor: pointer;
   font-size: 0.84rem;
   font-weight: 780;
+  line-height: 1.15;
+  min-width: 0;
+  padding: 8px 9px;
+  text-align: center;
 }
 
 .workspace-tab.active {
@@ -1841,7 +1845,8 @@ input[type="checkbox"] {
   border-color: var(--amber-border);
 }
 
-.apply-tradeoff {
+.apply-tradeoff,
+.apply-plan {
   min-height: 34px;
   border: 1px solid var(--teal-border);
   border-radius: 6px;
@@ -1851,7 +1856,8 @@ input[type="checkbox"] {
   font-weight: 800;
 }
 
-.apply-tradeoff:disabled {
+.apply-tradeoff:disabled,
+.apply-plan:disabled {
   cursor: not-allowed;
   opacity: 0.42;
 }
@@ -1968,6 +1974,186 @@ input[type="checkbox"] {
   border-radius: 8px;
   background: var(--surface-soft);
   padding: 12px;
+}
+
+.optimization-board {
+  display: grid;
+  gap: 12px;
+}
+
+.optimization-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 12px;
+}
+
+.optimization-controls {
+  display: grid;
+  grid-template-columns: minmax(170px, 0.8fr) minmax(220px, 1fr) minmax(190px, 0.8fr);
+  gap: 10px;
+}
+
+.economic-optimizer {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto minmax(100px, 0.4fr) minmax(100px, 0.4fr);
+  gap: 10px;
+  align-items: end;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--control-bg);
+  padding: 10px;
+}
+
+.economic-optimizer.disabled {
+  opacity: 0.6;
+}
+
+.economic-optimizer > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.economic-optimizer > div:first-child span,
+.optimization-hint {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.optimization-summary-grid,
+.area-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.optimization-summary-grid > div,
+.area-summary > div {
+  display: grid;
+  gap: 3px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--control-bg);
+  padding: 10px;
+}
+
+.optimization-summary-grid span,
+.area-summary span,
+.area-summary small {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 720;
+}
+
+.optimization-summary-grid strong,
+.area-summary strong {
+  color: var(--strong-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.optimization-plan-list {
+  display: grid;
+  gap: 8px;
+}
+
+.optimization-step {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--control-bg);
+  padding: 10px;
+}
+
+.optimization-step > span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--teal-soft);
+  color: var(--teal);
+  font-weight: 850;
+}
+
+.optimization-step div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.optimization-step small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.lever-lot-section {
+  display: grid;
+  gap: 8px;
+}
+
+.lever-lot-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lever-lot-title span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.lever-table-wrap {
+  overflow-x: auto;
+}
+
+.lever-table {
+  width: 100%;
+  min-width: 820px;
+  border-collapse: collapse;
+}
+
+.lever-table th,
+.lever-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 7px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.lever-table th {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 820;
+  text-transform: uppercase;
+}
+
+.lever-table td:first-child {
+  min-width: 260px;
+}
+
+.lever-table td:first-child strong,
+.lever-table td:first-child small {
+  display: block;
+}
+
+.lever-table td:first-child small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.lever-table input[type="number"] {
+  width: 100%;
+  min-width: 82px;
+  min-height: 32px;
 }
 
 .economic-table-wrap {
@@ -2615,20 +2801,24 @@ input[type="checkbox"] {
   .quantity-input-grid,
   .strategic-grid,
   .contextual-grid,
-	  .comparison-grid,
-	  .comparison-lots,
-	  .report-summary,
-	  .tradeoff-grid,
-	  .tradeoff-preview,
-	  .economic-detail-grid,
-	  .economic-kpis,
-	  .combo-economic-grid,
-	  .unit-rate-grid,
-	  .metric-grid,
-	  .phase-grid,
-	  .combo-checks,
-	  .lot-toggle-grid {
-	    grid-template-columns: 1fr;
+  .comparison-grid,
+  .comparison-lots,
+  .report-summary,
+  .tradeoff-grid,
+  .tradeoff-preview,
+  .economic-detail-grid,
+  .economic-kpis,
+  .combo-economic-grid,
+  .unit-rate-grid,
+  .metric-grid,
+  .phase-grid,
+  .combo-checks,
+  .optimization-controls,
+  .economic-optimizer,
+  .optimization-summary-grid,
+  .area-summary,
+  .lot-toggle-grid {
+    grid-template-columns: 1fr;
   }
 
   .workspace-tabs {

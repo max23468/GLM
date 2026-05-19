@@ -29,7 +29,10 @@ describe("scenario persistence normalization", () => {
     });
 
     expect(snapshot).toBeDefined();
+    expect(snapshot?.schemaVersion).toBe(3);
     expect(snapshot?.baseScenarioId).toBe("market");
+    expect(snapshot?.optimization.budget).toBe(1_000_000);
+    expect(snapshot?.optimization.scope).toBe("active-lot");
     expect(snapshot?.settings.threshold).toBe(37);
     expect(snapshot?.settings.applyAwardLimitDerogation).toBe(false);
     expect(snapshot?.selectedBidderId).toBe("a");
@@ -60,11 +63,47 @@ describe("scenario persistence normalization", () => {
     });
 
     expect(workspace).toBeDefined();
+    expect(workspace?.schemaVersion).toBe(3);
     expect(workspace?.baseScenarioId).toBe("local");
+    expect(workspace?.optimization.budgetMode).toBe("strategic");
     expect(workspace?.scenarioName).toBe("Presidio locale");
     expect(workspace?.settings).toEqual({ threshold: 38, applyAwardLimitDerogation: true });
     expect(workspace?.selectedLotId).toBe("L4");
     expect(workspace?.selectedPairId).toBe("L3+L4");
     expect(workspace?.bidders.length).toBeGreaterThan(0);
+  });
+
+  it("normalizza gli input di ottimizzazione negli snapshot importati", () => {
+    const snapshot = normalizeScenarioSnapshot({
+      id: "optimizer",
+      baseScenarioId: "market",
+      optimization: {
+        budget: 500000,
+        budgetMode: "technical",
+        scope: "active-lots",
+        economic: { enabled: false, stepPercent: 0.2, maxDeltaPercent: 1.5 },
+        levers: {
+          L1: {
+            "C.1.2": { enabled: true, stepUnits: 5, maxUnits: 20, unitCost: 1000, denominator: 80 },
+          },
+        },
+      },
+      bidders: [{ id: "a", lots: { L1: { enabled: true } } }],
+    });
+
+    expect(snapshot).toBeDefined();
+    expect(snapshot?.optimization.budget).toBe(500000);
+    expect(snapshot?.optimization.budgetMode).toBe("technical");
+    expect(snapshot?.optimization.scope).toBe("active-lots");
+    expect(snapshot?.optimization.economic.enabled).toBe(false);
+    expect(snapshot?.optimization.levers.L1?.["C.1.2"]).toEqual({
+      enabled: true,
+      stepUnits: 5,
+      maxUnits: 20,
+      unitCost: 1000,
+      denominator: 80,
+    });
+    expect(snapshot?.optimization.levers.L2?.["C.1.2"]).toBeDefined();
+    expect(snapshot?.optimization.levers.L1?.["B.5.1"].enabled).toBe(false);
   });
 });

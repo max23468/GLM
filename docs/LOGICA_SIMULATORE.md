@@ -17,8 +17,10 @@ Non va usato come fonte ufficiale autonoma. Ogni dato deve restare riconducibile
 - `src/data/tender.ts`: definisce lotti, coppie combinatorie, ambiti A-G, sub-criteri, soglie Q/T, fonti pubbliche e warning documentali.
 - `src/data/base-scenarios.ts`: definisce scenari base, profili simulati, baseline operative e assunzioni numeriche non ufficiali.
 - `src/lib/scoring.ts`: calcola punteggi tecnici/economici, ammissibilità combinatorie, ranking lotti e scenario migliore.
+- `src/lib/optimization.ts`: genera piani di miglioramento da un'offerta iniziale, con budget tecnico o strategico.
+- `src/lib/tradeoff.ts`: applica l'analisi puntuale criterio e calcola il relativo costo stimato.
 - `src/lib/scenario-persistence.ts`: normalizza workspace, scenari salvati, import JSON e migrazione dai campi legacy.
-- `src/App.tsx`: gestisce stato UI, salvataggio locale, import/export JSON, selezione tab e tradeoff.
+- `src/App.tsx`: gestisce stato UI, salvataggio locale, import/export JSON, selezione tab, analisi puntuale criterio e ottimizzazione offerta.
 - `src/components/scenario-panels.tsx`: contiene pannelli scenario, riepilogo strategico, confronto e report.
 - `src/lib/*.test.ts`: copre motore di scoring e normalizzazione della persistenza.
 
@@ -39,6 +41,7 @@ Non va usato come fonte ufficiale autonoma. Ogni dato deve restare riconducibile
 7. I candidati singoli e combinatori sono enumerati per costruire scenari di assegnazione.
 8. Lo scenario migliore massimizza il punteggio totale, poi il punteggio tecnico.
 9. Il limite ordinario di due lotti per offerente può essere derogato solo se l'impostazione è attiva e il limite lascerebbe lotti non assegnati.
+10. La tab `Ottimizzazione offerta` non sostituisce lo scoring: applica mosse candidate su una copia dello scenario e rivaluta sempre tramite `simulate()`.
 
 ## Dati tecnici e quantitativi
 
@@ -48,17 +51,44 @@ Per alcuni criteri il valore non è inserito come numero finale, ma come rapport
 - denominatore, per esempio autobus totali o corse programmate;
 - valore calcolato, usato nel punteggio.
 
-Questa scelta rende più chiari i suggerimenti operativi e i tradeoff. Se si aggiunge un nuovo criterio con rapporto derivato, preferire `quantityInput` in `src/data/tender.ts` invece di chiedere all'utente un valore già sintetizzato.
+Questa scelta rende più chiari i suggerimenti operativi e l'analisi puntuale criterio. Se si aggiunge un nuovo criterio con rapporto derivato, preferire `quantityInput` in `src/data/tender.ts` invece di chiedere all'utente un valore già sintetizzato.
 
-## Tradeoff
+## Analisi Puntuale Criterio
 
-Il pannello tradeoff simula l'effetto di un miglioramento operativo:
+Il pannello di analisi puntuale criterio simula l'effetto di un singolo miglioramento operativo:
 
 - `deltaUnits`: unità operative aggiunte o ridotte;
 - `unitCost`: costo unitario ipotizzato;
 - `denominator`: base tecnica quando serve calcolare un rapporto.
 
 Il costo totale non arriva dai documenti di gara. È un'ipotesi dell'utente e viene trattato come riduzione del ribasso medio del lotto. Per questo la UI deve continuare a presentarlo come stima, non come dato ufficiale.
+
+## Ottimizzazione Offerta
+
+L'ottimizzazione offerta parte dall'offerta corrente dell'offerente selezionato e tiene fermi i concorrenti. Il motore genera mosse candidate, le applica su copie dello scenario e sceglie progressivamente la leva con miglior incremento di punteggio per euro finché il budget è esaurito o non restano miglioramenti positivi.
+
+Gli obiettivi disponibili sono:
+
+- `Lotto attivo`: massimizza il punteggio dell'offerta singola sul lotto selezionato;
+- `Tutti i lotti attivi`: massimizza la somma dei punteggi singoli dell'offerente sui lotti attivi;
+- `Scenario complessivo`: massimizza il contributo dell'offerente nelle assegnazioni dello scenario vincente simulato.
+
+Le modalità budget sono:
+
+- `Budget strategico offerta`: confronta leve tecniche Q/T e maggiore ribasso economico;
+- `Budget investimenti tecnici`: usa solo leve tecniche Q/T e ignora il ribasso.
+
+I criteri discrezionali `D` sono esclusi dall'ottimizzazione automatica perché dipendono dal giudizio della Commissione e non hanno una funzione deterministica costo-punteggio nel disciplinare. Restano compilabili manualmente nella tab `Tecnica`.
+
+Per ogni leva tecnica l'utente può indicare:
+
+- `enabled`: se la leva entra nel piano;
+- `stepUnits`: incremento operativo valutato a ogni iterazione;
+- `maxUnits`: incremento massimo rispetto all'offerta iniziale; se è `0`, il simulatore usa un limite operativo ricavabile dal criterio o dal migliore valore corrente;
+- `unitCost`: costo unitario stimato dall'utente;
+- `denominator`: base di calcolo quando il criterio è un rapporto.
+
+Per la leva economica l'utente indica step e massimo in punti percentuali di ribasso. Il costo è calcolato come minore corrispettivo offerto sul lotto. Anche questo è un input simulativo, non un dato di gara.
 
 ## Offerta economica
 
@@ -83,6 +113,8 @@ Lo stato vive nel browser:
 - `tpl-lotti-1-4-scenarios`: scenari salvati.
 
 Le chiavi legacy `tpl-simulator-*` restano lette in fallback. L'import/export usa JSON con snapshot dello scenario; se cambia la forma dei dati, aggiornare i normalizzatori in `src/lib/scenario-persistence.ts` e mantenere compatibilità ragionevole con scenari esportati in precedenza.
+
+Gli snapshot correnti usano `schemaVersion: 3` e includono la configurazione di ottimizzazione. La normalizzazione deve continuare ad accettare snapshot precedenti privi del blocco `optimization`.
 
 ## Scenari base
 

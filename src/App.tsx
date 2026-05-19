@@ -5,9 +5,11 @@ import {
   CheckCircle2,
   CircleDollarSign,
   ClipboardList,
+  LineChart,
   type LucideIcon,
   Monitor,
   Moon,
+  Sparkles,
   Plus,
   Route,
   SlidersHorizontal,
@@ -76,6 +78,21 @@ import {
   type SavedScenarioSnapshot,
   type StoredWorkspace,
 } from "./lib/scenario-persistence";
+import {
+  defaultOptimizationConfig,
+  getOptimizationLever,
+  optimizeOffer,
+  type OptimizationConfig,
+  type OptimizationLeverInput,
+  type OptimizationResult,
+} from "./lib/optimization";
+import {
+  applyTradeoffPlanToOffer,
+  computeTradeoffValue,
+  defaultTradeoff,
+  effectiveTradeoffDenominator,
+  tradeoffCost,
+} from "./lib/tradeoff";
 
 const euroFormatter = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 const euroPerKmFormatter = new Intl.NumberFormat("it-IT", {
@@ -85,7 +102,7 @@ const euroPerKmFormatter = new Intl.NumberFormat("it-IT", {
   maximumFractionDigits: 4,
 });
 type ThemePreference = "auto" | "light" | "dark";
-type WorkspaceTab = "tecnica" | "economica" | "combinatorie" | "risultati";
+type WorkspaceTab = "tecnica" | "economica" | "ottimizza" | "combinatorie" | "risultati";
 type CriterionFilter = "all" | "work" | "warn" | "open";
 type AppView = "simulatore" | "istruzioni";
 
@@ -98,6 +115,7 @@ const themeOptions: { value: ThemePreference; label: string; icon: LucideIcon }[
 const workspaceTabs: { value: WorkspaceTab; label: string; icon: LucideIcon }[] = [
   { value: "tecnica", label: "Tecnica", icon: BarChart3 },
   { value: "economica", label: "Economica", icon: CircleDollarSign },
+  { value: "ottimizza", label: "Ottimizzazione offerta", icon: Sparkles },
   { value: "combinatorie", label: "Combinatorie", icon: Route },
   { value: "risultati", label: "Risultati", icon: Trophy },
 ];
@@ -107,6 +125,17 @@ const criterionFilterOptions: { value: CriterionFilter; label: string }[] = [
   { value: "work", label: "Da lavorare" },
   { value: "warn", label: "Verifica" },
   { value: "open", label: "Scoperti" },
+];
+
+const optimizationScopeOptions: { value: OptimizationConfig["scope"]; label: string }[] = [
+  { value: "active-lot", label: "Lotto attivo" },
+  { value: "active-lots", label: "Tutti i lotti attivi" },
+  { value: "scenario", label: "Scenario complessivo" },
+];
+
+const optimizationBudgetModeOptions: { value: OptimizationConfig["budgetMode"]; label: string }[] = [
+  { value: "strategic", label: "Budget strategico offerta" },
+  { value: "technical", label: "Budget investimenti tecnici" },
 ];
 
 const criterionKindLabel: Record<Criterion["kind"], string> = {
@@ -130,8 +159,6 @@ const currentView = (): AppView => {
   return window.location.pathname === "/istruzioni" || window.location.pathname === "/istruzioni/" ? "istruzioni" : "simulatore";
 };
 
-const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
-
 const makeDownloadName = (name: string) =>
   `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "scenario"}-${new Date().toISOString().slice(0, 10)}.json`;
 
@@ -146,56 +173,6 @@ type TradeoffPreview = {
   afterEconomic: number;
   afterTotal: number;
   missingDenominator: boolean;
-};
-
-const defaultTradeoff = (): TradeoffPlan => ({ deltaUnits: 0, unitCost: 0, denominator: 0 });
-
-const effectiveTradeoffDenominator = (criterion: Criterion, quantityInput: QuantityInputValue | undefined, plan: TradeoffPlan) => {
-  if (!criterion.quantityInput) return plan.denominator;
-  return plan.denominator > 0 ? plan.denominator : quantityInput?.denominator ?? 0;
-};
-
-const quantityInputAfterTradeoff = (
-  criterion: Criterion,
-  currentValue: number | boolean,
-  quantityInput: QuantityInputValue | undefined,
-  plan: TradeoffPlan,
-): QuantityInputValue | undefined => {
-  if (!criterion.quantityInput) return undefined;
-  const denominator = effectiveTradeoffDenominator(criterion, quantityInput, plan);
-  if (denominator <= 0) return undefined;
-  const currentNumeric = Number(currentValue) || 0;
-  const currentRatio = criterion.quantityInput.kind === "percent" ? currentNumeric / 100 : currentNumeric;
-  const numerator = quantityInput?.denominator === denominator ? quantityInput.numerator : Math.round(clamp01(currentRatio) * denominator);
-  return {
-    numerator: Math.max(0, numerator + Math.max(0, plan.deltaUnits)),
-    denominator,
-  };
-};
-
-const computeTradeoffValue = (criterion: Criterion, currentValue: number | boolean, plan: TradeoffPlan, quantityInput?: QuantityInputValue) => {
-  if (criterion.kind === "T") return true;
-  if (criterion.kind === "D") return currentValue;
-
-  const current = Number(currentValue) || 0;
-  if (criterion.quantityInput) {
-    const nextInput = quantityInputAfterTradeoff(criterion, currentValue, quantityInput, plan);
-    return nextInput ? computeQuantityInputValue(criterion, nextInput) : current;
-  }
-  if (criterion.input === "ratio") {
-    if (plan.denominator <= 0) return current;
-    return Math.min(1, Math.max(0, current + plan.deltaUnits / plan.denominator));
-  }
-  if (criterion.formula === "lower" || criterion.formula === "soil") {
-    return Math.max(0, current - plan.deltaUnits);
-  }
-  return Math.max(0, current + plan.deltaUnits);
-};
-
-const tradeoffCost = (criterion: Criterion, plan: TradeoffPlan) => {
-  if (criterion.kind === "D") return 0;
-  const quantity = criterion.kind === "T" ? 1 : Math.max(0, plan.deltaUnits);
-  return quantity * Math.max(0, plan.unitCost);
 };
 
 const signedPoints = (amount: number) => `${amount >= 0 ? "+" : ""}${formatPoints(amount)}`;
@@ -257,6 +234,7 @@ function App() {
   const [selectedAmbitId, setSelectedAmbitId] = useState(AMBITS[0].id);
   const [selectedCriterionId, setSelectedCriterionId] = useState(CRITERIA[0].id);
   const [settings, setSettings] = useState<Settings>(initialWorkspace?.settings ?? DEFAULT_SETTINGS);
+  const [optimizationConfig, setOptimizationConfig] = useState<OptimizationConfig>(initialWorkspace?.optimization ?? defaultOptimizationConfig());
   const [scenarioName, setScenarioName] = useState(initialWorkspace?.scenarioName ?? BASE_SCENARIOS[0].title);
   const [savedScenarios, setSavedScenarios] = useState<SavedScenarioSnapshot[]>(readStoredSavedScenarios);
   const [activeSavedScenarioId, setActiveSavedScenarioId] = useState<string | undefined>(initialWorkspace?.activeSavedScenarioId);
@@ -293,18 +271,19 @@ function App() {
     window.localStorage.setItem(
       STORAGE_KEYS.workspace,
       JSON.stringify({
-        schemaVersion: 2,
+        schemaVersion: 3,
         scenarioName,
         activeSavedScenarioId,
         baseScenarioId,
         bidders,
+        optimization: optimizationConfig,
         settings,
         selectedBidderId,
         selectedLotId,
         selectedPairId,
       } satisfies StoredWorkspace),
     );
-  }, [activeSavedScenarioId, bidders, baseScenarioId, scenarioName, selectedBidderId, selectedLotId, selectedPairId, settings]);
+  }, [activeSavedScenarioId, bidders, baseScenarioId, optimizationConfig, scenarioName, selectedBidderId, selectedLotId, selectedPairId, settings]);
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEYS.scenarios, JSON.stringify(savedScenarios));
@@ -314,6 +293,10 @@ function App() {
   const selectedLotContext = LOT_CONTEXT[selectedLotId];
   const selectedBaseScenario = BASE_SCENARIOS.find((scenario) => scenario.id === baseScenarioId) ?? BASE_SCENARIOS[0];
   const result = useMemo(() => simulate(bidders, settings, selectedBidder?.id ?? ""), [bidders, settings, selectedBidder?.id]);
+  const optimizationResult = useMemo(
+    () => optimizeOffer(bidders, settings, selectedBidder?.id ?? "", selectedLotId, optimizationConfig),
+    [bidders, optimizationConfig, selectedBidder?.id, selectedLotId, settings],
+  );
   const selectedLotScore = selectedBidder ? result.lotScores[selectedBidder.id][selectedLotId] : undefined;
   const selectedComboScore = selectedBidder ? result.comboScores[selectedBidder.id][selectedPairId] : undefined;
   const selectedLotLabel = LOTS.find((lot) => lot.id === selectedLotId)?.label ?? selectedLotId;
@@ -321,6 +304,7 @@ function App() {
   const workspaceTitle =
     activeTab === "risultati" ? `Risultati - ${selectedLotLabel}` :
     activeTab === "combinatorie" ? `Offerte combinatorie - ${selectedLotLabel}` :
+    activeTab === "ottimizza" ? `Ottimizzazione offerta - ${selectedLotLabel}` :
     `Offerta ${activeTabLabel.toLowerCase()} - ${selectedLotLabel}`;
   const selectedAmbit = AMBITS.find((ambit) => ambit.id === selectedAmbitId) ?? AMBITS[0];
   const selectedAmbitCriteria = useMemo(() => CRITERIA.filter((criterion) => criterion.ambit === selectedAmbit.id), [selectedAmbit.id]);
@@ -350,16 +334,7 @@ function App() {
     const nextOffer = nextBidder.lots[selectedLotId];
     const quantityInput = offer.quantityInputs?.[criterion.id];
     const nextValue = computeTradeoffValue(criterion, currentSubScore.value, plan, quantityInput);
-    if (criterion.kind === "Q") {
-      const nextInput = quantityInputAfterTradeoff(criterion, currentSubScore.value, quantityInput, plan);
-      if (nextInput) {
-        nextOffer.quantityInputs = { ...nextOffer.quantityInputs, [criterion.id]: nextInput };
-        nextOffer.qValues[criterion.id] = computeQuantityInputValue(criterion, nextInput);
-      } else {
-        nextOffer.qValues[criterion.id] = Number(nextValue);
-      }
-    }
-    if (criterion.kind === "T") nextOffer.tValues[criterion.id] = Boolean(nextValue);
+    applyTradeoffPlanToOffer(nextOffer, criterion, plan);
 
     const lot = LOTS.find((item) => item.id === selectedLotId);
     const totalCost = tradeoffCost(criterion, plan);
@@ -421,6 +396,7 @@ function App() {
     setScenarioName(scenario.title);
     setActiveSavedScenarioId(undefined);
     setBidders(scenario.buildBidders());
+    setOptimizationConfig(defaultOptimizationConfig());
     setSettings(scenario.settings);
     setSelectedBidderId(scenario.defaultBidderId);
     setSelectedLotId(scenario.defaultLotId);
@@ -435,24 +411,41 @@ function App() {
     });
   };
 
+  const updateOptimizationConfig = (updater: (config: OptimizationConfig) => OptimizationConfig) => {
+    setOptimizationConfig((current) => updater(structuredClone(current)));
+  };
+
+  const updateOptimizationLever = (lotId: LotId, criterionId: string, patch: Partial<OptimizationLeverInput>) => {
+    updateOptimizationConfig((current) => {
+      const currentLotLevers = current.levers[lotId] ?? {};
+      const criterion = CRITERIA.find((item) => item.id === criterionId);
+      const tradeoff = selectedBidder?.lots[lotId].tradeoffs[criterionId];
+      const baseLever = criterion ? getOptimizationLever(current, lotId, criterion, tradeoff) : currentLotLevers[criterionId];
+      return {
+        ...current,
+        levers: {
+          ...current.levers,
+          [lotId]: {
+            ...currentLotLevers,
+            [criterionId]: { ...baseLever, ...patch },
+          },
+        },
+      };
+    });
+  };
+
+  const applyOptimizationPlan = () => {
+    if (!selectedBidder || !optimizationResult.steps.length) return;
+    setBidders(structuredClone(optimizationResult.optimizedBidders));
+    setActiveSavedScenarioId(undefined);
+    setScenarioNotice(`Piano ottimizzato applicato: ${formatPoints(optimizationResult.objectiveDelta)} punti stimati.`);
+  };
+
   const applyTradeoff = (criterion: Criterion) => {
     if (!selectedBidder) return;
     updateLotOffer(selectedLotId, (offer) => {
       const plan = offer.tradeoffs[criterion.id] ?? defaultTradeoff();
-      const currentValue =
-        criterion.kind === "Q" ? getQuantitativeCriterionValue(offer, criterion) : criterion.kind === "T" ? offer.tValues[criterion.id] : offer.dValues[criterion.id];
-      const quantityInput = offer.quantityInputs?.[criterion.id];
-      const nextValue = computeTradeoffValue(criterion, currentValue, plan, quantityInput);
-      if (criterion.kind === "Q") {
-        const nextInput = quantityInputAfterTradeoff(criterion, currentValue, quantityInput, plan);
-        if (nextInput) {
-          offer.quantityInputs = { ...offer.quantityInputs, [criterion.id]: nextInput };
-          offer.qValues[criterion.id] = computeQuantityInputValue(criterion, nextInput);
-        } else {
-          offer.qValues[criterion.id] = Number(nextValue);
-        }
-      }
-      if (criterion.kind === "T") offer.tValues[criterion.id] = Boolean(nextValue);
+      applyTradeoffPlanToOffer(offer, criterion, plan);
 
       const lot = LOTS.find((item) => item.id === selectedLotId);
       const totalCost = tradeoffCost(criterion, plan);
@@ -481,12 +474,13 @@ function App() {
   };
 
   const currentScenarioSnapshot = (id = activeSavedScenarioId ?? `scenario-${Date.now()}`, name = scenarioName): SavedScenarioSnapshot => ({
-    schemaVersion: 2,
+    schemaVersion: 3,
     id,
     name: name.trim() || "Scenario senza nome",
     savedAt: new Date().toISOString(),
     baseScenarioId,
     bidders: structuredClone(bidders),
+    optimization: structuredClone(optimizationConfig),
     settings: { ...settings },
     selectedBidderId: selectedBidder?.id ?? bidders[0]?.id ?? "",
     selectedLotId,
@@ -499,6 +493,7 @@ function App() {
     setActiveSavedScenarioId(scenario.id);
     setBaseScenarioId(scenario.baseScenarioId);
     setBidders(nextBidders);
+    setOptimizationConfig(scenario.optimization);
     setSettings(scenario.settings);
     setSelectedBidderId(nextBidders.some((bidder) => bidder.id === scenario.selectedBidderId) ? scenario.selectedBidderId : nextBidders[0]?.id ?? "");
     setSelectedLotId(scenario.selectedLotId);
@@ -936,7 +931,7 @@ function App() {
                   <div>
                     <div className="section-title">
                       {workspaceTitle}
-                      <HelpTooltip>Cambia tab per compilare tecnica, economica, combinatorie e risultati. I punteggi si aggiornano subito.</HelpTooltip>
+                      <HelpTooltip>Cambia tab per compilare tecnica, economica, ottimizzazione offerta, combinatorie e risultati. I punteggi si aggiornano subito.</HelpTooltip>
                     </div>
                     <p>Vista operativa per compilare valori, ribassi, combinatorie e leggere subito l'impatto sul punteggio.</p>
                   </div>
@@ -973,7 +968,7 @@ function App() {
                   })}
                 </div>
 
-                {!selectedBidder.lots[selectedLotId].enabled && activeTab !== "combinatorie" && activeTab !== "risultati" ? (
+                {!selectedBidder.lots[selectedLotId].enabled && activeTab !== "ottimizza" && activeTab !== "combinatorie" && activeTab !== "risultati" ? (
                   <div className="empty-state">Attiva la partecipazione al lotto per inserire i punteggi.</div>
                 ) : (
                   <>
@@ -1046,6 +1041,18 @@ function App() {
                             return { ...offer, phaseDiscounts: next };
                           })
                         }
+                      />
+                    )}
+
+                    {activeTab === "ottimizza" && (
+                      <OptimizationWorkbench
+                        bidder={selectedBidder}
+                        selectedLotId={selectedLotId}
+                        config={optimizationConfig}
+                        result={optimizationResult}
+                        onConfigChange={updateOptimizationConfig}
+                        onLeverChange={updateOptimizationLever}
+                        onApplyPlan={applyOptimizationPlan}
                       />
                     )}
 
@@ -1600,7 +1607,7 @@ function CriterionInspector({
         <div className="tradeoff-box">
           <div className="tradeoff-title">
             <span>
-              Tradeoff tecnico/economico
+              Analisi puntuale criterio
               <HelpTooltip>Stima se un miglioramento tecnico compensa il costo e la riduzione implicita del ribasso. Sono ipotesi utente, non dati di gara.</HelpTooltip>
             </span>
             <small>costi come ipotesi utente</small>
@@ -1624,7 +1631,7 @@ function CriterionInspector({
             {criterion.kind === "Q" && (criterion.input === "ratio" || criterion.quantityInput) && (
               <label className="field compact">
                 <span>
-                  {criterion.quantityInput ? "Base di calcolo tradeoff" : "Base Nbus/fermate"}
+                  {criterion.quantityInput ? "Base di calcolo analisi" : "Base Nbus/fermate"}
                   <HelpTooltip>Base su cui trasformare il delta in rapporto percentuale o quota tecnica.</HelpTooltip>
                 </span>
                 <input
@@ -1735,12 +1742,12 @@ function EconomicsWorkbench({
       body: phaseSpread > 1.5 ? "Scarto oltre 1,50 p.p.: verifica tenuta PEF e motivazione industriale." : "Ribassi allineati fra le tre fasi.",
     },
     {
-      label: "Costi tradeoff",
+      label: "Costi analisi puntuale",
       tone: plannedTradeoffCost > 0 ? "warn" : "ok",
       body:
         plannedTradeoffCost > 0
           ? `${euroFormatter.format(plannedTradeoffCost)} di costi stimati riducono il margine del ribasso.`
-          : "Nessun costo tradeoff aperto sul lotto selezionato.",
+          : "Nessun costo da analisi puntuale aperto sul lotto selezionato.",
     },
   ];
 
@@ -1895,7 +1902,7 @@ function EconomicsWorkbench({
         <section className="economic-card">
           <div className="section-title compact">
             Guardrail economici
-            <HelpTooltip>Segnali rapidi per intercettare ribassi negativi, profili di fase sbilanciati o costi tradeoff aperti.</HelpTooltip>
+            <HelpTooltip>Segnali rapidi per intercettare ribassi negativi, profili di fase sbilanciati o costi da analisi puntuale aperti.</HelpTooltip>
           </div>
           <div className="guardrail-list">
             {guardrails.map((item) => (
@@ -1951,6 +1958,298 @@ function EconomicsWorkbench({
       </section>
 
       <div className="hint">I valori economici sono simulazioni operative basate su All. 18 e sui ribassi inseriti: restano distinti da offerte ufficiali e PEF reali.</div>
+    </div>
+  );
+}
+
+function OptimizationWorkbench({
+  bidder,
+  selectedLotId,
+  config,
+  result,
+  onConfigChange,
+  onLeverChange,
+  onApplyPlan,
+}: {
+  bidder: Bidder;
+  selectedLotId: LotId;
+  config: OptimizationConfig;
+  result: OptimizationResult;
+  onConfigChange: (updater: (config: OptimizationConfig) => OptimizationConfig) => void;
+  onLeverChange: (lotId: LotId, criterionId: string, patch: Partial<OptimizationLeverInput>) => void;
+  onApplyPlan: () => void;
+}) {
+  const targetLots = config.scope === "active-lot"
+    ? [selectedLotId].filter((lotId) => bidder.lots[lotId].enabled)
+    : LOTS.filter((lot) => bidder.lots[lot.id].enabled).map((lot) => lot.id);
+  const disabledByScope = !targetLots.length;
+  const technicalCriteria = CRITERIA.filter((criterion) => criterion.kind !== "D");
+
+  return (
+    <div className="optimization-board">
+      <div className="metric-grid">
+        <div className="metric-tile">
+          <span>Punteggio iniziale</span>
+          <strong>{formatPoints(result.initialScore)}</strong>
+        </div>
+        <div className="metric-tile ok">
+          <span>Dopo piano</span>
+          <strong>{formatPoints(result.finalScore)}</strong>
+        </div>
+        <div className={`metric-tile ${result.objectiveDelta > 0 ? "ok" : "warn"}`}>
+          <span>Delta stimato</span>
+          <strong>{signedPoints(result.objectiveDelta)}</strong>
+        </div>
+      </div>
+
+      <section className="optimization-card">
+        <div className="section-title compact">
+          <SlidersHorizontal size={16} />
+          Impostazioni ottimizzazione
+          <HelpTooltip>Il piano parte dall'offerta corrente e rivaluta ogni mossa tenendo fermi i concorrenti. I criteri discrezionali sono esclusi.</HelpTooltip>
+        </div>
+        <div className="optimization-controls">
+          <label className="field compact">
+            <span>Budget disponibile</span>
+            <input
+              type="number"
+              min={0}
+              step={10000}
+              value={config.budget}
+              onChange={(event) => onConfigChange((current) => ({ ...current, budget: Math.max(0, Number(event.target.value) || 0) }))}
+            />
+          </label>
+          <label className="field compact">
+            <span>Modalità</span>
+            <select
+              value={config.budgetMode}
+              onChange={(event) =>
+                onConfigChange((current) => ({
+                  ...current,
+                  budgetMode: event.target.value === "technical" ? "technical" : "strategic",
+                }))
+              }
+            >
+              {optimizationBudgetModeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field compact">
+            <span>Obiettivo</span>
+            <select
+              value={config.scope}
+              onChange={(event) =>
+                onConfigChange((current) => ({
+                  ...current,
+                  scope: event.target.value === "active-lots" || event.target.value === "scenario" ? event.target.value : "active-lot",
+                }))
+              }
+            >
+              {optimizationScopeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className={`economic-optimizer ${config.budgetMode === "technical" ? "disabled" : ""}`}>
+          <div>
+            <strong>Leva economica</strong>
+            <span>Usata solo nel budget strategico: il costo è minore corrispettivo offerto.</span>
+          </div>
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={config.economic.enabled}
+              disabled={config.budgetMode === "technical"}
+              onChange={(event) => onConfigChange((current) => ({ ...current, economic: { ...current.economic, enabled: event.target.checked } }))}
+            />
+            <span>includi ribasso</span>
+          </label>
+          <label className="field compact">
+            <span>Step p.p.</span>
+            <input
+              type="number"
+              min={0}
+              step={0.05}
+              value={config.economic.stepPercent}
+              disabled={config.budgetMode === "technical"}
+              onChange={(event) => onConfigChange((current) => ({ ...current, economic: { ...current.economic, stepPercent: Math.max(0, Number(event.target.value) || 0) } }))}
+            />
+          </label>
+          <label className="field compact">
+            <span>Max p.p.</span>
+            <input
+              type="number"
+              min={0}
+              step={0.1}
+              value={config.economic.maxDeltaPercent}
+              disabled={config.budgetMode === "technical"}
+              onChange={(event) => onConfigChange((current) => ({ ...current, economic: { ...current.economic, maxDeltaPercent: Math.max(0, Number(event.target.value) || 0) } }))}
+            />
+          </label>
+        </div>
+      </section>
+
+      <section className="optimization-card">
+        <div className="section-title compact">
+          <LineChart size={16} />
+          Piano consigliato
+          <HelpTooltip>Il motore sceglie a ogni passaggio la leva con miglior incremento di punteggio per euro, poi ricalcola tutto lo scenario.</HelpTooltip>
+        </div>
+        <div className="optimization-summary-grid">
+          <div>
+            <span>Budget usato</span>
+            <strong>{euroFormatter.format(result.usedBudget)}</strong>
+          </div>
+          <div>
+            <span>Residuo</span>
+            <strong>{euroFormatter.format(result.remainingBudget)}</strong>
+          </div>
+          <div>
+            <span>Mosse</span>
+            <strong>{result.steps.length}</strong>
+          </div>
+        </div>
+
+        {result.areas.length ? (
+          <div className="area-summary">
+            {result.areas.map((area) => (
+              <div key={area.key}>
+                <span>{area.label}</span>
+                <strong>{signedPoints(area.objectiveDelta)}</strong>
+                <small>{euroFormatter.format(area.cost)}</small>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {result.steps.length ? (
+          <div className="optimization-plan-list">
+            {result.steps.map((step, index) => (
+              <article key={step.id} className="optimization-step">
+                <span>{index + 1}</span>
+                <div>
+                  <strong>{step.title}</strong>
+                  <small>
+                    {step.units.toLocaleString("it-IT", { maximumFractionDigits: 2 })} {step.unitLabel} - {euroFormatter.format(step.cost)} - {signedPoints(step.objectiveDelta)}
+                  </small>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state compact">Nessun piano positivo con gli input correnti.</div>
+        )}
+
+        {result.warnings.map((warning) => (
+          <div key={warning} className="inline-warning">{warning}</div>
+        ))}
+        {disabledByScope && <div className="inline-warning">Attiva almeno un lotto coerente con l'obiettivo scelto.</div>}
+
+        <button className="apply-plan" onClick={onApplyPlan} disabled={!result.steps.length || disabledByScope}>
+          Applica piano ottimizzato
+        </button>
+      </section>
+
+      <section className="optimization-card">
+        <div className="section-title compact">
+          Catalogo leve tecniche
+          <HelpTooltip>Costo, step e massimo sono input di scenario. Se Max è 0, il simulatore usa il limite operativo ricavabile dal criterio o dal migliore valore corrente.</HelpTooltip>
+        </div>
+        <div className="optimization-hint">
+          I criteri discrezionali D sono esclusi perché non hanno una formula deterministica costo-punteggio nel disciplinare.
+        </div>
+        {targetLots.map((lotId) => (
+          <div key={lotId} className="lever-lot-section">
+            <div className="lever-lot-title">
+              <strong>{lotId}</strong>
+              <span>{LOTS.find((lot) => lot.id === lotId)?.label}</span>
+            </div>
+            <div className="lever-table-wrap">
+              <table className="lever-table">
+                <thead>
+                  <tr>
+                    <th>Leva</th>
+                    <th>Usa</th>
+                    <th>Step</th>
+                    <th>Max</th>
+                    <th>Costo unitario</th>
+                    <th>Base</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {technicalCriteria.map((criterion) => {
+                    const tradeoff = bidder.lots[lotId].tradeoffs[criterion.id] ?? defaultTradeoff();
+                    const lever = getOptimizationLever(config, lotId, criterion, tradeoff);
+                    const needsDenominator = criterion.kind === "Q" && (criterion.input === "ratio" || Boolean(criterion.quantityInput));
+                    return (
+                      <tr key={criterion.id}>
+                        <td>
+                          <strong>{criterion.id}</strong>
+                          <small>{criterion.label}</small>
+                        </td>
+                        <td>
+                          <input
+                            type="checkbox"
+                            checked={lever.enabled}
+                            onChange={(event) => onLeverChange(lotId, criterion.id, { enabled: event.target.checked })}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            min={0}
+                            step={criterion.kind === "T" ? 1 : 0.01}
+                            value={lever.stepUnits}
+                            disabled={criterion.kind === "T"}
+                            onChange={(event) => onLeverChange(lotId, criterion.id, { stepUnits: Math.max(0, Number(event.target.value) || 0) })}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            min={0}
+                            step={criterion.kind === "T" ? 1 : 0.01}
+                            value={lever.maxUnits}
+                            disabled={criterion.kind === "T"}
+                            onChange={(event) => onLeverChange(lotId, criterion.id, { maxUnits: Math.max(0, Number(event.target.value) || 0) })}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            min={0}
+                            step={1000}
+                            value={lever.unitCost}
+                            onChange={(event) => onLeverChange(lotId, criterion.id, { unitCost: Math.max(0, Number(event.target.value) || 0) })}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            value={needsDenominator ? lever.denominator : 0}
+                            disabled={!needsDenominator}
+                            onChange={(event) => onLeverChange(lotId, criterion.id, { denominator: Math.max(0, Number(event.target.value) || 0) })}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+        {!targetLots.length && <div className="empty-state compact">Nessun lotto attivo per il catalogo corrente.</div>}
+      </section>
     </div>
   );
 }
