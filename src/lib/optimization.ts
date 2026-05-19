@@ -12,7 +12,7 @@ import {
 } from "./scoring";
 import { applyTradeoffPlanToOffer, defaultTradeoff } from "./tradeoff";
 
-export type OptimizationBudgetMode = "strategic" | "technical";
+export type OptimizationMode = "technical-economic" | "technical-only";
 export type OptimizationScope = "active-lot" | "active-lots" | "scenario";
 
 export type OptimizationLeverInput = {
@@ -30,9 +30,7 @@ export type OptimizationEconomicInput = {
 };
 
 export type OptimizationConfig = {
-  budgetEnabled: boolean;
-  budget: number;
-  budgetMode: OptimizationBudgetMode;
+  mode: OptimizationMode;
   scope: OptimizationScope;
   economic: OptimizationEconomicInput;
   levers: Partial<Record<LotId, Record<string, OptimizationLeverInput>>>;
@@ -40,7 +38,7 @@ export type OptimizationConfig = {
 
 export type OptimizationStep = {
   id: string;
-  kind: "technical" | "economic" | "reallocation";
+  kind: "technical" | "reallocation";
   lotId: LotId;
   criterionId?: string;
   criterionLabel?: string;
@@ -49,8 +47,7 @@ export type OptimizationStep = {
   units: number;
   unitLabel: string;
   cost: number;
-  budgetImpact: number;
-  releasedBudget?: number;
+  releasedValue?: number;
   economicUnits?: number;
   technicalDelta?: number;
   economicDelta?: number;
@@ -70,10 +67,6 @@ export type OptimizationResult = {
   initialScore: number;
   finalScore: number;
   objectiveDelta: number;
-  budgetEnabled: boolean;
-  budget: number;
-  usedBudget: number;
-  remainingBudget: number | null;
   optimizedBidders: Bidder[];
   optimizedSimulation: SimulationResult;
   steps: OptimizationStep[];
@@ -87,9 +80,7 @@ type OptimizationCandidate = Omit<OptimizationStep, "id" | "afterScore"> & {
 };
 
 export const defaultOptimizationConfig = (): OptimizationConfig => ({
-  budgetEnabled: false,
-  budget: 1_000_000,
-  budgetMode: "strategic",
+  mode: "technical-economic",
   scope: "active-lot",
   economic: {
     enabled: true,
@@ -119,9 +110,6 @@ export const optimizeOffer = (
 ): OptimizationResult => {
   const initialBidders = structuredClone(bidders);
   let currentBidders = structuredClone(bidders);
-  const budgetEnabled = config.budgetEnabled === true;
-  const budget = Math.max(0, config.budget || 0);
-  let remainingBudget = budgetEnabled ? budget : Number.POSITIVE_INFINITY;
   const initialSimulation = simulate(initialBidders, settings, selectedBidderId);
   let currentSimulation = initialSimulation;
   const initialScore = objectiveScore(initialSimulation, currentBidders, selectedBidderId, selectedLotId, config.scope);
@@ -130,12 +118,12 @@ export const optimizeOffer = (
   const warnings: string[] = [];
 
   if (!currentBidders.some((bidder) => bidder.id === selectedBidderId)) {
-    return emptyOptimizationResult(initialSimulation, currentBidders, budgetEnabled, budget, "Offerente selezionato non trovato nello scenario.");
+    return emptyOptimizationResult(initialSimulation, currentBidders, "Offerente selezionato non trovato nello scenario.");
   }
 
   const targetLots = getTargetLots(currentBidders, selectedBidderId, selectedLotId, config.scope);
   if (!targetLots.length) {
-    return emptyOptimizationResult(initialSimulation, currentBidders, budgetEnabled, budget, "Nessun lotto attivo disponibile per l'ottimizzazione.");
+    return emptyOptimizationResult(initialSimulation, currentBidders, "Nessun lotto attivo disponibile per l'ottimizzazione.");
   }
 
   for (let iteration = 0; iteration < 1000; iteration += 1) {
@@ -148,17 +136,11 @@ export const optimizeOffer = (
       selectedLotId,
       targetLots,
       config,
-      remainingBudget,
       currentScore,
     });
     const best = candidates.sort((a, b) => {
-      if (!budgetEnabled) {
-        if (b.objectiveDelta !== a.objectiveDelta) return b.objectiveDelta - a.objectiveDelta;
-        if (b.efficiency !== a.efficiency) return b.efficiency - a.efficiency;
-        return a.cost - b.cost;
-      }
-      if (b.efficiency !== a.efficiency) return b.efficiency - a.efficiency;
       if (b.objectiveDelta !== a.objectiveDelta) return b.objectiveDelta - a.objectiveDelta;
+      if (b.efficiency !== a.efficiency) return b.efficiency - a.efficiency;
       return a.cost - b.cost;
     })[0];
 
@@ -166,7 +148,6 @@ export const optimizeOffer = (
     currentBidders = best.bidders;
     currentSimulation = simulate(currentBidders, settings, selectedBidderId);
     currentScore = best.score;
-    if (budgetEnabled) remainingBudget = Math.max(0, remainingBudget - best.budgetImpact);
     steps.push({
       id: `step-${steps.length + 1}`,
       kind: best.kind,
@@ -178,8 +159,7 @@ export const optimizeOffer = (
       units: best.units,
       unitLabel: best.unitLabel,
       cost: round4(best.cost),
-      budgetImpact: round4(best.budgetImpact),
-      releasedBudget: best.releasedBudget === undefined ? undefined : round4(best.releasedBudget),
+      releasedValue: best.releasedValue === undefined ? undefined : round4(best.releasedValue),
       economicUnits: best.economicUnits === undefined ? undefined : round4(best.economicUnits),
       technicalDelta: best.technicalDelta === undefined ? undefined : round4(best.technicalDelta),
       economicDelta: best.economicDelta === undefined ? undefined : round4(best.economicDelta),
@@ -190,23 +170,13 @@ export const optimizeOffer = (
   }
 
   if (!steps.length) {
-    warnings.push(
-      budgetEnabled
-        ? "Nessuna leva produce un miglioramento positivo con budget, massimali e costi correnti."
-        : "Nessuna leva produce un miglioramento positivo con massimali, costi e input correnti.",
-    );
+    warnings.push("Nessuna leva produce un miglioramento positivo con massimali, costi e input correnti.");
   }
-
-  const usedBudget = steps.reduce((sum, step) => sum + step.budgetImpact, 0);
 
   return {
     initialScore: round4(initialScore),
     finalScore: round4(currentScore),
     objectiveDelta: round4(currentScore - initialScore),
-    budgetEnabled,
-    budget,
-    usedBudget: round4(usedBudget),
-    remainingBudget: budgetEnabled ? round4(Math.max(0, budget - usedBudget)) : null,
     optimizedBidders: currentBidders,
     optimizedSimulation: currentSimulation,
     steps,
@@ -218,17 +188,11 @@ export const optimizeOffer = (
 const emptyOptimizationResult = (
   simulation: SimulationResult,
   bidders: Bidder[],
-  budgetEnabled: boolean,
-  budget: number,
   warning: string,
 ): OptimizationResult => ({
   initialScore: 0,
   finalScore: 0,
   objectiveDelta: 0,
-  budgetEnabled,
-  budget,
-  usedBudget: 0,
-  remainingBudget: budgetEnabled ? budget : null,
   optimizedBidders: structuredClone(bidders),
   optimizedSimulation: simulation,
   steps: [],
@@ -268,7 +232,6 @@ const buildCandidates = ({
   selectedLotId,
   targetLots,
   config,
-  remainingBudget,
   currentScore,
 }: {
   baselineBidders: Bidder[];
@@ -279,7 +242,6 @@ const buildCandidates = ({
   selectedLotId: LotId;
   targetLots: LotId[];
   config: OptimizationConfig;
-  remainingBudget: number;
   currentScore: number;
 }): OptimizationCandidate[] => {
   const candidates: OptimizationCandidate[] = [];
@@ -296,12 +258,11 @@ const buildCandidates = ({
       if (criterion.kind === "D") continue;
       const lever = getOptimizationLever(config, lotId, criterion, currentOffer.tradeoffs[criterion.id] ?? defaultTradeoff());
       if (!lever.enabled) continue;
-      if (!config.budgetEnabled && isBelowInitialTechnicalOffer(baselineOffer, currentOffer, criterion, lever)) continue;
+      if (isBelowInitialTechnicalOffer(baselineOffer, currentOffer, criterion, lever)) continue;
       const stepUnits = nextTechnicalStepUnits(baselineOffer, currentOffer, currentBidders, lotId, criterion, lever);
       if (stepUnits <= 0) continue;
       const cost = criterion.kind === "T" ? Math.max(0, lever.unitCost) : stepUnits * Math.max(0, lever.unitCost);
       if (cost <= 0) continue;
-      if (config.budgetEnabled && cost > remainingBudget) continue;
 
       const nextBidders = structuredClone(currentBidders);
       const nextBidder = nextBidders.find((item) => item.id === selectedBidderId);
@@ -323,7 +284,6 @@ const buildCandidates = ({
         units: stepUnits,
         unitLabel: criterion.kind === "T" ? "impegno" : criterion.tradeoffUnit,
         cost,
-        budgetImpact: cost,
         objectiveDelta,
         efficiency: efficiency(objectiveDelta, cost),
         score: nextScore,
@@ -332,14 +292,13 @@ const buildCandidates = ({
     }
 
     const reallocationCandidates =
-      config.budgetMode === "strategic" && config.economic.enabled
+      config.mode === "technical-economic" && config.economic.enabled
         ? buildReallocationCandidates({
             baselineOffer,
             currentBidders,
             currentOffer,
             currentScore,
             lotId,
-            remainingBudget,
             selectedBidderId,
             selectedLotId,
             settings,
@@ -348,36 +307,6 @@ const buildCandidates = ({
         : [];
     candidates.push(...reallocationCandidates);
 
-    if (config.budgetMode === "strategic" && config.economic.enabled) {
-      const economicStep = nextEconomicStepUnits(baselineOffer, currentOffer, config.economic);
-      const lot = LOTS.find((item) => item.id === lotId);
-      const cost = lot ? (lot.totalBase * economicStep) / 100 : 0;
-      if (economicStep > 0 && (config.budgetEnabled || !reallocationCandidates.length) && (!config.budgetEnabled || cost <= remainingBudget)) {
-        const nextBidders = structuredClone(currentBidders);
-        const nextBidder = nextBidders.find((item) => item.id === selectedBidderId);
-        if (nextBidder) {
-          nextBidder.lots[lotId].phaseDiscounts = nextBidder.lots[lotId].phaseDiscounts.map((discount) => discount + economicStep) as [number, number, number];
-          const nextSimulation = simulate(nextBidders, settings, selectedBidderId);
-          const nextScore = objectiveScore(nextSimulation, nextBidders, selectedBidderId, selectedLotId, config.scope);
-          const objectiveDelta = round4(nextScore - currentScore);
-          if (objectiveDelta > 0) {
-            candidates.push({
-              kind: "economic",
-              lotId,
-              title: `${lotId} - aumenta il ribasso medio diretto`,
-              units: economicStep,
-              unitLabel: "p.p. ribasso",
-              cost,
-              budgetImpact: cost,
-              objectiveDelta,
-              efficiency: efficiency(objectiveDelta, cost),
-              score: nextScore,
-              bidders: nextBidders,
-            });
-          }
-        }
-      }
-    }
   }
 
   return candidates;
@@ -389,7 +318,6 @@ const buildReallocationCandidates = ({
   currentOffer,
   currentScore,
   lotId,
-  remainingBudget,
   selectedBidderId,
   selectedLotId,
   settings,
@@ -400,7 +328,6 @@ const buildReallocationCandidates = ({
   currentOffer: Bidder["lots"][LotId];
   currentScore: number;
   lotId: LotId;
-  remainingBudget: number;
   selectedBidderId: string;
   selectedLotId: LotId;
   settings: Settings;
@@ -415,17 +342,14 @@ const buildReallocationCandidates = ({
     if (!lever.enabled) return [];
 
     const reductionUnits = nextTechnicalReductionUnits(baselineOffer, currentOffer, criterion, lever);
-    const releasedBudget = technicalReductionCost(criterion, reductionUnits, lever);
-    if (reductionUnits <= 0 || releasedBudget <= 0) return [];
+    const releasedValue = technicalReductionCost(criterion, reductionUnits, lever);
+    if (reductionUnits <= 0 || releasedValue <= 0) return [];
 
-    const maxFunding = releasedBudget + (config.budgetEnabled ? remainingBudget : 0);
-    const economicStep = fundedEconomicStepUnits(baselineOffer, currentOffer, config.economic, lot.totalBase, maxFunding);
+    const economicStep = fundedEconomicStepUnits(baselineOffer, currentOffer, config.economic, lot.totalBase, releasedValue);
     if (economicStep <= 0.0001) return [];
 
     const economicCost = (lot.totalBase * economicStep) / 100;
-    const budgetImpact = Math.max(0, economicCost - releasedBudget);
-    if (config.budgetEnabled && budgetImpact > remainingBudget) return [];
-    if (!config.budgetEnabled && budgetImpact > 0.0001) return [];
+    if (economicCost - releasedValue > 0.0001) return [];
 
     const reducedBidders = structuredClone(currentBidders);
     const reducedBidder = reducedBidders.find((item) => item.id === selectedBidderId);
@@ -454,13 +378,12 @@ const buildReallocationCandidates = ({
         units: reductionUnits,
         unitLabel: criterion.kind === "T" ? "impegno tecnico" : criterion.tradeoffUnit,
         cost: economicCost,
-        budgetImpact,
-        releasedBudget,
+        releasedValue,
         economicUnits: economicStep,
         technicalDelta: round4(reducedScore - currentScore),
         economicDelta: round4(nextScore - reducedScore),
         objectiveDelta,
-        efficiency: efficiency(objectiveDelta, Math.max(1, budgetImpact || economicCost)),
+        efficiency: efficiency(objectiveDelta, Math.max(1, economicCost)),
         score: nextScore,
         bidders: nextBidders,
       },
@@ -647,8 +570,8 @@ const efficiency = (delta: number, cost: number) => (cost > 0 ? delta / cost : d
 const summarizeAreas = (steps: OptimizationStep[]): OptimizationAreaSummary[] => {
   const map = new Map<string, OptimizationAreaSummary>();
   for (const step of steps) {
-    const key = step.kind === "economic" || step.kind === "reallocation" ? "economica" : step.ambit ?? "tecnica";
-    const label = step.kind === "economic" || step.kind === "reallocation" ? "Offerta economica" : `Ambito ${key}`;
+    const key = step.kind === "reallocation" ? "economica" : step.ambit ?? "tecnica";
+    const label = step.kind === "reallocation" ? "Offerta economica" : `Ambito ${key}`;
     const current = map.get(key) ?? { key, label, cost: 0, objectiveDelta: 0 };
     current.cost = round4(current.cost + step.cost);
     current.objectiveDelta = round4(current.objectiveDelta + step.objectiveDelta);

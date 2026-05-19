@@ -18,7 +18,7 @@ import {
   Trophy,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   AMBITS,
   CRITERIA,
@@ -38,7 +38,7 @@ import {
   type LotId,
   type PairId,
 } from "./data/tender";
-import { BASE_SCENARIOS, DEFAULT_SETTINGS, type BaseScenario, type BaseScenarioId } from "./data/base-scenarios";
+import { BASE_SCENARIOS, DEFAULT_SETTINGS, getBaseScenario, type BaseScenario, type BaseScenarioId } from "./data/base-scenarios";
 import {
   computeQuantityInputValue,
   createBidder,
@@ -80,7 +80,6 @@ import {
   type StoredWorkspace,
 } from "./lib/scenario-persistence";
 import {
-  defaultOptimizationConfig,
   getOptimizationLever,
   optimizeOffer,
   type OptimizationConfig,
@@ -134,9 +133,9 @@ const optimizationScopeOptions: { value: OptimizationConfig["scope"]; label: str
   { value: "scenario", label: "Scenario complessivo" },
 ];
 
-const optimizationBudgetModeOptions: { value: OptimizationConfig["budgetMode"]; label: string }[] = [
-  { value: "strategic", label: "Tecnica + ribasso" },
-  { value: "technical", label: "Solo tecnica" },
+const optimizationModeOptions: { value: OptimizationConfig["mode"]; label: string }[] = [
+  { value: "technical-economic", label: "Tecnica + ribasso" },
+  { value: "technical-only", label: "Solo tecnica" },
 ];
 
 const criterionKindLabel: Record<Criterion["kind"], string> = {
@@ -224,19 +223,20 @@ const matchesCriterionFilter = (criterion: Criterion, score: number, note: strin
 
 function App() {
   const [initialWorkspace] = useState(() => readStoredWorkspace());
+  const initialBaseScenario = getBaseScenario(initialWorkspace?.baseScenarioId);
   const [view, setView] = useState<AppView>(currentView);
-  const [baseScenarioId, setBaseScenarioId] = useState<BaseScenarioId>(initialWorkspace?.baseScenarioId ?? "market");
-  const [bidders, setBidders] = useState<Bidder[]>(() => initialWorkspace?.bidders ?? BASE_SCENARIOS[0].buildBidders());
-  const [selectedBidderId, setSelectedBidderId] = useState(initialWorkspace?.selectedBidderId ?? BASE_SCENARIOS[0].defaultBidderId);
-  const [selectedLotId, setSelectedLotId] = useState<LotId>(initialWorkspace?.selectedLotId ?? "L1");
-  const [selectedPairId, setSelectedPairId] = useState<PairId>(initialWorkspace?.selectedPairId ?? BASE_SCENARIOS[0].defaultPairId);
+  const [baseScenarioId, setBaseScenarioId] = useState<BaseScenarioId>(initialBaseScenario.id);
+  const [bidders, setBidders] = useState<Bidder[]>(() => initialWorkspace?.bidders ?? initialBaseScenario.buildBidders());
+  const [selectedBidderId, setSelectedBidderId] = useState(initialWorkspace?.selectedBidderId ?? initialBaseScenario.defaultBidderId);
+  const [selectedLotId, setSelectedLotId] = useState<LotId>(initialWorkspace?.selectedLotId ?? initialBaseScenario.defaultLotId);
+  const [selectedPairId, setSelectedPairId] = useState<PairId>(initialWorkspace?.selectedPairId ?? initialBaseScenario.defaultPairId);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("tecnica");
   const [criterionFilter, setCriterionFilter] = useState<CriterionFilter>("all");
   const [selectedAmbitId, setSelectedAmbitId] = useState(AMBITS[0].id);
   const [selectedCriterionId, setSelectedCriterionId] = useState(CRITERIA[0].id);
   const [settings, setSettings] = useState<Settings>(initialWorkspace?.settings ?? DEFAULT_SETTINGS);
-  const [optimizationConfig, setOptimizationConfig] = useState<OptimizationConfig>(initialWorkspace?.optimization ?? defaultOptimizationConfig());
-  const [scenarioName, setScenarioName] = useState(initialWorkspace?.scenarioName ?? BASE_SCENARIOS[0].title);
+  const [optimizationConfig, setOptimizationConfig] = useState<OptimizationConfig>(() => initialWorkspace?.optimization ?? initialBaseScenario.buildOptimizationConfig());
+  const [scenarioName, setScenarioName] = useState(initialWorkspace?.scenarioName ?? initialBaseScenario.title);
   const [savedScenarios, setSavedScenarios] = useState<SavedScenarioSnapshot[]>(readStoredSavedScenarios);
   const [activeSavedScenarioId, setActiveSavedScenarioId] = useState<string | undefined>(initialWorkspace?.activeSavedScenarioId);
   const [compareScenarioId, setCompareScenarioId] = useState("");
@@ -273,7 +273,7 @@ function App() {
     window.localStorage.setItem(
       STORAGE_KEYS.workspace,
       JSON.stringify({
-        schemaVersion: 4,
+        schemaVersion: 5,
         scenarioName,
         activeSavedScenarioId,
         baseScenarioId,
@@ -399,7 +399,7 @@ function App() {
     setScenarioName(scenario.title);
     setActiveSavedScenarioId(undefined);
     setBidders(scenario.buildBidders());
-    setOptimizationConfig(defaultOptimizationConfig());
+    setOptimizationConfig(scenario.buildOptimizationConfig());
     setSettings(scenario.settings);
     setSelectedBidderId(scenario.defaultBidderId);
     setSelectedLotId(scenario.defaultLotId);
@@ -477,7 +477,7 @@ function App() {
   };
 
   const currentScenarioSnapshot = (id = activeSavedScenarioId ?? `scenario-${Date.now()}`, name = scenarioName): SavedScenarioSnapshot => ({
-    schemaVersion: 4,
+    schemaVersion: 5,
     id,
     name: name.trim() || "Scenario senza nome",
     savedAt: new Date().toISOString(),
@@ -572,7 +572,7 @@ function App() {
     setScenarioName("Nuovo scenario");
     setActiveSavedScenarioId(undefined);
     setBidders(nextBidders);
-    setOptimizationConfig(defaultOptimizationConfig());
+    setOptimizationConfig(selectedBaseScenario.buildOptimizationConfig());
     setSettings(selectedBaseScenario.settings);
     setSelectedBidderId(nextBidders.some((bidder) => bidder.id === selectedBaseScenario.defaultBidderId) ? selectedBaseScenario.defaultBidderId : nextBidders[0]?.id ?? "");
     setSelectedLotId(selectedBaseScenario.defaultLotId);
@@ -1102,7 +1102,7 @@ function App() {
                       />
                     )}
 
-                    {activeTab === "risultati" && <ResultsWorkbench result={result} selectedLotId={selectedLotId} />}
+                    {activeTab === "risultati" && <ResultsWorkbench result={result} selectedLotId={selectedLotId} bidders={bidders} />}
                   </>
                 )}
               </section>
@@ -1996,7 +1996,9 @@ function OptimizationWorkbench({
   const disabledByScope = !targetLots.length;
   const technicalCriteria = CRITERIA.filter((criterion) => criterion.kind !== "D");
   const grossPlanCost = result.steps.reduce((sum, step) => sum + step.cost, 0);
-  const reallocatedBudget = result.steps.reduce((sum, step) => sum + (step.releasedBudget ?? 0), 0);
+  const reallocatedValue = result.steps.reduce((sum, step) => sum + (step.releasedValue ?? 0), 0);
+  const netPlanCost = Math.max(0, grossPlanCost - reallocatedValue);
+  const economicDisabled = config.mode === "technical-only";
 
   return (
     <div className="optimization-board">
@@ -2022,37 +2024,18 @@ function OptimizationWorkbench({
           <HelpTooltip>Il piano parte dall'offerta corrente e rivaluta ogni mossa tenendo fermi i concorrenti. I criteri discrezionali sono esclusi.</HelpTooltip>
         </div>
         <div className="optimization-controls">
-          <label className="switch budget-switch">
-            <input
-              type="checkbox"
-              checked={config.budgetEnabled}
-              onChange={(event) => onConfigChange((current) => ({ ...current, budgetEnabled: event.target.checked }))}
-            />
-            <span>usa budget massimo</span>
-          </label>
-          <label className="field compact">
-            <span>Budget massimo</span>
-            <input
-              type="number"
-              min={0}
-              step={10000}
-              value={config.budget}
-              disabled={!config.budgetEnabled}
-              onChange={(event) => onConfigChange((current) => ({ ...current, budget: Math.max(0, Number(event.target.value) || 0) }))}
-            />
-          </label>
           <label className="field compact">
             <span>Leve considerate</span>
             <select
-              value={config.budgetMode}
+              value={config.mode}
               onChange={(event) =>
                 onConfigChange((current) => ({
                   ...current,
-                  budgetMode: event.target.value === "technical" ? "technical" : "strategic",
+                  mode: event.target.value === "technical-only" ? "technical-only" : "technical-economic",
                 }))
               }
             >
-              {optimizationBudgetModeOptions.map((option) => (
+              {optimizationModeOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -2079,19 +2062,19 @@ function OptimizationWorkbench({
           </label>
         </div>
         <div className="optimization-hint">
-          Di base il piano massimizza il punteggio partendo dall'offerta corrente. Se una leva tecnica ha un costo, il motore può anche ridurla per finanziare più ribasso.
+          Il piano massimizza il punteggio partendo dall'offerta corrente. Il ribasso aumenta solo se una rinuncia tecnica libera risorse sufficienti.
         </div>
 
-        <div className={`economic-optimizer ${config.budgetMode === "technical" ? "disabled" : ""}`}>
+        <div className={`economic-optimizer ${economicDisabled ? "disabled" : ""}`}>
           <div>
             <strong>Leva economica</strong>
-            <span>Il ribasso può essere diretto oppure finanziato da una rinuncia tecnica valorizzata nel catalogo leve.</span>
+            <span>Il ribasso viene valutato solo quando è finanziato da una rinuncia tecnica valorizzata nel catalogo leve.</span>
           </div>
           <label className="switch">
             <input
               type="checkbox"
               checked={config.economic.enabled}
-              disabled={config.budgetMode === "technical"}
+              disabled={economicDisabled}
               onChange={(event) => onConfigChange((current) => ({ ...current, economic: { ...current.economic, enabled: event.target.checked } }))}
             />
             <span>includi ribasso</span>
@@ -2103,7 +2086,7 @@ function OptimizationWorkbench({
               min={0}
               step={0.05}
               value={config.economic.stepPercent}
-              disabled={config.budgetMode === "technical"}
+              disabled={economicDisabled}
               onChange={(event) => onConfigChange((current) => ({ ...current, economic: { ...current.economic, stepPercent: Math.max(0, Number(event.target.value) || 0) } }))}
             />
           </label>
@@ -2114,7 +2097,7 @@ function OptimizationWorkbench({
               min={0}
               step={0.1}
               value={config.economic.maxDeltaPercent}
-              disabled={config.budgetMode === "technical"}
+              disabled={economicDisabled}
               onChange={(event) => onConfigChange((current) => ({ ...current, economic: { ...current.economic, maxDeltaPercent: Math.max(0, Number(event.target.value) || 0) } }))}
             />
           </label>
@@ -2125,7 +2108,7 @@ function OptimizationWorkbench({
         <div className="section-title compact">
           <LineChart size={16} />
           Piano consigliato
-          <HelpTooltip>Il motore valuta miglioramenti tecnici, ribasso diretto e riallocazioni tecnica-ribasso. Dopo ogni mossa ricalcola tutto lo scenario.</HelpTooltip>
+          <HelpTooltip>Il motore valuta miglioramenti tecnici e riallocazioni tecnica-ribasso. Dopo ogni mossa ricalcola tutto lo scenario.</HelpTooltip>
         </div>
         <div className="optimization-summary-grid">
           <div>
@@ -2134,11 +2117,11 @@ function OptimizationWorkbench({
           </div>
           <div>
             <span>Riallocato da tecnica</span>
-            <strong>{euroFormatter.format(reallocatedBudget)}</strong>
+            <strong>{euroFormatter.format(reallocatedValue)}</strong>
           </div>
           <div>
-            <span>{result.budgetEnabled ? "Residuo budget" : "Budget esterno"}</span>
-            <strong>{result.budgetEnabled ? euroFormatter.format(result.remainingBudget ?? 0) : result.usedBudget > 0 ? euroFormatter.format(result.usedBudget) : "non attivo"}</strong>
+            <span>Costo netto stimato</span>
+            <strong>{euroFormatter.format(netPlanCost)}</strong>
           </div>
           <div>
             <span>Mosse</span>
@@ -2168,7 +2151,7 @@ function OptimizationWorkbench({
                   {step.kind === "reallocation" ? (
                     <small>
                       riduci {step.units.toLocaleString("it-IT", { maximumFractionDigits: 2 })} {step.unitLabel};
-                      {" "}libera {euroFormatter.format(step.releasedBudget ?? 0)}; finanzia +{(step.economicUnits ?? 0).toLocaleString("it-IT", { maximumFractionDigits: 4 })} p.p. ribasso;
+                      {" "}libera {euroFormatter.format(step.releasedValue ?? 0)}; finanzia +{(step.economicUnits ?? 0).toLocaleString("it-IT", { maximumFractionDigits: 4 })} p.p. ribasso;
                       {" "}tecnica {signedPoints(step.technicalDelta ?? 0)}, economia {signedPoints(step.economicDelta ?? 0)}, netto {signedPoints(step.objectiveDelta)}
                     </small>
                   ) : (
@@ -2383,7 +2366,12 @@ function ComboWorkbench({
   );
 }
 
-function ResultsWorkbench({ result, selectedLotId }: { result: SimulationResult; selectedLotId: LotId }) {
+function ResultsWorkbench({ result, selectedLotId, bidders }: { result: SimulationResult; selectedLotId: LotId; bidders: Bidder[] }) {
+  const scoreBidders = bidders;
+  const scoreColumnCount = scoreBidders.length + 2;
+  const qtMax = maxQtPoints();
+  const technicalMax = AMBITS.reduce((sum, ambit) => sum + ambit.maxPoints, 0);
+
   return (
     <div className="results-board">
       <div className="metric-grid">
@@ -2439,6 +2427,84 @@ function ResultsWorkbench({ result, selectedLotId }: { result: SimulationResult;
           </div>
         </section>
       </div>
+
+      <section className="subcriteria-score-section">
+        <div className="section-title compact">
+          Punteggi sotto criterio - {selectedLotId}
+          <HelpTooltip>Mostra i punti grezzi assegnati a ogni sotto-criterio sul lotto selezionato. La riparametrazione per ambito resta riportata nel totale tecnico.</HelpTooltip>
+        </div>
+        <div className="subcriteria-table-wrap">
+          <table className="subcriteria-score-table" style={{ "--score-column-count": scoreColumnCount } as CSSProperties}>
+            <thead>
+              <tr>
+                <th>Criterio</th>
+                <th>Max</th>
+                {scoreBidders.map((bidder) => (
+                  <th key={bidder.id}>
+                    <span>{bidder.name}</span>
+                    <small>{bidder.lots[selectedLotId].enabled ? "attivo" : "non partecipa"}</small>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {AMBITS.map((ambit) => {
+                const ambitCriteria = CRITERIA.filter((criterion) => criterion.ambit === ambit.id);
+                return (
+                  <Fragment key={ambit.id}>
+                    <tr className="subcriteria-ambit-row">
+                      <th colSpan={scoreColumnCount}>
+                        <span>{ambit.id}</span>
+                        <strong>{ambit.label}</strong>
+                      </th>
+                    </tr>
+                    {ambitCriteria.map((criterion) => (
+                      <tr key={criterion.id}>
+                        <th>
+                          <span>{criterion.id}</span>
+                          <strong>{criterion.label}</strong>
+                        </th>
+                        <td>{formatPoints(criterion.maxPoints)}</td>
+                        {scoreBidders.map((bidder) => {
+                          const lotScore = result.lotScores[bidder.id]?.[selectedLotId];
+                          const subScore = lotScore?.subScores[criterion.id];
+                          const lotOffer = bidder.lots[selectedLotId];
+                          return (
+                            <td key={bidder.id} className={!lotScore?.participates ? "muted-cell" : subScore?.dependencyBlocked ? "warn-cell" : ""}>
+                              <strong>{lotScore?.participates ? formatPoints(subScore?.rawScore ?? 0) : "n/p"}</strong>
+                              {lotScore?.participates && subScore ? (
+                                <small>{formatCriterionRowValue(criterion, subScore.value, lotOffer.quantityInputs?.[criterion.id])}</small>
+                              ) : null}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr>
+                <th>Totale Q/T grezzo</th>
+                <td>{formatPoints(qtMax)}</td>
+                {scoreBidders.map((bidder) => {
+                  const lotScore = result.lotScores[bidder.id]?.[selectedLotId];
+                  return <td key={bidder.id}>{lotScore?.participates ? formatPoints(lotScore.qtRaw) : "n/p"}</td>;
+                })}
+              </tr>
+              <tr>
+                <th>Totale tecnico riparametrato</th>
+                <td>{formatPoints(technicalMax)}</td>
+                {scoreBidders.map((bidder) => {
+                  const lotScore = result.lotScores[bidder.id]?.[selectedLotId];
+                  return <td key={bidder.id}>{lotScore?.participates ? formatPoints(lotScore.technical) : "n/p"}</td>;
+                })}
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }

@@ -10,12 +10,13 @@ import {
 import {
   computeQuantityInputValue,
   createBidder,
-  emptyTradeoffs,
   type Bidder,
   type LotOffer,
   type QuantityInputValue,
   type Settings,
+  type TradeoffPlan,
 } from "../lib/scoring";
+import { defaultOptimizationConfig, type OptimizationConfig, type OptimizationLeverInput } from "../lib/optimization";
 
 export type BaseScenarioId = "market" | "tech" | "discount" | "local";
 
@@ -28,6 +29,7 @@ export type BaseScenario = {
   defaultLotId: LotId;
   defaultPairId: PairId;
   settings: Settings;
+  buildOptimizationConfig: () => OptimizationConfig;
   buildBidders: () => Bidder[];
 };
 
@@ -51,6 +53,8 @@ type LotBaseline = {
   railStops: number;
   lines: number;
 };
+
+type ScenarioAssumptionProfile = BaseScenarioId;
 
 export const DEFAULT_SETTINGS: Settings = {
   threshold: THRESHOLD_OPTIONS[0].value,
@@ -129,8 +133,220 @@ const LOT_SCALE: Record<LotId, number> = {
   L4: 1.12,
 };
 
+const SCENARIO_COST_MULTIPLIER: Record<ScenarioAssumptionProfile, number> = {
+  market: 1,
+  tech: 1.08,
+  discount: 0.92,
+  local: 1.04,
+};
+
+const SCENARIO_OPTIMIZATION_SETTINGS: Record<
+  ScenarioAssumptionProfile,
+  Pick<OptimizationConfig, "mode" | "scope" | "economic">
+> = {
+  market: {
+    mode: "technical-economic",
+    scope: "active-lot",
+    economic: { enabled: true, stepPercent: 0.1, maxDeltaPercent: 1.5 },
+  },
+  tech: {
+    mode: "technical-economic",
+    scope: "active-lot",
+    economic: { enabled: true, stepPercent: 0.1, maxDeltaPercent: 1 },
+  },
+  discount: {
+    mode: "technical-economic",
+    scope: "active-lot",
+    economic: { enabled: true, stepPercent: 0.15, maxDeltaPercent: 2.5 },
+  },
+  local: {
+    mode: "technical-economic",
+    scope: "active-lot",
+    economic: { enabled: true, stepPercent: 0.1, maxDeltaPercent: 1.2 },
+  },
+};
+
+const UNIT_COST_BY_CRITERION: Record<string, number> = {
+  "A.1.1": 18,
+  "A.1.2": 2.4,
+  "B.1.1": 0.09,
+  "B.2.1": 190,
+  "B.3.1": 230,
+  "B.4.1": 3.7,
+  "C.1.1": 3600,
+  "C.1.2": 4300,
+  "C.2.1": 2600,
+  "C.2.2": 120000,
+  "C.2.3": 90000,
+  "C.2.4": 950,
+  "C.3.1": 3400,
+  "C.3.2": 80000,
+  "D.1.1": 22000,
+  "D.1.2": 2500,
+  "D.1.3": 9000,
+  "D.2.1": 1200,
+  "E.1.1": 110000,
+  "F.1.1": 150000,
+  "F.2.1": 950,
+  "F.3.1": 1.7,
+  "F.4.1": 350,
+  "F.5.1": 60000,
+  "G.2.1": 45000,
+  "G.3.1": 40000,
+  "G.5.1": 120000,
+};
+
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 const rounded = (value: number, digits = 2) => Number(value.toFixed(digits));
+
+const lotById = (lotId: LotId) => {
+  const lot = LOTS.find((item) => item.id === lotId);
+  if (!lot) throw new Error(`Unknown lot ${lotId}`);
+  return lot;
+};
+
+const roundTo = (value: number, step: number) => {
+  const roundedValue = Math.round(value / step) * step;
+  const digits = step < 1 ? Math.ceil(Math.abs(Math.log10(step))) : 0;
+  return Number(roundedValue.toFixed(digits));
+};
+
+const costForCriterion = (criterion: Criterion, profile: ScenarioAssumptionProfile) => {
+  if (criterion.kind === "D") return 0;
+  const baseCost = UNIT_COST_BY_CRITERION[criterion.id] ?? 1000;
+  const multiplier = SCENARIO_COST_MULTIPLIER[profile] ?? 1;
+  return Math.max(1, roundTo(baseCost * multiplier, baseCost >= 1000 ? 50 : 0.1));
+};
+
+const denominatorForCriterion = (lotId: LotId, criterion: Criterion) => {
+  const baseline = LOT_BASELINES[lotId];
+  if (criterion.quantityInput?.kind === "percent") return baseline.annualRuns;
+  if (criterion.quantityInput?.kind === "ratio" || criterion.input === "ratio") return baseline.busBase;
+  return 0;
+};
+
+const stepUnitsForCriterion = (lotId: LotId, criterion: Criterion) => {
+  const baseline = LOT_BASELINES[lotId];
+  const lot = lotById(lotId);
+  if (criterion.kind === "T") return 1;
+
+  switch (criterion.id) {
+    case "A.1.1":
+      return Math.max(500, Math.round(baseline.annualRuns * 0.006));
+    case "A.1.2":
+      return lotId === "L1" ? 9000 : 15000;
+    case "B.1.1":
+      return Math.round(lot.minProductionYears3to7 * 0.01);
+    case "B.2.1":
+      return Math.max(80, Math.round(baseline.annualRuns * 0.0006));
+    case "B.3.1":
+      return Math.max(40, Math.round(baseline.annualRuns * 0.0003));
+    case "B.4.1":
+      return Math.round(lot.minProductionYears3to7 * 0.0045);
+    case "D.1.1":
+      return Math.max(6, Math.round(baseline.notableStops * 0.06));
+    case "D.1.2":
+      return Math.max(20, Math.round(baseline.stops * 0.06));
+    case "D.1.3":
+      return Math.max(5, Math.round(baseline.railStops * 0.27));
+    case "D.2.1":
+      return Math.max(5, Math.round(baseline.notableStops * 0.04));
+    case "F.1.1":
+      return 6;
+    case "F.3.1":
+      return Math.round(14000 * LOT_SCALE[lotId]);
+    case "F.4.1":
+      return 40;
+    default:
+      if (criterion.quantityInput?.kind === "ratio" || criterion.input === "ratio") return Math.max(1, Math.round(baseline.busBase * 0.125));
+      return 1;
+  }
+};
+
+const maxUnitsForCriterion = (lotId: LotId, criterion: Criterion) => {
+  const baseline = LOT_BASELINES[lotId];
+  const lot = lotById(lotId);
+  if (criterion.kind === "T") return 1;
+
+  switch (criterion.id) {
+    case "A.1.1":
+      return Math.max(500, Math.round(baseline.annualRuns * 0.012));
+    case "A.1.2":
+      return lotId === "L1" ? 18000 : 30000;
+    case "B.1.1":
+      return Math.round(lot.minProductionYears3to7 * 0.02);
+    case "B.2.1":
+      return Math.max(150, Math.round(baseline.annualRuns * 0.0012));
+    case "B.3.1":
+      return Math.max(80, Math.round(baseline.annualRuns * 0.0006));
+    case "B.4.1":
+      return Math.round(lot.minProductionYears3to7 * 0.009);
+    case "D.1.1":
+      return Math.max(10, Math.round(baseline.notableStops * 0.12));
+    case "D.1.2":
+      return Math.max(40, Math.round(baseline.stops * 0.12));
+    case "D.1.3":
+      return Math.max(8, Math.round(baseline.railStops * 0.55));
+    case "D.2.1":
+      return Math.max(10, Math.round(baseline.notableStops * 0.08));
+    case "F.1.1":
+      return 12;
+    case "F.3.1":
+      return Math.round(28000 * LOT_SCALE[lotId]);
+    case "F.4.1":
+      return 80;
+    default:
+      if (criterion.quantityInput?.kind === "ratio" || criterion.input === "ratio") return Math.max(1, Math.round(baseline.busBase * 0.25));
+      return stepUnitsForCriterion(lotId, criterion) * 5;
+  }
+};
+
+const assumptionForCriterion = (
+  lotId: LotId,
+  criterion: Criterion,
+  profile: ScenarioAssumptionProfile,
+): OptimizationLeverInput => ({
+  enabled: criterion.kind !== "D",
+  stepUnits: criterion.kind === "D" ? 0 : stepUnitsForCriterion(lotId, criterion),
+  maxUnits: criterion.kind === "D" ? 0 : maxUnitsForCriterion(lotId, criterion),
+  unitCost: costForCriterion(criterion, profile),
+  denominator: denominatorForCriterion(lotId, criterion),
+});
+
+const tradeoffForCriterion = (lotId: LotId, criterion: Criterion, profile: ScenarioAssumptionProfile): TradeoffPlan => {
+  const assumption = assumptionForCriterion(lotId, criterion, profile);
+  return {
+    deltaUnits: assumption.stepUnits,
+    unitCost: assumption.unitCost,
+    denominator: assumption.denominator,
+  };
+};
+
+const scenarioTradeoffs = (lotId: LotId, profile: ScenarioAssumptionProfile) =>
+  Object.fromEntries(CRITERIA.map((criterion) => [criterion.id, tradeoffForCriterion(lotId, criterion, profile)]));
+
+const completeScenarioTradeoffs = (bidders: Bidder[], profile: ScenarioAssumptionProfile) =>
+  bidders.map((bidder) => {
+    LOTS.forEach((lot) => {
+      bidder.lots[lot.id].tradeoffs = scenarioTradeoffs(lot.id, profile);
+    });
+    return bidder;
+  });
+
+export const buildScenarioOptimizationConfig = (profile: ScenarioAssumptionProfile): OptimizationConfig => {
+  const scenarioSettings = SCENARIO_OPTIMIZATION_SETTINGS[profile];
+  return {
+    ...defaultOptimizationConfig(),
+    ...scenarioSettings,
+    economic: { ...scenarioSettings.economic },
+    levers: Object.fromEntries(
+      LOTS.map((lot) => [
+        lot.id,
+        Object.fromEntries(CRITERIA.map((criterion) => [criterion.id, assumptionForCriterion(lot.id, criterion, profile)])),
+      ]),
+    ) as OptimizationConfig["levers"],
+  };
+};
 
 const quantityInputFromComputedValue = (criterion: Criterion, value: number, lotId: LotId): QuantityInputValue => {
   const baseline = LOT_BASELINES[lotId];
@@ -148,9 +364,8 @@ const withProfile = (base: OfferProfile, patch: Partial<OfferProfile>): OfferPro
   discounts: patch.discounts ?? base.discounts,
 });
 
-const simulatedOffer = (lotId: LotId, profile: OfferProfile): LotOffer => {
-  const lot = LOTS.find((item) => item.id === lotId);
-  if (!lot) throw new Error(`Unknown lot ${lotId}`);
+const simulatedOffer = (lotId: LotId, profile: OfferProfile, assumptionProfile: ScenarioAssumptionProfile): LotOffer => {
+  const lot = lotById(lotId);
   const scale = LOT_SCALE[lotId];
   const baseline = LOT_BASELINES[lotId];
 
@@ -240,36 +455,36 @@ const simulatedOffer = (lotId: LotId, profile: OfferProfile): LotOffer => {
     quantityInputs,
     tValues,
     dValues,
-    tradeoffs: emptyTradeoffs(),
+    tradeoffs: scenarioTradeoffs(lotId, assumptionProfile),
     phaseDiscounts: profile.discounts,
   };
 };
 
-const buildMarketScenario = (): Bidder[] => {
+const buildMarketScenario = (assumptionProfile: ScenarioAssumptionProfile = "market"): Bidder[] => {
   const autoguidovie = createBidder("autoguidovie", "Autoguidovie");
-  autoguidovie.lots.L1 = simulatedOffer("L1", OFFER_PROFILES.autoguidovie);
-  autoguidovie.lots.L4 = simulatedOffer("L4", withProfile(OFFER_PROFILES.autoguidovie, { service: 1.08, discounts: [4.55, 4.8, 5.05] }));
+  autoguidovie.lots.L1 = simulatedOffer("L1", OFFER_PROFILES.autoguidovie, assumptionProfile);
+  autoguidovie.lots.L4 = simulatedOffer("L4", withProfile(OFFER_PROFILES.autoguidovie, { service: 1.08, discounts: [4.55, 4.8, 5.05] }), assumptionProfile);
   autoguidovie.combos["L1+L4"] = { enabled: true, phaseDiscounts: [5.05, 5.25, 5.45], insertedInBothBuste: true, pefCoherent: true };
 
   const movibus = createBidder("movibus-ovest", "Movibus RTI Ovest");
-  movibus.lots.L1 = simulatedOffer("L1", withProfile(OFFER_PROFILES.movibusWest, { service: 1.04, discounts: [4.85, 5.05, 5.25] }));
-  movibus.lots.L2 = simulatedOffer("L2", withProfile(OFFER_PROFILES.movibusWest, { quality: 0.78, stopFocus: 0.75, discounts: [5.0, 5.2, 5.4] }));
+  movibus.lots.L1 = simulatedOffer("L1", withProfile(OFFER_PROFILES.movibusWest, { service: 1.04, discounts: [4.85, 5.05, 5.25] }), assumptionProfile);
+  movibus.lots.L2 = simulatedOffer("L2", withProfile(OFFER_PROFILES.movibusWest, { quality: 0.78, stopFocus: 0.75, discounts: [5.0, 5.2, 5.4] }), assumptionProfile);
   movibus.combos["L1+L2"] = { enabled: true, phaseDiscounts: [5.4, 5.55, 5.75], insertedInBothBuste: true, pefCoherent: true };
 
   const arriva = createBidder("arriva", "Arriva Italia");
-  arriva.lots.L2 = simulatedOffer("L2", OFFER_PROFILES.arriva);
-  arriva.lots.L3 = simulatedOffer("L3", withProfile(OFFER_PROFILES.arriva, { service: 1.06, discounts: [4.95, 5.2, 5.45] }));
+  arriva.lots.L2 = simulatedOffer("L2", OFFER_PROFILES.arriva, assumptionProfile);
+  arriva.lots.L3 = simulatedOffer("L3", withProfile(OFFER_PROFILES.arriva, { service: 1.06, discounts: [4.95, 5.2, 5.45] }), assumptionProfile);
   arriva.combos["L2+L3"] = { enabled: true, phaseDiscounts: [5.7, 5.9, 6.1], insertedInBothBuste: true, pefCoherent: true };
 
   const netAtm = createBidder("net-atm", "NET / Gruppo ATM");
-  netAtm.lots.L3 = simulatedOffer("L3", OFFER_PROFILES.netAtm);
-  netAtm.lots.L4 = simulatedOffer("L4", withProfile(OFFER_PROFILES.netAtm, { service: 1.0, stopFocus: 0.72, discounts: [4.0, 4.25, 4.45] }));
+  netAtm.lots.L3 = simulatedOffer("L3", OFFER_PROFILES.netAtm, assumptionProfile);
+  netAtm.lots.L4 = simulatedOffer("L4", withProfile(OFFER_PROFILES.netAtm, { service: 1.0, stopFocus: 0.72, discounts: [4.0, 4.25, 4.45] }), assumptionProfile);
   netAtm.combos["L3+L4"] = { enabled: true, phaseDiscounts: [4.9, 5.05, 5.25], insertedInBothBuste: true, pefCoherent: true };
 
   const star = createBidder("star-lodi", "STAR Mobility Lodi");
-  star.lots.L4 = simulatedOffer("L4", OFFER_PROFILES.starLocal);
+  star.lots.L4 = simulatedOffer("L4", OFFER_PROFILES.starLocal, assumptionProfile);
 
-  return [autoguidovie, movibus, arriva, netAtm, star];
+  return completeScenarioTradeoffs([autoguidovie, movibus, arriva, netAtm, star], assumptionProfile);
 };
 
 const baseBidder = (bidders: Bidder[], id: string) => {
@@ -279,43 +494,43 @@ const baseBidder = (bidders: Bidder[], id: string) => {
 };
 
 const buildTechScenario = (): Bidder[] => {
-  const bidders = buildMarketScenario();
+  const bidders = buildMarketScenario("tech");
   const netAtm = baseBidder(bidders, "net-atm");
-  netAtm.lots.L3 = simulatedOffer("L3", withProfile(OFFER_PROFILES.netAtm, { tech: 0.96, digital: 0.92, environmental: 0.94, discounts: [3.9, 4.05, 4.25] }));
-  netAtm.lots.L4 = simulatedOffer("L4", withProfile(OFFER_PROFILES.netAtm, { service: 1.02, tech: 0.94, digital: 0.9, environmental: 0.93, stopFocus: 0.78, discounts: [3.85, 4.05, 4.2] }));
+  netAtm.lots.L3 = simulatedOffer("L3", withProfile(OFFER_PROFILES.netAtm, { tech: 0.96, digital: 0.92, environmental: 0.94, discounts: [3.9, 4.05, 4.25] }), "tech");
+  netAtm.lots.L4 = simulatedOffer("L4", withProfile(OFFER_PROFILES.netAtm, { service: 1.02, tech: 0.94, digital: 0.9, environmental: 0.93, stopFocus: 0.78, discounts: [3.85, 4.05, 4.2] }), "tech");
   netAtm.combos["L3+L4"] = { enabled: true, phaseDiscounts: [4.55, 4.7, 4.9], insertedInBothBuste: true, pefCoherent: true };
 
   const autoguidovie = baseBidder(bidders, "autoguidovie");
-  autoguidovie.lots.L1 = simulatedOffer("L1", withProfile(OFFER_PROFILES.autoguidovie, { environmental: 0.82, digital: 0.82, discounts: [4.1, 4.35, 4.6] }));
-  autoguidovie.lots.L4 = simulatedOffer("L4", withProfile(OFFER_PROFILES.autoguidovie, { service: 1.08, environmental: 0.82, digital: 0.8, discounts: [4.2, 4.45, 4.7] }));
-  return bidders;
+  autoguidovie.lots.L1 = simulatedOffer("L1", withProfile(OFFER_PROFILES.autoguidovie, { environmental: 0.82, digital: 0.82, discounts: [4.1, 4.35, 4.6] }), "tech");
+  autoguidovie.lots.L4 = simulatedOffer("L4", withProfile(OFFER_PROFILES.autoguidovie, { service: 1.08, environmental: 0.82, digital: 0.8, discounts: [4.2, 4.45, 4.7] }), "tech");
+  return completeScenarioTradeoffs(bidders, "tech");
 };
 
 const buildDiscountScenario = (): Bidder[] => {
-  const bidders = buildMarketScenario();
+  const bidders = buildMarketScenario("discount");
   const movibus = baseBidder(bidders, "movibus-ovest");
-  movibus.lots.L1 = simulatedOffer("L1", withProfile(OFFER_PROFILES.movibusWest, { quality: 0.71, tech: 0.66, environmental: 0.56, discounts: [5.55, 5.8, 6.0] }));
-  movibus.lots.L2 = simulatedOffer("L2", withProfile(OFFER_PROFILES.movibusWest, { quality: 0.73, tech: 0.68, stopFocus: 0.7, environmental: 0.58, discounts: [5.65, 5.9, 6.1] }));
+  movibus.lots.L1 = simulatedOffer("L1", withProfile(OFFER_PROFILES.movibusWest, { quality: 0.71, tech: 0.66, environmental: 0.56, discounts: [5.55, 5.8, 6.0] }), "discount");
+  movibus.lots.L2 = simulatedOffer("L2", withProfile(OFFER_PROFILES.movibusWest, { quality: 0.73, tech: 0.68, stopFocus: 0.7, environmental: 0.58, discounts: [5.65, 5.9, 6.1] }), "discount");
   movibus.combos["L1+L2"] = { enabled: true, phaseDiscounts: [6.15, 6.35, 6.55], insertedInBothBuste: true, pefCoherent: true };
 
   const arriva = baseBidder(bidders, "arriva");
-  arriva.lots.L2 = simulatedOffer("L2", withProfile(OFFER_PROFILES.arriva, { tech: 0.71, digital: 0.66, stopFocus: 0.64, discounts: [5.9, 6.15, 6.35] }));
-  arriva.lots.L3 = simulatedOffer("L3", withProfile(OFFER_PROFILES.arriva, { service: 1.02, tech: 0.7, digital: 0.65, discounts: [5.8, 6.05, 6.25] }));
+  arriva.lots.L2 = simulatedOffer("L2", withProfile(OFFER_PROFILES.arriva, { tech: 0.71, digital: 0.66, stopFocus: 0.64, discounts: [5.9, 6.15, 6.35] }), "discount");
+  arriva.lots.L3 = simulatedOffer("L3", withProfile(OFFER_PROFILES.arriva, { service: 1.02, tech: 0.7, digital: 0.65, discounts: [5.8, 6.05, 6.25] }), "discount");
   arriva.combos["L2+L3"] = { enabled: true, phaseDiscounts: [6.35, 6.55, 6.75], insertedInBothBuste: true, pefCoherent: true };
-  return bidders;
+  return completeScenarioTradeoffs(bidders, "discount");
 };
 
 const buildLocalScenario = (): Bidder[] => {
-  const bidders = buildMarketScenario();
+  const bidders = buildMarketScenario("local");
   const star = baseBidder(bidders, "star-lodi");
-  star.lots.L4 = simulatedOffer("L4", withProfile(OFFER_PROFILES.starLocal, { quality: 0.76, service: 1.03, tech: 0.7, digital: 0.78, safety: 0.74, stopFocus: 0.72, environmental: 0.62, discretionary: 0.72, discounts: [4.45, 4.65, 4.85] }));
+  star.lots.L4 = simulatedOffer("L4", withProfile(OFFER_PROFILES.starLocal, { quality: 0.76, service: 1.03, tech: 0.7, digital: 0.78, safety: 0.74, stopFocus: 0.72, environmental: 0.62, discretionary: 0.72, discounts: [4.45, 4.65, 4.85] }), "local");
 
   const netAtm = baseBidder(bidders, "net-atm");
-  netAtm.lots.L4 = simulatedOffer("L4", withProfile(OFFER_PROFILES.netAtm, { service: 0.94, stopFocus: 0.67, discounts: [3.8, 4.0, 4.15] }));
+  netAtm.lots.L4 = simulatedOffer("L4", withProfile(OFFER_PROFILES.netAtm, { service: 0.94, stopFocus: 0.67, discounts: [3.8, 4.0, 4.15] }), "local");
 
   const autoguidovie = baseBidder(bidders, "autoguidovie");
   autoguidovie.combos["L1+L4"] = { enabled: false, phaseDiscounts: [0, 0, 0], insertedInBothBuste: true, pefCoherent: true };
-  return bidders;
+  return completeScenarioTradeoffs(bidders, "local");
 };
 
 export const BASE_SCENARIOS: BaseScenario[] = [
@@ -332,6 +547,7 @@ export const BASE_SCENARIOS: BaseScenario[] = [
     defaultLotId: "L1",
     defaultPairId: "L1+L4",
     settings: DEFAULT_SETTINGS,
+    buildOptimizationConfig: () => buildScenarioOptimizationConfig("market"),
     buildBidders: buildMarketScenario,
   },
   {
@@ -347,6 +563,7 @@ export const BASE_SCENARIOS: BaseScenario[] = [
     defaultLotId: "L3",
     defaultPairId: "L3+L4",
     settings: DEFAULT_SETTINGS,
+    buildOptimizationConfig: () => buildScenarioOptimizationConfig("tech"),
     buildBidders: buildTechScenario,
   },
   {
@@ -362,6 +579,7 @@ export const BASE_SCENARIOS: BaseScenario[] = [
     defaultLotId: "L2",
     defaultPairId: "L2+L3",
     settings: DEFAULT_SETTINGS,
+    buildOptimizationConfig: () => buildScenarioOptimizationConfig("discount"),
     buildBidders: buildDiscountScenario,
   },
   {
@@ -377,6 +595,7 @@ export const BASE_SCENARIOS: BaseScenario[] = [
     defaultLotId: "L4",
     defaultPairId: "L3+L4",
     settings: DEFAULT_SETTINGS,
+    buildOptimizationConfig: () => buildScenarioOptimizationConfig("local"),
     buildBidders: buildLocalScenario,
   },
 ];

@@ -2025,14 +2025,9 @@ input[type="checkbox"] {
 
 .optimization-controls {
   display: grid;
-  grid-template-columns: minmax(150px, 0.7fr) minmax(170px, 0.8fr) minmax(220px, 1fr) minmax(190px, 0.8fr);
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 10px;
   align-items: end;
-}
-
-.budget-switch {
-  min-height: 34px;
-  align-self: end;
 }
 
 .economic-optimizer {
@@ -2437,6 +2432,138 @@ input[type="checkbox"] {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.subcriteria-score-section {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.subcriteria-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--row-bg);
+}
+
+.subcriteria-score-table {
+  width: 100%;
+  min-width: max(980px, calc(310px + var(--score-column-count, 7) * 132px));
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.subcriteria-score-table th,
+.subcriteria-score-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 8px 9px;
+  text-align: right;
+  vertical-align: top;
+}
+
+.subcriteria-score-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--matrix-head-bg);
+  color: var(--matrix-head-text);
+  font-size: 0.72rem;
+  font-weight: 820;
+  text-transform: uppercase;
+}
+
+.subcriteria-score-table th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  width: 310px;
+  min-width: 310px;
+  max-width: 310px;
+  text-align: left;
+}
+
+.subcriteria-score-table tbody th:first-child,
+.subcriteria-score-table tfoot th:first-child {
+  background: var(--row-bg);
+}
+
+.subcriteria-score-table thead th:first-child {
+  z-index: 3;
+  background: var(--matrix-head-bg);
+}
+
+.subcriteria-score-table th span,
+.subcriteria-score-table th strong,
+.subcriteria-score-table th small,
+.subcriteria-score-table td strong,
+.subcriteria-score-table td small {
+  display: block;
+}
+
+.subcriteria-score-table th span {
+  color: var(--teal);
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.subcriteria-score-table th strong {
+  color: var(--strong-text);
+  font-size: 0.82rem;
+  line-height: 1.25;
+  text-transform: none;
+}
+
+.subcriteria-score-table th small,
+.subcriteria-score-table td small {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 650;
+  line-height: 1.25;
+  margin-top: 2px;
+}
+
+.subcriteria-score-table td {
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
+.subcriteria-score-table td strong {
+  color: var(--strong-text);
+  font-size: 0.86rem;
+}
+
+.subcriteria-score-table .subcriteria-ambit-row th {
+  position: static;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  background: var(--parent-head-bg);
+  color: var(--section-title);
+}
+
+.subcriteria-score-table .subcriteria-ambit-row th span,
+.subcriteria-score-table .subcriteria-ambit-row th strong {
+  display: inline;
+}
+
+.subcriteria-score-table .subcriteria-ambit-row th span {
+  margin-right: 8px;
+}
+
+.subcriteria-score-table tfoot th,
+.subcriteria-score-table tfoot td {
+  background: var(--surface-soft);
+  color: var(--strong-text);
+  font-weight: 850;
+}
+
+.subcriteria-score-table .muted-cell {
+  color: var(--muted);
+}
+
+.subcriteria-score-table .warn-cell strong {
+  color: var(--warning-strong);
 }
 
 .hero-score {

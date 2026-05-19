@@ -29,11 +29,11 @@ describe("scenario persistence normalization", () => {
     });
 
     expect(snapshot).toBeDefined();
-    expect(snapshot?.schemaVersion).toBe(4);
+    expect(snapshot?.schemaVersion).toBe(5);
     expect(snapshot?.baseScenarioId).toBe("market");
-    expect(snapshot?.optimization.budgetEnabled).toBe(false);
-    expect(snapshot?.optimization.budget).toBe(1_000_000);
+    expect(snapshot?.optimization.mode).toBe("technical-economic");
     expect(snapshot?.optimization.scope).toBe("active-lot");
+    expect(snapshot?.optimization.levers.L1?.["C.1.2"].unitCost).toBeGreaterThan(0);
     expect(snapshot?.settings.threshold).toBe(37);
     expect(snapshot?.settings.applyAwardLimitDerogation).toBe(false);
     expect(snapshot?.selectedBidderId).toBe("a");
@@ -49,6 +49,7 @@ describe("scenario persistence normalization", () => {
       if (criterion.kind === "D") expect(bidder.lots.L1.dValues[criterion.id]).toBeDefined();
       expect(bidder.lots.L1.tradeoffs[criterion.id]).toBeDefined();
     }
+    expect(bidder.lots.L1.tradeoffs["C.1.2"].unitCost).toBeGreaterThan(0);
   });
 
   it("accepts the new baseScenarioId field and falls back to scenario defaults", () => {
@@ -64,10 +65,10 @@ describe("scenario persistence normalization", () => {
     });
 
     expect(workspace).toBeDefined();
-    expect(workspace?.schemaVersion).toBe(4);
+    expect(workspace?.schemaVersion).toBe(5);
     expect(workspace?.baseScenarioId).toBe("local");
-    expect(workspace?.optimization.budgetEnabled).toBe(false);
-    expect(workspace?.optimization.budgetMode).toBe("strategic");
+    expect(workspace?.optimization.mode).toBe("technical-economic");
+    expect(workspace?.optimization.levers.L4?.["C.2.1"].unitCost).toBeGreaterThan(0);
     expect(workspace?.scenarioName).toBe("Presidio locale");
     expect(workspace?.settings).toEqual({ threshold: 38, applyAwardLimitDerogation: true });
     expect(workspace?.selectedLotId).toBe("L4");
@@ -95,9 +96,10 @@ describe("scenario persistence normalization", () => {
     });
 
     expect(snapshot).toBeDefined();
-    expect(snapshot?.optimization.budgetEnabled).toBe(true);
-    expect(snapshot?.optimization.budget).toBe(500000);
-    expect(snapshot?.optimization.budgetMode).toBe("technical");
+    expect(snapshot?.optimization.mode).toBe("technical-only");
+    expect("budgetEnabled" in snapshot!.optimization).toBe(false);
+    expect("budget" in snapshot!.optimization).toBe(false);
+    expect("budgetMode" in snapshot!.optimization).toBe(false);
     expect(snapshot?.optimization.scope).toBe("active-lots");
     expect(snapshot?.optimization.economic.enabled).toBe(false);
     expect(snapshot?.optimization.levers.L1?.["C.1.2"]).toEqual({
@@ -108,6 +110,7 @@ describe("scenario persistence normalization", () => {
       denominator: 80,
     });
     expect(snapshot?.optimization.levers.L2?.["C.1.2"]).toBeDefined();
+    expect(snapshot?.optimization.levers.L2?.["C.1.2"].unitCost).toBeGreaterThan(0);
     expect(snapshot?.optimization.levers.L1?.["B.5.1"].enabled).toBe(false);
   });
 });

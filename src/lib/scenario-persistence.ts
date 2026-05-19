@@ -26,7 +26,7 @@ export const LEGACY_STORAGE_KEYS = {
 } as const;
 
 export type SavedScenarioSnapshot = {
-  schemaVersion: 4;
+  schemaVersion: 5;
   id: string;
   name: string;
   savedAt: string;
@@ -40,7 +40,7 @@ export type SavedScenarioSnapshot = {
 };
 
 export type StoredWorkspace = {
-  schemaVersion: 4;
+  schemaVersion: 5;
   scenarioName: string;
   activeSavedScenarioId?: string;
   baseScenarioId: BaseScenarioId;
@@ -105,36 +105,53 @@ const normalizeQuantityInput = (value: unknown): QuantityInputValue => {
   };
 };
 
-const normalizeTradeoff = (value: unknown): TradeoffPlan => {
+const normalizeTradeoff = (value: unknown, fallback?: TradeoffPlan): TradeoffPlan => {
   const source = isRecord(value) ? value : {};
-  return {
+  const normalized = {
     deltaUnits: nonNegativeNumber(source.deltaUnits, 0),
     unitCost: nonNegativeNumber(source.unitCost, 0),
     denominator: nonNegativeNumber(source.denominator, 0),
   };
+  const isBlank = normalized.deltaUnits === 0 && normalized.unitCost === 0 && normalized.denominator === 0;
+  return isBlank && fallback ? fallback : normalized;
 };
 
-const normalizeOptimizationLever = (value: unknown, criterionKind: "Q" | "T" | "D"): OptimizationLeverInput => {
+const fallbackOptimizationLever = (criterionKind: "Q" | "T" | "D"): OptimizationLeverInput => ({
+  enabled: criterionKind !== "D",
+  stepUnits: 1,
+  maxUnits: 0,
+  unitCost: 0,
+  denominator: 0,
+});
+
+const normalizeOptimizationLever = (
+  value: unknown,
+  criterionKind: "Q" | "T" | "D",
+  fallbackValue?: OptimizationLeverInput,
+): OptimizationLeverInput => {
   const source = isRecord(value) ? value : {};
+  const fallback = fallbackValue ?? fallbackOptimizationLever(criterionKind);
   return {
-    enabled: typeof source.enabled === "boolean" ? source.enabled : criterionKind !== "D",
-    stepUnits: nonNegativeNumber(source.stepUnits, 1),
-    maxUnits: nonNegativeNumber(source.maxUnits, 0),
-    unitCost: nonNegativeNumber(source.unitCost, 0),
-    denominator: nonNegativeNumber(source.denominator, 0),
+    enabled: typeof source.enabled === "boolean" ? source.enabled : fallback.enabled,
+    stepUnits: nonNegativeNumber(source.stepUnits, fallback.stepUnits),
+    maxUnits: nonNegativeNumber(source.maxUnits, fallback.maxUnits),
+    unitCost: nonNegativeNumber(source.unitCost, fallback.unitCost),
+    denominator: nonNegativeNumber(source.denominator, fallback.denominator),
   };
 };
 
-export const normalizeOptimizationConfig = (value: unknown): OptimizationConfig => {
-  const fallback = defaultOptimizationConfig();
+export const normalizeOptimizationConfig = (value: unknown, fallbackConfig?: OptimizationConfig): OptimizationConfig => {
+  const fallback = fallbackConfig ?? defaultOptimizationConfig();
   const source = isRecord(value) ? value : {};
   const economic = isRecord(source.economic) ? source.economic : {};
   const sourceLevers = isRecord(source.levers) ? source.levers : {};
+  const legacyMode = source.budgetMode === "technical" ? "technical-only" : source.budgetMode === "strategic" ? "technical-economic" : undefined;
 
   return {
-    budgetEnabled: typeof source.budgetEnabled === "boolean" ? source.budgetEnabled : fallback.budgetEnabled,
-    budget: nonNegativeNumber(source.budget, fallback.budget),
-    budgetMode: source.budgetMode === "technical" ? "technical" : "strategic",
+    mode:
+      source.mode === "technical-only" || source.mode === "technical-economic"
+        ? source.mode
+        : legacyMode ?? fallback.mode,
     scope:
       source.scope === "active-lots" || source.scope === "scenario" || source.scope === "active-lot"
         ? source.scope
@@ -147,17 +164,23 @@ export const normalizeOptimizationConfig = (value: unknown): OptimizationConfig 
     levers: Object.fromEntries(
       LOTS.map((lot) => {
         const lotLevers = recordValue(sourceLevers, lot.id);
+        const fallbackLotLevers = fallback.levers[lot.id] ?? {};
         return [
           lot.id,
-          Object.fromEntries(CRITERIA.map((criterion) => [criterion.id, normalizeOptimizationLever(recordValue(lotLevers, criterion.id), criterion.kind)])),
+          Object.fromEntries(
+            CRITERIA.map((criterion) => [
+              criterion.id,
+              normalizeOptimizationLever(recordValue(lotLevers, criterion.id), criterion.kind, fallbackLotLevers[criterion.id]),
+            ]),
+          ),
         ];
       }),
     ) as OptimizationConfig["levers"],
   };
 };
 
-export const normalizeLotOffer = (value: unknown): LotOffer => {
-  const fallback = emptyLotOffer();
+export const normalizeLotOffer = (value: unknown, fallbackOffer?: LotOffer): LotOffer => {
+  const fallback = fallbackOffer ?? emptyLotOffer();
   const source = isRecord(value) ? value : {};
   const qValues = Object.fromEntries(
     CRITERIA.filter((criterion) => criterion.kind === "Q").map((criterion) => [
@@ -183,7 +206,12 @@ export const normalizeLotOffer = (value: unknown): LotOffer => {
       finiteNumber(recordValue(source.dValues, criterion.id), fallback.dValues[criterion.id] ?? 0),
     ]),
   );
-  const tradeoffs = Object.fromEntries(CRITERIA.map((criterion) => [criterion.id, normalizeTradeoff(recordValue(source.tradeoffs, criterion.id))]));
+  const tradeoffs = Object.fromEntries(
+    CRITERIA.map((criterion) => [
+      criterion.id,
+      normalizeTradeoff(recordValue(source.tradeoffs, criterion.id), fallback.tradeoffs[criterion.id]),
+    ]),
+  );
 
   return {
     enabled: Boolean(source.enabled),
@@ -207,13 +235,13 @@ export const normalizeComboOffer = (value: unknown): ComboOffer => {
   };
 };
 
-export const normalizeBidder = (value: unknown, index = 0): Bidder => {
+export const normalizeBidder = (value: unknown, index = 0, fallbackBidder?: Bidder): Bidder => {
   const source = isRecord(value) ? value : {};
   const id = normalizedId(source.id, `offerente-${index + 1}`);
   const bidder = createBidder(id, normalizedName(source.name, `Offerente ${index + 1}`));
 
   bidder.lots = Object.fromEntries(
-    LOTS.map((lot) => [lot.id, normalizeLotOffer(recordValue(source.lots, lot.id))]),
+    LOTS.map((lot) => [lot.id, normalizeLotOffer(recordValue(source.lots, lot.id), fallbackBidder?.lots[lot.id])]),
   ) as Record<LotId, LotOffer>;
   bidder.combos = Object.fromEntries(
     PAIRS.map((pair) => [pair.id, normalizeComboOffer(recordValue(source.combos, pair.id))]),
@@ -223,8 +251,13 @@ export const normalizeBidder = (value: unknown, index = 0): Bidder => {
 };
 
 export const normalizeBidders = (value: unknown, baseScenarioId: BaseScenarioId): Bidder[] => {
-  if (!Array.isArray(value) || !value.length) return getBaseScenario(baseScenarioId).buildBidders();
-  return value.map((item, index) => normalizeBidder(item, index));
+  const fallbackBidders = getBaseScenario(baseScenarioId).buildBidders();
+  if (!Array.isArray(value) || !value.length) return fallbackBidders;
+  return value.map((item, index) => {
+    const source = isRecord(item) ? item : {};
+    const fallbackById = typeof source.id === "string" ? fallbackBidders.find((bidder) => bidder.id === source.id) : undefined;
+    return normalizeBidder(item, index, fallbackById ?? fallbackBidders[index]);
+  });
 };
 
 export const normalizeSettings = (value: unknown): Settings => {
@@ -250,14 +283,14 @@ export const normalizeScenarioSnapshot = (value: unknown): SavedScenarioSnapshot
   const firstBidderId = bidders[0]?.id ?? fallbackScenario.defaultBidderId;
 
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     id: normalizedId(candidate.id, `scenario-${Date.now()}`),
     name: normalizedName(candidate.name, "Scenario importato"),
     savedAt: typeof candidate.savedAt === "string" ? candidate.savedAt : new Date().toISOString(),
     baseScenarioId,
     bidders,
     settings: normalizeSettings(candidate.settings),
-    optimization: normalizeOptimizationConfig(candidate.optimization),
+    optimization: normalizeOptimizationConfig(candidate.optimization, fallbackScenario.buildOptimizationConfig()),
     selectedBidderId: typeof candidate.selectedBidderId === "string" && bidders.some((bidder) => bidder.id === candidate.selectedBidderId)
       ? candidate.selectedBidderId
       : firstBidderId,
@@ -275,13 +308,13 @@ export const normalizeStoredWorkspace = (value: unknown): StoredWorkspace | unde
   if (!bidders.length) return undefined;
 
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     scenarioName: normalizedName(candidate.scenarioName, fallbackScenario.title),
     activeSavedScenarioId: typeof candidate.activeSavedScenarioId === "string" ? candidate.activeSavedScenarioId : undefined,
     baseScenarioId,
     bidders,
     settings: normalizeSettings(candidate.settings),
-    optimization: normalizeOptimizationConfig(candidate.optimization),
+    optimization: normalizeOptimizationConfig(candidate.optimization, fallbackScenario.buildOptimizationConfig()),
     selectedBidderId: typeof candidate.selectedBidderId === "string" && bidders.some((bidder) => bidder.id === candidate.selectedBidderId)
       ? candidate.selectedBidderId
       : bidders[0]?.id ?? fallbackScenario.defaultBidderId,

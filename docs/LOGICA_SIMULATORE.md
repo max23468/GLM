@@ -17,7 +17,7 @@ Non va usato come fonte ufficiale autonoma. Ogni dato deve restare riconducibile
 - `src/data/tender.ts`: definisce lotti, coppie combinatorie, ambiti A-G, sub-criteri, soglie Q/T, fonti pubbliche e warning documentali.
 - `src/data/base-scenarios.ts`: definisce scenari base, profili simulati, baseline operative e assunzioni numeriche non ufficiali.
 - `src/lib/scoring.ts`: calcola punteggi tecnici/economici, ammissibilità combinatorie, ranking lotti e scenario migliore.
-- `src/lib/optimization.ts`: genera piani di miglioramento da un'offerta iniziale, con budget massimo opzionale.
+- `src/lib/optimization.ts`: genera piani di miglioramento da un'offerta iniziale, con leve tecniche e riallocazioni verso ribasso.
 - `src/lib/tradeoff.ts`: applica l'analisi puntuale criterio e calcola il relativo costo stimato.
 - `src/lib/scenario-persistence.ts`: normalizza workspace, scenari salvati, import JSON e migrazione dai campi legacy.
 - `src/App.tsx`: gestisce stato UI, gestione workspace laterale, salvataggio locale, import/export JSON, selezione tab, analisi puntuale criterio e ottimizzazione.
@@ -63,11 +63,13 @@ Il pannello di analisi puntuale criterio simula l'effetto di un singolo migliora
 
 Il costo totale non arriva dai documenti di gara. È un'ipotesi dell'utente e viene trattato come riduzione del ribasso medio del lotto. Per questo la UI deve continuare a presentarlo come stima, non come dato ufficiale.
 
+Gli scenari base precompilano `deltaUnits`, `unitCost` e `denominator` per ogni lotto e criterio non discrezionale, così l'analisi puntuale criterio è subito utilizzabile anche dopo import o migrazione di snapshot privi dei nuovi campi. I criteri discrezionali restano definiti ma senza costo unitario deterministico.
+
 ## Ottimizzazione
 
-L'ottimizzazione parte dall'offerta corrente del concorrente selezionato e tiene fermi gli altri concorrenti. Il motore genera mosse candidate, le applica su copie dello scenario e sceglie progressivamente la leva con maggior incremento di punteggio finché non restano miglioramenti positivi. Se l'utente attiva il budget massimo, le mosse che superano il budget residuo vengono escluse e l'ordinamento privilegia l'incremento di punteggio per euro; senza budget attivo il piano massimizza il punteggio entro massimali, costi e input configurati.
+L'ottimizzazione parte dall'offerta corrente del concorrente selezionato e tiene fermi gli altri concorrenti. Il motore genera mosse candidate, le applica su copie dello scenario e sceglie progressivamente la leva con maggior incremento di punteggio finché non restano miglioramenti positivi. Il piano massimizza il punteggio entro massimali, costi unitari e input configurati, senza introdurre fondi esterni o ribassi diretti non finanziati.
 
-Quando `Tecnica + ribasso` è attivo, il motore valuta anche riallocazioni tecnico-economiche: riduce una leva tecnica rispetto all'offerta iniziale, calcola le risorse liberate con il costo unitario inserito dall'utente e usa tali risorse per finanziare un maggiore ribasso. La mossa entra nel piano solo se il saldo netto tra punti tecnici persi e punti economici guadagnati è positivo. Senza budget esterno attivo, una rinuncia tecnica usata per finanziare ribasso non viene riaggiunta automaticamente nella stessa ottimizzazione.
+Quando `Tecnica + ribasso` è attivo, il motore valuta anche riallocazioni tecnico-economiche: riduce una leva tecnica rispetto all'offerta iniziale, calcola le risorse liberate con il costo unitario inserito dall'utente e usa tali risorse per finanziare un maggiore ribasso. La mossa entra nel piano solo se il saldo netto tra punti tecnici persi e punti economici guadagnati è positivo. Il ribasso può aumentare solo tramite questa riallocazione.
 
 Gli obiettivi disponibili sono:
 
@@ -75,12 +77,12 @@ Gli obiettivi disponibili sono:
 - `Tutti i lotti attivi`: massimizza la somma dei punteggi singoli del concorrente sui lotti attivi;
 - `Scenario complessivo`: massimizza il contributo del concorrente nelle assegnazioni dello scenario vincente simulato.
 
-Le leve considerate sono:
+Le modalità considerate sono:
 
-- `Tecnica + ribasso`: confronta leve tecniche Q/T e maggiore ribasso economico;
+- `Tecnica + ribasso`: confronta leve tecniche Q/T e riallocazioni verso maggiore ribasso economico;
 - `Solo tecnica`: usa solo leve tecniche Q/T e ignora il ribasso.
 
-Il budget massimo non è obbligatorio. Quando è attivo, limita sia gli investimenti tecnici sia il minore corrispettivo prodotto dal ribasso economico. Quando è disattivo, resta visibile solo il costo complessivo stimato del piano.
+Il costo complessivo stimato del piano resta una lettura gestionale delle mosse consigliate. Per le riallocazioni, il simulatore mostra quante risorse vengono liberate dalla rinuncia tecnica e quanta parte finanzia il maggiore ribasso.
 
 I criteri discrezionali `D` sono esclusi dall'ottimizzazione automatica perché dipendono dal giudizio della Commissione e non hanno una funzione deterministica costo-punteggio nel disciplinare. Restano compilabili manualmente nella tab `Tecnica`.
 
@@ -120,7 +122,7 @@ Lo stato vive nel browser:
 
 Le chiavi legacy `tpl-simulator-*` restano lette in fallback. L'import/export usa JSON con snapshot dello scenario; se cambia la forma dei dati, aggiornare i normalizzatori in `src/lib/scenario-persistence.ts` e mantenere compatibilità ragionevole con scenari esportati in precedenza.
 
-Gli snapshot correnti usano `schemaVersion: 4` e includono la configurazione di ottimizzazione, compreso il flag che rende facoltativo il budget massimo. La normalizzazione deve continuare ad accettare snapshot precedenti privi del blocco `optimization` o del flag `budgetEnabled`.
+Gli snapshot correnti usano `schemaVersion: 5` e includono la configurazione di ottimizzazione senza tetti finanziari esterni o massimi. La normalizzazione deve continuare ad accettare snapshot precedenti privi del blocco `optimization` o con i vecchi campi legacy.
 
 La gestione di scenari, concorrenti, lotti e opzioni di partecipazione è concentrata nella barra laterale. La vista ordinaria mostra solo il riepilogo `Workspace`; il pulsante `Gestisci workspace` apre i controlli laterali e `Indietro` chiude l'intera gestione.
 
@@ -134,6 +136,8 @@ Gli scenari base sono definiti in `src/data/base-scenarios.ts`:
 - `Presidio locale`
 
 Usano basi ricavate dagli allegati locali e segnali pubblici per operatori reali. Non rappresentano offerte ufficiali e non devono essere descritti come tali in UI, README o report.
+
+Ogni scenario base genera anche una configurazione completa di ottimizzazione: modalità, leva economica, scope di default, step, massimali, basi e costi unitari per tutti i lotti. La normalizzazione di workspace e JSON usa questi valori come fallback quando uno scenario salvato non contiene ancora i campi introdotti dall'ottimizzazione.
 
 ## Criticità documentali
 
