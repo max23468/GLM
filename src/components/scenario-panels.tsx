@@ -12,19 +12,8 @@ import {
 } from "lucide-react";
 import { useRef } from "react";
 import { LOTS } from "../data/tender";
-import { formatPoints, type Bidder, type Settings, type SimulationResult } from "../lib/scoring";
-
-export type SavedScenarioSnapshot = {
-  id: string;
-  name: string;
-  savedAt: string;
-  demoScenarioId: string;
-  bidders: Bidder[];
-  settings: Settings;
-  selectedBidderId: string;
-  selectedLotId: string;
-  selectedPairId: string;
-};
+import { formatPoints, type SimulationResult } from "../lib/scoring";
+import type { SavedScenarioSnapshot } from "../lib/scenario-persistence";
 
 type ScenarioToolsProps = {
   scenarioName: string;
@@ -37,7 +26,7 @@ type ScenarioToolsProps = {
   onExport: () => void;
   onImportFile: (file: File) => void;
   onLoadSaved: (scenarioId: string) => void;
-  onResetDemo: () => void;
+  onResetBaseScenario: () => void;
 };
 
 export function ScenarioTools({
@@ -51,7 +40,7 @@ export function ScenarioTools({
   onExport,
   onImportFile,
   onLoadSaved,
-  onResetDemo,
+  onResetBaseScenario,
 }: ScenarioToolsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -105,9 +94,9 @@ export function ScenarioTools({
           ))}
         </select>
       </label>
-      <button className="action-button subtle" onClick={onResetDemo}>
+      <button className="action-button subtle" onClick={onResetBaseScenario}>
         <RotateCcw size={16} />
-        Ripristina preset demo
+        Ripristina scenario base
       </button>
       {scenarioNotice && <div className="scenario-notice">{scenarioNotice}</div>}
     </section>

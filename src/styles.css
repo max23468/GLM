@@ -374,12 +374,12 @@ input[type="checkbox"] {
   font-weight: 760;
 }
 
-.demo-list {
+.base-list {
   display: grid;
   gap: 8px;
 }
 
-.demo-card {
+.base-card {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -392,12 +392,12 @@ input[type="checkbox"] {
   cursor: pointer;
 }
 
-.demo-card.active {
+.base-card.active {
   border-color: var(--teal-border);
   background: var(--teal-soft);
 }
 
-.demo-card strong {
+.base-card strong {
   display: block;
   width: 100%;
   color: var(--section-title);
@@ -405,7 +405,7 @@ input[type="checkbox"] {
   line-height: 1.25;
 }
 
-.demo-card span {
+.base-card span {
   display: block;
   width: 100%;
   color: var(--muted);

@@ -1,24 +1,26 @@
 # Logica del Simulatore
 
-Questa nota descrive come è organizzata la simulazione di `Gare Lotti Milanesi` e quali punti verificare quando si evolvono dati, formule o interfaccia.
+Questa nota descrive come è organizzata la simulazione di `Simulatore gara TPL lotti 1-4` e quali punti verificare quando si evolvono dati, formule o interfaccia.
 
 ## Perimetro
 
-Il simulatore modella scenari di aggiudicazione per i lotti `L1`-`L4` della gara TPL MLMP 2026. La finalità è esplorativa e operativa: confrontare combinazioni di offerenti, offerte singole, offerte combinatorie, soglie tecniche e ribassi.
+Il simulatore modella scenari di aggiudicazione per i lotti `L1`-`L4` della gara TPL 2026. La finalità è esplorativa e operativa: confrontare combinazioni di offerenti, offerte singole, offerte combinatorie, soglie tecniche e ribassi.
 
 Non va usato come fonte ufficiale autonoma. Ogni dato deve restare riconducibile a una delle tre categorie già presenti in `src/data/tender.ts`:
 
 - `Documento di gara`
 - `Fonte pubblica`
-- `Assunzione demo`
+- `Assunzione simulativa`
 
 ## Dove vive la logica
 
 - `src/data/tender.ts`: definisce lotti, coppie combinatorie, ambiti A-G, sub-criteri, soglie Q/T, fonti pubbliche e warning documentali.
+- `src/data/base-scenarios.ts`: definisce scenari base, profili simulati, baseline operative e assunzioni numeriche non ufficiali.
 - `src/lib/scoring.ts`: calcola punteggi tecnici/economici, ammissibilità combinatorie, ranking lotti e scenario migliore.
-- `src/App.tsx`: costruisce preset demo, gestisce stato UI, salvataggio locale, import/export JSON, selezione tab e tradeoff.
+- `src/lib/scenario-persistence.ts`: normalizza workspace, scenari salvati, import JSON e migrazione dai campi legacy.
+- `src/App.tsx`: gestisce stato UI, salvataggio locale, import/export JSON, selezione tab e tradeoff.
 - `src/components/scenario-panels.tsx`: contiene pannelli scenario, riepilogo strategico, confronto e report.
-- `src/lib/scoring.test.ts`: copre i casi principali del motore di scoring.
+- `src/lib/*.test.ts`: copre motore di scoring e normalizzazione della persistenza.
 
 ## Flusso di calcolo
 
@@ -62,15 +64,15 @@ Il costo totale non arriva dai documenti di gara. È un'ipotesi dell'utente e vi
 
 Lo stato vive nel browser:
 
-- `tpl-simulator-theme`: preferenza tema;
-- `tpl-simulator-workspace`: workspace corrente;
-- `tpl-simulator-scenarios`: scenari salvati.
+- `tpl-lotti-1-4-theme`: preferenza tema;
+- `tpl-lotti-1-4-workspace`: workspace corrente;
+- `tpl-lotti-1-4-scenarios`: scenari salvati.
 
-L'import/export usa JSON con snapshot dello scenario. Se cambia la forma dei dati, aggiornare i normalizzatori in `src/App.tsx` e mantenere compatibilità ragionevole con scenari esportati in precedenza.
+Le chiavi legacy `tpl-simulator-*` restano lette in fallback. L'import/export usa JSON con snapshot dello scenario; se cambia la forma dei dati, aggiornare i normalizzatori in `src/lib/scenario-persistence.ts` e mantenere compatibilità ragionevole con scenari esportati in precedenza.
 
-## Preset demo
+## Scenari base
 
-I preset sono definiti in `src/App.tsx`:
+Gli scenari base sono definiti in `src/data/base-scenarios.ts`:
 
 - `Mercato realistico`
 - `Tecnologia e flotta`
@@ -114,7 +116,7 @@ npm run preview -- --port 4173
 
 Poi aprire l'app e controllare almeno:
 
-- caricamento preset demo;
+- caricamento scenario base;
 - cambio lotto/offerente;
 - salvataggio scenario;
 - import/export JSON;

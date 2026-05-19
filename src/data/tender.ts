@@ -78,7 +78,7 @@ export type PublicSourceNote = {
   source: string;
   sourceUrl: string;
   verifiedAt: string;
-  reliability: "Documento di gara" | "Fonte pubblica" | "Assunzione demo";
+  reliability: "Documento di gara" | "Fonte pubblica" | "Assunzione simulativa";
 };
 
 export const LOTS: Lot[] = [
@@ -132,28 +132,28 @@ export const LOT_CONTEXT: Record<LotId, LotContext> = {
     lotId: "L1",
     territory: "Bacino extraurbano milanese, primo lotto di simulazione",
     operatingHint: "Lotto più piccolo: pesa meno sul valore complessivo, ma resta sensibile alla qualità operativa e alle combinatorie.",
-    source: "Agenzia TPL MLMP, gara TPL 2026",
+    source: "Agenzia TPL Milano, Monza Brianza, Lodi e Pavia",
     sourceUrl: "https://www.agenziatpl.it/agenzia/amministrazione-trasparente/19-bandi-di-gara-e-contratti/287-bando-di-gara-per-l-affidamento-di-servizi-di-tpl",
   },
   L2: {
     lotId: "L2",
     territory: "Area extraurbana con base d'asta più elevata",
     operatingHint: "La massa economica rende molto rilevanti ribasso medio, PEF e tenuta della soglia Q/T.",
-    source: "Agenzia TPL MLMP, gara TPL 2026",
+    source: "Agenzia TPL Milano, Monza Brianza, Lodi e Pavia",
     sourceUrl: "https://www.agenziatpl.it/agenzia/amministrazione-trasparente/19-bandi-di-gara-e-contratti/287-bando-di-gara-per-l-affidamento-di-servizi-di-tpl",
   },
   L3: {
     lotId: "L3",
     territory: "Lotto intermedio con forte competizione su tecnologia e servizio",
     operatingHint: "Il profilo tecnico premia coperture di bordo, informazione all'utenza e miglioramenti di esercizio.",
-    source: "Agenzia TPL MLMP, gara TPL 2026",
+    source: "Agenzia TPL Milano, Monza Brianza, Lodi e Pavia",
     sourceUrl: "https://www.agenziatpl.it/agenzia/amministrazione-trasparente/19-bandi-di-gara-e-contratti/287-bando-di-gara-per-l-affidamento-di-servizi-di-tpl",
   },
   L4: {
     lotId: "L4",
     territory: "Area extraurbana orientata a Lodi/Pavia nel set documentale",
     operatingHint: "Il valore e la produzione minima rendono credibili strategie locali con forte presidio operativo.",
-    source: "Agenzia TPL MLMP, gara TPL 2026",
+    source: "Agenzia TPL Milano, Monza Brianza, Lodi e Pavia",
     sourceUrl: "https://www.agenziatpl.it/agenzia/amministrazione-trasparente/19-bandi-di-gara-e-contratti/287-bando-di-gara-per-l-affidamento-di-servizi-di-tpl",
   },
 };
@@ -161,7 +161,7 @@ export const LOT_CONTEXT: Record<LotId, LotContext> = {
 export const PUBLIC_SOURCE_NOTES: PublicSourceNote[] = [
   {
     id: "agency-tender",
-    title: "Gara TPL MLMP",
+    title: "Gara TPL 2026",
     metric: "4 lotti / 30.09.2026",
     body: "La pubblicazione dell'Agenzia TPL indica procedura aperta, quattro lotti extraurbani e scadenza bando al 30 settembre 2026.",
     source: "Agenzia TPL Milano, Monza Brianza, Lodi e Pavia",
@@ -181,19 +181,19 @@ export const PUBLIC_SOURCE_NOTES: PublicSourceNote[] = [
   },
   {
     id: "lot-baselines",
-    title: "Basi demo di lotto",
+    title: "Basi simulate di lotto",
     metric: "484 mezzi / 4.682 fermate",
-    body: "Le basi demo usano All. 09 per mezzi, All. 05 per fermate e All. 04.9-04.12 per corse annue stimate per lotto.",
+    body: "Le basi simulate usano All. 09 per mezzi, All. 05 per fermate e All. 04.9-04.12 per corse annue stimate per lotto.",
     source: "Allegati locali di gara / Sintel",
     sourceUrl: "https://www.sintel.regione.lombardia.it/eprocdata/auctionDetail.xhtml?id=218044617",
     verifiedAt: "19/05/2026",
-    reliability: "Assunzione demo",
+    reliability: "Assunzione simulativa",
   },
   {
     id: "autoguidovie",
     title: "Autoguidovie",
     metric: "777 mezzi",
-    body: "Il profilo demo usa dati pubblici su classe emissiva Euro 5+, AVM, accessibilità, videosorveglianza, ADAS e rinnovo medio della flotta.",
+    body: "Il profilo simulato usa dati pubblici su classe emissiva Euro 5+, AVM, accessibilità, videosorveglianza, ADAS e rinnovo medio della flotta.",
     source: "Autoguidovie - Flotta",
     sourceUrl: "https://autoguidovie.it/it/flotta",
     verifiedAt: "19/05/2026",
@@ -203,7 +203,7 @@ export const PUBLIC_SOURCE_NOTES: PublicSourceNote[] = [
     id: "arriva",
     title: "Arriva Italia",
     metric: "1.920 mezzi",
-    body: "Il profilo demo usa la scala nazionale del gruppo e gli investimenti dichiarati su rinnovo flotta, quota clean e classe emissiva minima.",
+    body: "Il profilo simulato usa la scala nazionale del gruppo e gli investimenti dichiarati su rinnovo flotta, quota clean e classe emissiva minima.",
     source: "Arriva Italia - Piano investimenti",
     sourceUrl: "https://arriva.it/news/investimenti-pari-a-156-milioni-di-euro-nei-prossimi-5-anni/",
     verifiedAt: "19/05/2026",

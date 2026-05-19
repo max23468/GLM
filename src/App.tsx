@@ -29,13 +29,11 @@ import {
   type LotId,
   type PairId,
 } from "./data/tender";
+import { BASE_SCENARIOS, DEFAULT_SETTINGS, type BaseScenario, type BaseScenarioId } from "./data/base-scenarios";
 import {
   computeQuantityInputValue,
   createBidder,
   criteriaByParent,
-  emptyComboOffer,
-  emptyLotOffer,
-  emptyTradeoffs,
   formatPercent,
   formatPoints,
   candidateLotScore,
@@ -57,16 +55,20 @@ import {
   ScenarioComparison,
   ScenarioTools,
   StrategicSummary,
-  type SavedScenarioSnapshot,
 } from "./components/scenario-panels";
+import {
+  LEGACY_STORAGE_KEYS,
+  STORAGE_KEYS,
+  normalizeScenarioSnapshot,
+  readStoredSavedScenarios,
+  readStoredWorkspace,
+  type SavedScenarioSnapshot,
+  type StoredWorkspace,
+} from "./lib/scenario-persistence";
 
 const euroFormatter = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 type ThemePreference = "auto" | "light" | "dark";
 type WorkspaceTab = "tecnica" | "economica" | "combinatorie" | "risultati";
-
-const THEME_STORAGE_KEY = "tpl-simulator-theme";
-const WORKSPACE_STORAGE_KEY = "tpl-simulator-workspace";
-const SAVED_SCENARIOS_STORAGE_KEY = "tpl-simulator-scenarios";
 
 const themeOptions: { value: ThemePreference; label: string; icon: LucideIcon }[] = [
   { value: "auto", label: "Auto", icon: Monitor },
@@ -89,556 +91,15 @@ const criterionKindLabel: Record<Criterion["kind"], string> = {
 
 const getStoredTheme = (): ThemePreference => {
   if (typeof window === "undefined") return "auto";
-  const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
-  return stored === "light" || stored === "dark" || stored === "auto" ? stored : "auto";
-};
-
-const defaultSettings: Settings = {
-  threshold: THRESHOLD_OPTIONS[0].value,
-  applyAwardLimitDerogation: false,
-};
-
-type DemoOfferProfile = {
-  quality: number;
-  service: number;
-  tech: number;
-  digital: number;
-  safety: number;
-  stopFocus: number;
-  environmental: number;
-  discretionary: number;
-  discounts: [number, number, number];
-};
-
-type LotDemoBaseline = {
-  busBase: number;
-  annualRuns: number;
-  stops: number;
-  notableStops: number;
-  railStops: number;
-  lines: number;
-};
-
-const LOT_DEMO_BASELINES: Record<LotId, LotDemoBaseline> = {
-  L1: { busBase: 100, annualRuns: 227005, stops: 520, notableStops: 124, railStops: 19, lines: 24 },
-  L2: { busBase: 158, annualRuns: 548216, stops: 1373, notableStops: 343, railStops: 54, lines: 98 },
-  L3: { busBase: 102, annualRuns: 565632, stops: 1243, notableStops: 260, railStops: 29, lines: 36 },
-  L4: { busBase: 124, annualRuns: 528783, stops: 1546, notableStops: 324, railStops: 55, lines: 53 },
-};
-
-const DEMO_PROFILES: Record<string, DemoOfferProfile> = {
-  autoguidovie: {
-    quality: 0.88,
-    service: 1.06,
-    tech: 0.84,
-    digital: 0.82,
-    safety: 0.88,
-    stopFocus: 0.78,
-    environmental: 0.8,
-    discretionary: 0.82,
-    discounts: [4.4, 4.65, 4.9],
-  },
-  movibusWest: {
-    quality: 0.76,
-    service: 1.02,
-    tech: 0.72,
-    digital: 0.68,
-    safety: 0.74,
-    stopFocus: 0.72,
-    environmental: 0.62,
-    discretionary: 0.72,
-    discounts: [4.7, 4.95, 5.15],
-  },
-  arriva: {
-    quality: 0.8,
-    service: 1.1,
-    tech: 0.76,
-    digital: 0.7,
-    safety: 0.76,
-    stopFocus: 0.68,
-    environmental: 0.72,
-    discretionary: 0.74,
-    discounts: [5.15, 5.35, 5.55],
-  },
-  netAtm: {
-    quality: 0.86,
-    service: 1.04,
-    tech: 0.9,
-    digital: 0.86,
-    safety: 0.88,
-    stopFocus: 0.75,
-    environmental: 0.88,
-    discretionary: 0.82,
-    discounts: [4.1, 4.35, 4.55],
-  },
-  starLocal: {
-    quality: 0.76,
-    service: 1.0,
-    tech: 0.74,
-    digital: 0.82,
-    safety: 0.78,
-    stopFocus: 0.74,
-    environmental: 0.68,
-    discretionary: 0.74,
-    discounts: [3.8, 4.05, 4.15],
-  },
-};
-
-const lotScale: Record<LotId, number> = {
-  L1: 0.82,
-  L2: 1.08,
-  L3: 1,
-  L4: 1.12,
-};
-
-const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
-const rounded = (value: number, digits = 2) => Number(value.toFixed(digits));
-
-const quantityInputFromComputedValue = (criterion: Criterion, value: number, lotId: LotId): QuantityInputValue => {
-  const baseline = LOT_DEMO_BASELINES[lotId];
-  const denominator = criterion.quantityInput?.kind === "percent" ? baseline.annualRuns : baseline.busBase;
-  const ratio = criterion.quantityInput?.kind === "percent" ? clamp01(value / 100) : clamp01(value);
-  return {
-    numerator: Math.round(ratio * denominator),
-    denominator,
-  };
-};
-
-const withProfile = (base: DemoOfferProfile, patch: Partial<DemoOfferProfile>): DemoOfferProfile => ({
-  ...base,
-  ...patch,
-  discounts: patch.discounts ?? base.discounts,
-});
-
-const realisticOffer = (lotId: LotId, profile: DemoOfferProfile): LotOffer => {
-  const lot = LOTS.find((item) => item.id === lotId);
-  if (!lot) throw new Error(`Unknown lot ${lotId}`);
-  const scale = lotScale[lotId];
-  const baseline = LOT_DEMO_BASELINES[lotId];
-
-  const qValue = (criterion: Criterion) => {
-    switch (criterion.id) {
-      case "A.1.1":
-        return rounded(0.85 + profile.quality * 1.65 + (scale - 1) * 0.12);
-      case "A.1.2":
-        return Math.round(lot.minPassengerChecks * (0.96 + profile.quality * 0.55));
-      case "B.1.1":
-        return Math.round(lot.minProductionYears3to7 * 0.035 * profile.service * scale);
-      case "B.2.1":
-        return Math.round(baseline.annualRuns * 0.002 * profile.service);
-      case "B.3.1":
-        return Math.round(baseline.annualRuns * 0.00075 * profile.service * (0.88 + profile.digital * 0.25));
-      case "B.4.1":
-        return Math.round(lot.minProductionYears3to7 * 0.018 * profile.service);
-      case "C.1.1":
-        return rounded(clamp01(profile.tech - 0.05), 3);
-      case "C.1.2":
-        return rounded(clamp01(profile.tech), 3);
-      case "C.2.1":
-        return rounded(clamp01(profile.tech + 0.04), 3);
-      case "C.2.4":
-        return rounded(clamp01(profile.safety), 3);
-      case "C.3.1":
-        return rounded(clamp01(profile.digital), 3);
-      case "D.1.1":
-        return Math.round(baseline.notableStops * 0.28 * profile.stopFocus);
-      case "D.1.2":
-        return Math.round(baseline.stops * 0.08 * profile.stopFocus);
-      case "D.1.3":
-        return Math.round((baseline.railStops * 1.2 + baseline.notableStops * 0.08) * profile.digital);
-      case "D.2.1":
-        return Math.round(baseline.notableStops * 0.2 * profile.stopFocus);
-      case "F.1.1":
-        return Math.round(126 - profile.environmental * 58);
-      case "F.2.1":
-        return rounded(clamp01(profile.environmental), 3);
-      case "F.3.1":
-        return Math.round(85000 * profile.environmental * scale);
-      case "F.4.1":
-        return profile.stopFocus >= 0.78 ? 0 : Math.round(160 * (1 - profile.stopFocus) * scale);
-      default:
-        if (criterion.input === "ratio") return rounded(clamp01(profile.quality), 3);
-        if (criterion.input === "index") return Math.round(126 - profile.quality * 45);
-        if (criterion.input === "sqm") return Math.round(180 * (1 - profile.stopFocus));
-        return Math.round((criterion.maxPoints * 160 + 260) * profile.quality * scale);
-    }
-  };
-
-  const qValues = Object.fromEntries(CRITERIA.filter((criterion) => criterion.kind === "Q").map((criterion) => [criterion.id, qValue(criterion)]));
-  const quantityInputs = Object.fromEntries(
-    CRITERIA.filter((criterion) => criterion.quantityInput).map((criterion) => [
-      criterion.id,
-      quantityInputFromComputedValue(criterion, qValues[criterion.id] ?? 0, lotId),
-    ]),
-  );
-  const tValues = Object.fromEntries(
-    CRITERIA.filter((criterion) => criterion.kind === "T").map((criterion) => {
-      const value =
-        criterion.id === "C.2.2" ? profile.tech >= 0.72 :
-        criterion.id === "C.2.3" ? profile.safety >= 0.78 :
-        criterion.id === "C.3.2" ? profile.digital >= 0.55 :
-        criterion.id === "E.1.1" ? profile.digital >= 0.6 :
-        criterion.id === "F.5.1" ? profile.environmental >= 0.62 :
-        criterion.id === "G.2.1" ? profile.safety >= 0.7 :
-        criterion.id === "G.3.1" ? profile.quality >= 0.68 :
-        true;
-      return [criterion.id, value];
-    }),
-  );
-  const dValues = Object.fromEntries(
-    CRITERIA.filter((criterion) => criterion.kind === "D").map((criterion) => {
-      const value =
-        criterion.id === "B.5.1" ? profile.discretionary + (profile.service - 1) * 0.18 :
-        criterion.id === "E.2.1" ? profile.discretionary + (profile.digital - 0.7) * 0.12 :
-        criterion.id === "G.1.1" ? profile.discretionary + (profile.tech - 0.7) * 0.12 :
-        criterion.id === "G.4.1" ? profile.discretionary + (profile.quality - 0.75) * 0.1 :
-        profile.discretionary;
-      return [criterion.id, rounded(clamp01(value), 2)];
-    }),
-  );
-  return {
-    enabled: true,
-    qValues,
-    quantityInputs,
-    tValues,
-    dValues,
-    tradeoffs: emptyTradeoffs(),
-    phaseDiscounts: profile.discounts,
-  };
-};
-
-const buildMarketScenario = (): Bidder[] => {
-  const autoguidovie = createBidder("autoguidovie-demo", "Autoguidovie (scenario demo)");
-  autoguidovie.lots.L1 = realisticOffer("L1", DEMO_PROFILES.autoguidovie);
-  autoguidovie.lots.L4 = realisticOffer("L4", withProfile(DEMO_PROFILES.autoguidovie, { service: 1.08, discounts: [4.55, 4.8, 5.05] }));
-  autoguidovie.combos["L1+L4"] = { enabled: true, phaseDiscounts: [5.05, 5.25, 5.45], insertedInBothBuste: true, pefCoherent: true };
-
-  const movibus = createBidder("movibus-ovest-demo", "Movibus RTI Ovest (scenario demo)");
-  movibus.lots.L1 = realisticOffer("L1", withProfile(DEMO_PROFILES.movibusWest, { service: 1.04, discounts: [4.85, 5.05, 5.25] }));
-  movibus.lots.L2 = realisticOffer("L2", withProfile(DEMO_PROFILES.movibusWest, { quality: 0.78, stopFocus: 0.75, discounts: [5.0, 5.2, 5.4] }));
-  movibus.combos["L1+L2"] = { enabled: true, phaseDiscounts: [5.4, 5.55, 5.75], insertedInBothBuste: true, pefCoherent: true };
-
-  const arriva = createBidder("arriva-demo", "Arriva Italia (scenario demo)");
-  arriva.lots.L2 = realisticOffer("L2", DEMO_PROFILES.arriva);
-  arriva.lots.L3 = realisticOffer("L3", withProfile(DEMO_PROFILES.arriva, { service: 1.06, discounts: [4.95, 5.2, 5.45] }));
-  arriva.combos["L2+L3"] = { enabled: true, phaseDiscounts: [5.7, 5.9, 6.1], insertedInBothBuste: true, pefCoherent: true };
-
-  const netAtm = createBidder("net-atm-demo", "NET / Gruppo ATM (scenario demo)");
-  netAtm.lots.L3 = realisticOffer("L3", DEMO_PROFILES.netAtm);
-  netAtm.lots.L4 = realisticOffer("L4", withProfile(DEMO_PROFILES.netAtm, { service: 1.0, stopFocus: 0.72, discounts: [4.0, 4.25, 4.45] }));
-  netAtm.combos["L3+L4"] = { enabled: true, phaseDiscounts: [4.9, 5.05, 5.25], insertedInBothBuste: true, pefCoherent: true };
-
-  const star = createBidder("star-lodi-demo", "STAR Mobility Lodi (scenario demo)");
-  star.lots.L4 = realisticOffer("L4", DEMO_PROFILES.starLocal);
-
-  return [autoguidovie, movibus, arriva, netAtm, star];
-};
-
-const demoBidder = (bidders: Bidder[], id: string) => {
-  const bidder = bidders.find((item) => item.id === id);
-  if (!bidder) throw new Error(`Unknown demo bidder ${id}`);
-  return bidder;
-};
-
-const buildTechScenario = (): Bidder[] => {
-  const bidders = buildMarketScenario();
-  const netAtm = demoBidder(bidders, "net-atm-demo");
-  netAtm.lots.L3 = realisticOffer("L3", withProfile(DEMO_PROFILES.netAtm, { tech: 0.96, digital: 0.92, environmental: 0.94, discounts: [3.9, 4.05, 4.25] }));
-  netAtm.lots.L4 = realisticOffer("L4", withProfile(DEMO_PROFILES.netAtm, { service: 1.02, tech: 0.94, digital: 0.9, environmental: 0.93, stopFocus: 0.78, discounts: [3.85, 4.05, 4.2] }));
-  netAtm.combos["L3+L4"] = { enabled: true, phaseDiscounts: [4.55, 4.7, 4.9], insertedInBothBuste: true, pefCoherent: true };
-
-  const autoguidovie = demoBidder(bidders, "autoguidovie-demo");
-  autoguidovie.lots.L1 = realisticOffer("L1", withProfile(DEMO_PROFILES.autoguidovie, { environmental: 0.82, digital: 0.82, discounts: [4.1, 4.35, 4.6] }));
-  autoguidovie.lots.L4 = realisticOffer("L4", withProfile(DEMO_PROFILES.autoguidovie, { service: 1.08, environmental: 0.82, digital: 0.8, discounts: [4.2, 4.45, 4.7] }));
-  return bidders;
-};
-
-const buildDiscountScenario = (): Bidder[] => {
-  const bidders = buildMarketScenario();
-  const movibus = demoBidder(bidders, "movibus-ovest-demo");
-  movibus.lots.L1 = realisticOffer("L1", withProfile(DEMO_PROFILES.movibusWest, { quality: 0.71, tech: 0.66, environmental: 0.56, discounts: [5.55, 5.8, 6.0] }));
-  movibus.lots.L2 = realisticOffer("L2", withProfile(DEMO_PROFILES.movibusWest, { quality: 0.73, tech: 0.68, stopFocus: 0.7, environmental: 0.58, discounts: [5.65, 5.9, 6.1] }));
-  movibus.combos["L1+L2"] = { enabled: true, phaseDiscounts: [6.15, 6.35, 6.55], insertedInBothBuste: true, pefCoherent: true };
-
-  const arriva = demoBidder(bidders, "arriva-demo");
-  arriva.lots.L2 = realisticOffer("L2", withProfile(DEMO_PROFILES.arriva, { tech: 0.71, digital: 0.66, stopFocus: 0.64, discounts: [5.9, 6.15, 6.35] }));
-  arriva.lots.L3 = realisticOffer("L3", withProfile(DEMO_PROFILES.arriva, { service: 1.02, tech: 0.7, digital: 0.65, discounts: [5.8, 6.05, 6.25] }));
-  arriva.combos["L2+L3"] = { enabled: true, phaseDiscounts: [6.35, 6.55, 6.75], insertedInBothBuste: true, pefCoherent: true };
-  return bidders;
-};
-
-const buildLocalScenario = (): Bidder[] => {
-  const bidders = buildMarketScenario();
-  const star = demoBidder(bidders, "star-lodi-demo");
-  star.lots.L4 = realisticOffer("L4", withProfile(DEMO_PROFILES.starLocal, { quality: 0.76, service: 1.03, tech: 0.7, digital: 0.78, safety: 0.74, stopFocus: 0.72, environmental: 0.62, discretionary: 0.72, discounts: [4.45, 4.65, 4.85] }));
-
-  const netAtm = demoBidder(bidders, "net-atm-demo");
-  netAtm.lots.L4 = realisticOffer("L4", withProfile(DEMO_PROFILES.netAtm, { service: 0.94, stopFocus: 0.67, discounts: [3.8, 4.0, 4.15] }));
-
-  const autoguidovie = demoBidder(bidders, "autoguidovie-demo");
-  autoguidovie.combos["L1+L4"] = { enabled: false, phaseDiscounts: [0, 0, 0], insertedInBothBuste: true, pefCoherent: true };
-  return bidders;
-};
-
-type DemoScenarioId = "market" | "tech" | "discount" | "local";
-
-type DemoScenario = {
-  id: DemoScenarioId;
-  title: string;
-  body: string;
-  basis: string[];
-  defaultBidderId: string;
-  defaultLotId: LotId;
-  defaultPairId: PairId;
-  settings: Settings;
-  buildBidders: () => Bidder[];
-};
-
-const DEMO_SCENARIOS: DemoScenario[] = [
-  {
-    id: "market",
-    title: "Mercato realistico",
-    body: "Operatori noti del bacino, combinatorie plausibili e profili tecnici differenziati.",
-    basis: [
-      "Basi di lotto da All. 04, All. 05 e All. 09: mezzi, fermate e corse annue stimate.",
-      "Profili operatori calibrati su segnali pubblici: flotta, tecnologie, presidio territoriale.",
-      "Combinatorie coerenti con adiacenze e strategie industriali plausibili, non con offerte ufficiali.",
-    ],
-    defaultBidderId: "autoguidovie-demo",
-    defaultLotId: "L1",
-    defaultPairId: "L1+L4",
-    settings: defaultSettings,
-    buildBidders: buildMarketScenario,
-  },
-  {
-    id: "tech",
-    title: "Tecnologia e flotta",
-    body: "Scenario in cui pesano copertura di bordo, informazione dinamica e performance ambientali.",
-    basis: [
-      "Autoguidovie: flotta 777 mezzi, AVM, accessibilità, videosorveglianza e ADAS su fonti ufficiali.",
-      "NET/ATM: presidio nord-est milanese e traiettoria dichiarata verso flotta bus elettrica.",
-      "Le coperture C e F partono da input elementari: autobus attrezzati su autobus totali di lotto.",
-    ],
-    defaultBidderId: "net-atm-demo",
-    defaultLotId: "L3",
-    defaultPairId: "L3+L4",
-    settings: defaultSettings,
-    buildBidders: buildTechScenario,
-  },
-  {
-    id: "discount",
-    title: "Ribasso aggressivo",
-    body: "Scenario economico con maggiore spinta sui ribassi e qualche compromesso tecnico.",
-    basis: [
-      "Ribassi più alti per stressare soglia Q/T, riparametrazione e convenienza delle combinatorie.",
-      "Arriva: benchmark su scala nazionale e piano di rinnovo flotta, senza trasformarlo in offerta tecnica reale.",
-      "Le metriche operative restano ancorate alle basi documentali dei singoli lotti.",
-    ],
-    defaultBidderId: "arriva-demo",
-    defaultLotId: "L2",
-    defaultPairId: "L2+L3",
-    settings: defaultSettings,
-    buildBidders: buildDiscountScenario,
-  },
-  {
-    id: "local",
-    title: "Presidio locale",
-    body: "Scenario in cui il lotto 4 premia conoscenza territoriale e continuità operativa.",
-    basis: [
-      "Lotto 4 tarato sulle grandezze locali ricavate dagli allegati: 124 mezzi e 1.546 fermate.",
-      "STAR: segnali pubblici su Lodi/Casalpusterlengo, bigliettazione elettronica e pagamento a bordo.",
-      "Il presidio locale migliora alcune leve di fermata e informazione, ma non sostituisce la comparazione economica.",
-    ],
-    defaultBidderId: "star-lodi-demo",
-    defaultLotId: "L4",
-    defaultPairId: "L3+L4",
-    settings: defaultSettings,
-    buildBidders: buildLocalScenario,
-  },
-];
-
-type StoredWorkspace = {
-  scenarioName: string;
-  activeSavedScenarioId?: string;
-  demoScenarioId: DemoScenarioId;
-  bidders: Bidder[];
-  settings: Settings;
-  selectedBidderId: string;
-  selectedLotId: LotId;
-  selectedPairId: PairId;
-};
-
-const isDemoScenarioId = (value: string): value is DemoScenarioId => DEMO_SCENARIOS.some((scenario) => scenario.id === value);
-const isLotId = (value: string): value is LotId => LOTS.some((lot) => lot.id === value);
-const isPairId = (value: string): value is PairId => PAIRS.some((pair) => pair.id === value);
-const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === "object" && !Array.isArray(value);
-const numberOr = (value: unknown, fallback = 0) => {
-  const numericValue = Number(value);
-  return Number.isFinite(numericValue) ? numericValue : fallback;
-};
-
-const normalizePhaseDiscounts = (value: unknown, fallback: [number, number, number] = [0, 0, 0]): [number, number, number] => {
-  const candidate = Array.isArray(value) ? value : [];
-  return [0, 1, 2].map((index) => Math.max(0, numberOr(candidate[index], fallback[index]))) as [number, number, number];
-};
-
-const normalizeTradeoffPlan = (value: unknown): TradeoffPlan => {
-  const base = defaultTradeoff();
-  const candidate = isRecord(value) ? value : {};
-  return {
-    deltaUnits: Math.max(0, numberOr(candidate.deltaUnits, base.deltaUnits)),
-    unitCost: Math.max(0, numberOr(candidate.unitCost, base.unitCost)),
-    denominator: Math.max(0, numberOr(candidate.denominator, base.denominator)),
-  };
-};
-
-const normalizeQuantityInput = (value: unknown): QuantityInputValue => {
-  const candidate = isRecord(value) ? value : {};
-  return {
-    numerator: Math.max(0, numberOr(candidate.numerator)),
-    denominator: Math.max(0, numberOr(candidate.denominator)),
-  };
-};
-
-const normalizeLotOffer = (value: unknown): LotOffer => {
-  const base = emptyLotOffer();
-  const candidate = isRecord(value) ? value : {};
-  const qValues = isRecord(candidate.qValues) ? candidate.qValues : {};
-  const quantityInputs = isRecord(candidate.quantityInputs) ? candidate.quantityInputs : {};
-  const tValues = isRecord(candidate.tValues) ? candidate.tValues : {};
-  const dValues = isRecord(candidate.dValues) ? candidate.dValues : {};
-  const tradeoffs = isRecord(candidate.tradeoffs) ? candidate.tradeoffs : {};
-
-  return {
-    enabled: Boolean(candidate.enabled),
-    qValues: Object.fromEntries(
-      CRITERIA.filter((criterion) => criterion.kind === "Q").map((criterion) => [
-        criterion.id,
-        Math.max(0, numberOr(qValues[criterion.id], base.qValues[criterion.id] ?? 0)),
-      ]),
-    ),
-    quantityInputs: Object.fromEntries(
-      CRITERIA.filter((criterion) => criterion.quantityInput).map((criterion) => [criterion.id, normalizeQuantityInput(quantityInputs[criterion.id])]),
-    ),
-    tValues: Object.fromEntries(
-      CRITERIA.filter((criterion) => criterion.kind === "T").map((criterion) => [criterion.id, Boolean(tValues[criterion.id])]),
-    ),
-    dValues: Object.fromEntries(
-      CRITERIA.filter((criterion) => criterion.kind === "D").map((criterion) => [
-        criterion.id,
-        clamp01(numberOr(dValues[criterion.id], base.dValues[criterion.id] ?? 0)),
-      ]),
-    ),
-    tradeoffs: Object.fromEntries(CRITERIA.map((criterion) => [criterion.id, normalizeTradeoffPlan(tradeoffs[criterion.id])])),
-    phaseDiscounts: normalizePhaseDiscounts(candidate.phaseDiscounts, base.phaseDiscounts),
-  };
-};
-
-const normalizeComboOffer = (value: unknown) => {
-  const base = emptyComboOffer();
-  const candidate = isRecord(value) ? value : {};
-  return {
-    enabled: Boolean(candidate.enabled),
-    phaseDiscounts: normalizePhaseDiscounts(candidate.phaseDiscounts, base.phaseDiscounts),
-    insertedInBothBuste: typeof candidate.insertedInBothBuste === "boolean" ? candidate.insertedInBothBuste : base.insertedInBothBuste,
-    pefCoherent: typeof candidate.pefCoherent === "boolean" ? candidate.pefCoherent : base.pefCoherent,
-  };
-};
-
-const normalizeBidders = (value: unknown): Bidder[] | undefined => {
-  if (!Array.isArray(value)) return undefined;
-  const seenIds = new Set<string>();
-  const bidders = value
-    .map((item, index) => {
-      if (!isRecord(item)) return undefined;
-      const rawId = typeof item.id === "string" && item.id.trim() ? item.id.trim() : `offerente-importato-${index + 1}`;
-      let id = rawId;
-      let suffix = 2;
-      while (seenIds.has(id)) {
-        id = `${rawId}-${suffix}`;
-        suffix += 1;
-      }
-      seenIds.add(id);
-
-      const bidder = createBidder(id, typeof item.name === "string" && item.name.trim() ? item.name.trim() : `Offerente ${index + 1}`);
-      const lots = isRecord(item.lots) ? item.lots : {};
-      const combos = isRecord(item.combos) ? item.combos : {};
-      for (const lot of LOTS) bidder.lots[lot.id] = normalizeLotOffer(lots[lot.id]);
-      for (const pair of PAIRS) bidder.combos[pair.id] = normalizeComboOffer(combos[pair.id]);
-      return bidder;
-    })
-    .filter((bidder): bidder is Bidder => Boolean(bidder));
-
-  return bidders.length ? bidders : undefined;
-};
-
-const normalizeSettings = (value: unknown): Settings => {
-  const candidate = isRecord(value) ? value : {};
-  return {
-    threshold: Math.max(0, numberOr(candidate.threshold, defaultSettings.threshold)),
-    applyAwardLimitDerogation: Boolean(candidate.applyAwardLimitDerogation),
-  };
-};
-
-const getStoredJson = <T,>(key: string): T | undefined => {
-  if (typeof window === "undefined") return undefined;
   try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : undefined;
+    const stored = window.localStorage.getItem(STORAGE_KEYS.theme) ?? window.localStorage.getItem(LEGACY_STORAGE_KEYS.theme);
+    return stored === "light" || stored === "dark" || stored === "auto" ? stored : "auto";
   } catch {
-    return undefined;
+    return "auto";
   }
 };
 
-const normalizeScenarioSnapshot = (value: unknown): SavedScenarioSnapshot | undefined => {
-  if (!value || typeof value !== "object") return undefined;
-  const candidate = value as Partial<SavedScenarioSnapshot>;
-  const bidders = normalizeBidders(candidate.bidders);
-  if (!bidders) return undefined;
-  const fallbackScenario = DEMO_SCENARIOS[0];
-  const firstBidderId = bidders[0]?.id ?? fallbackScenario.defaultBidderId;
-  const selectedBidderId =
-    typeof candidate.selectedBidderId === "string" && bidders.some((bidder) => bidder.id === candidate.selectedBidderId)
-      ? candidate.selectedBidderId
-      : firstBidderId;
-  return {
-    id: typeof candidate.id === "string" && candidate.id ? candidate.id : `scenario-${Date.now()}`,
-    name: typeof candidate.name === "string" && candidate.name.trim() ? candidate.name.trim() : "Scenario importato",
-    savedAt: typeof candidate.savedAt === "string" ? candidate.savedAt : new Date().toISOString(),
-    demoScenarioId: typeof candidate.demoScenarioId === "string" && isDemoScenarioId(candidate.demoScenarioId) ? candidate.demoScenarioId : fallbackScenario.id,
-    bidders,
-    settings: normalizeSettings(candidate.settings),
-    selectedBidderId,
-    selectedLotId: typeof candidate.selectedLotId === "string" && isLotId(candidate.selectedLotId) ? candidate.selectedLotId : fallbackScenario.defaultLotId,
-    selectedPairId: typeof candidate.selectedPairId === "string" && isPairId(candidate.selectedPairId) ? candidate.selectedPairId : fallbackScenario.defaultPairId,
-  };
-};
-
-const getStoredWorkspace = (): StoredWorkspace | undefined => {
-  const stored = getStoredJson<StoredWorkspace>(WORKSPACE_STORAGE_KEY);
-  if (!stored) return undefined;
-  const bidders = normalizeBidders(stored.bidders);
-  if (!bidders) return undefined;
-  const fallback = DEMO_SCENARIOS[0];
-  const selectedBidderId = bidders.some((bidder) => bidder.id === stored.selectedBidderId)
-    ? stored.selectedBidderId
-    : bidders[0]?.id || fallback.defaultBidderId;
-  return {
-    scenarioName: stored.scenarioName || fallback.title,
-    activeSavedScenarioId: typeof stored.activeSavedScenarioId === "string" ? stored.activeSavedScenarioId : undefined,
-    demoScenarioId: isDemoScenarioId(stored.demoScenarioId) ? stored.demoScenarioId : fallback.id,
-    bidders,
-    settings: normalizeSettings(stored.settings),
-    selectedBidderId,
-    selectedLotId: isLotId(stored.selectedLotId) ? stored.selectedLotId : fallback.defaultLotId,
-    selectedPairId: isPairId(stored.selectedPairId) ? stored.selectedPairId : fallback.defaultPairId,
-  };
-};
-
-const getStoredSavedScenarios = () =>
-  (getStoredJson<unknown[]>(SAVED_SCENARIOS_STORAGE_KEY) ?? [])
-    .map(normalizeScenarioSnapshot)
-    .filter((scenario): scenario is SavedScenarioSnapshot => Boolean(scenario));
+const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
 const makeDownloadName = (name: string) =>
   `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "scenario"}-${new Date().toISOString().slice(0, 10)}.json`;
@@ -740,18 +201,18 @@ const criterionStatus = (criterion: Criterion, score: number, note?: string) => 
 };
 
 function App() {
-  const [initialWorkspace] = useState(() => getStoredWorkspace());
-  const [demoScenarioId, setDemoScenarioId] = useState<DemoScenarioId>(initialWorkspace?.demoScenarioId ?? "market");
-  const [bidders, setBidders] = useState<Bidder[]>(() => initialWorkspace?.bidders ?? DEMO_SCENARIOS[0].buildBidders());
-  const [selectedBidderId, setSelectedBidderId] = useState(initialWorkspace?.selectedBidderId ?? DEMO_SCENARIOS[0].defaultBidderId);
+  const [initialWorkspace] = useState(() => readStoredWorkspace());
+  const [baseScenarioId, setBaseScenarioId] = useState<BaseScenarioId>(initialWorkspace?.baseScenarioId ?? "market");
+  const [bidders, setBidders] = useState<Bidder[]>(() => initialWorkspace?.bidders ?? BASE_SCENARIOS[0].buildBidders());
+  const [selectedBidderId, setSelectedBidderId] = useState(initialWorkspace?.selectedBidderId ?? BASE_SCENARIOS[0].defaultBidderId);
   const [selectedLotId, setSelectedLotId] = useState<LotId>(initialWorkspace?.selectedLotId ?? "L1");
-  const [selectedPairId, setSelectedPairId] = useState<PairId>(initialWorkspace?.selectedPairId ?? DEMO_SCENARIOS[0].defaultPairId);
+  const [selectedPairId, setSelectedPairId] = useState<PairId>(initialWorkspace?.selectedPairId ?? BASE_SCENARIOS[0].defaultPairId);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("tecnica");
   const [selectedAmbitId, setSelectedAmbitId] = useState(AMBITS[0].id);
   const [selectedCriterionId, setSelectedCriterionId] = useState(CRITERIA[0].id);
-  const [settings, setSettings] = useState<Settings>(initialWorkspace?.settings ?? defaultSettings);
-  const [scenarioName, setScenarioName] = useState(initialWorkspace?.scenarioName ?? DEMO_SCENARIOS[0].title);
-  const [savedScenarios, setSavedScenarios] = useState<SavedScenarioSnapshot[]>(getStoredSavedScenarios);
+  const [settings, setSettings] = useState<Settings>(initialWorkspace?.settings ?? DEFAULT_SETTINGS);
+  const [scenarioName, setScenarioName] = useState(initialWorkspace?.scenarioName ?? BASE_SCENARIOS[0].title);
+  const [savedScenarios, setSavedScenarios] = useState<SavedScenarioSnapshot[]>(readStoredSavedScenarios);
   const [activeSavedScenarioId, setActiveSavedScenarioId] = useState<string | undefined>(initialWorkspace?.activeSavedScenarioId);
   const [compareScenarioId, setCompareScenarioId] = useState("");
   const [scenarioNotice, setScenarioNotice] = useState("");
@@ -773,16 +234,17 @@ function App() {
     document.documentElement.dataset.theme = resolvedTheme;
     document.documentElement.dataset.themePreference = themePreference;
     document.documentElement.style.colorScheme = resolvedTheme;
-    window.localStorage.setItem(THEME_STORAGE_KEY, themePreference);
+    window.localStorage.setItem(STORAGE_KEYS.theme, themePreference);
   }, [resolvedTheme, themePreference]);
 
   useEffect(() => {
     window.localStorage.setItem(
-      WORKSPACE_STORAGE_KEY,
+      STORAGE_KEYS.workspace,
       JSON.stringify({
+        schemaVersion: 2,
         scenarioName,
         activeSavedScenarioId,
-        demoScenarioId,
+        baseScenarioId,
         bidders,
         settings,
         selectedBidderId,
@@ -790,15 +252,15 @@ function App() {
         selectedPairId,
       } satisfies StoredWorkspace),
     );
-  }, [activeSavedScenarioId, bidders, demoScenarioId, scenarioName, selectedBidderId, selectedLotId, selectedPairId, settings]);
+  }, [activeSavedScenarioId, bidders, baseScenarioId, scenarioName, selectedBidderId, selectedLotId, selectedPairId, settings]);
 
   useEffect(() => {
-    window.localStorage.setItem(SAVED_SCENARIOS_STORAGE_KEY, JSON.stringify(savedScenarios));
+    window.localStorage.setItem(STORAGE_KEYS.scenarios, JSON.stringify(savedScenarios));
   }, [savedScenarios]);
 
   const selectedBidder = bidders.find((bidder) => bidder.id === selectedBidderId) ?? bidders[0];
   const selectedLotContext = LOT_CONTEXT[selectedLotId];
-  const selectedDemoScenario = DEMO_SCENARIOS.find((scenario) => scenario.id === demoScenarioId) ?? DEMO_SCENARIOS[0];
+  const selectedBaseScenario = BASE_SCENARIOS.find((scenario) => scenario.id === baseScenarioId) ?? BASE_SCENARIOS[0];
   const result = useMemo(() => simulate(bidders, settings, selectedBidder?.id ?? ""), [bidders, settings, selectedBidder?.id]);
   const selectedLotScore = selectedBidder ? result.lotScores[selectedBidder.id][selectedLotId] : undefined;
   const selectedComboScore = selectedBidder ? result.comboScores[selectedBidder.id][selectedPairId] : undefined;
@@ -878,8 +340,8 @@ function App() {
     setBidders((current) => current.map((bidder) => (bidder.id === bidderId ? updater(structuredClone(bidder)) : bidder)));
   };
 
-  const loadDemoScenario = (scenario: DemoScenario) => {
-    setDemoScenarioId(scenario.id);
+  const loadBaseScenario = (scenario: BaseScenario) => {
+    setBaseScenarioId(scenario.id);
     setScenarioName(scenario.title);
     setActiveSavedScenarioId(undefined);
     setBidders(scenario.buildBidders());
@@ -943,10 +405,11 @@ function App() {
   };
 
   const currentScenarioSnapshot = (id = activeSavedScenarioId ?? `scenario-${Date.now()}`, name = scenarioName): SavedScenarioSnapshot => ({
+    schemaVersion: 2,
     id,
     name: name.trim() || "Scenario senza nome",
     savedAt: new Date().toISOString(),
-    demoScenarioId,
+    baseScenarioId,
     bidders: structuredClone(bidders),
     settings: { ...settings },
     selectedBidderId: selectedBidder?.id ?? bidders[0]?.id ?? "",
@@ -958,12 +421,12 @@ function App() {
     const nextBidders = structuredClone(scenario.bidders);
     setScenarioName(scenario.name);
     setActiveSavedScenarioId(scenario.id);
-    setDemoScenarioId(isDemoScenarioId(scenario.demoScenarioId) ? scenario.demoScenarioId : "market");
+    setBaseScenarioId(scenario.baseScenarioId);
     setBidders(nextBidders);
     setSettings(scenario.settings);
     setSelectedBidderId(nextBidders.some((bidder) => bidder.id === scenario.selectedBidderId) ? scenario.selectedBidderId : nextBidders[0]?.id ?? "");
-    setSelectedLotId(isLotId(scenario.selectedLotId) ? scenario.selectedLotId : "L1");
-    setSelectedPairId(isPairId(scenario.selectedPairId) ? scenario.selectedPairId : PAIRS[0].id);
+    setSelectedLotId(scenario.selectedLotId);
+    setSelectedPairId(scenario.selectedPairId);
     setScenarioNotice(`Caricato: ${scenario.name}`);
   };
 
@@ -1017,17 +480,17 @@ function App() {
     if (scenario) applyScenarioSnapshot(scenario);
   };
 
-  const resetCurrentDemoScenario = () => {
-    loadDemoScenario(selectedDemoScenario);
-    setScenarioNotice(`Preset ripristinato: ${selectedDemoScenario.title}`);
+  const resetCurrentBaseScenario = () => {
+    loadBaseScenario(selectedBaseScenario);
+    setScenarioNotice(`Scenario base ripristinato: ${selectedBaseScenario.title}`);
   };
 
   return (
     <div className="app-shell">
       <header className="topbar">
         <div>
-          <h1>Gare Lotti Milanesi</h1>
-          <p>Offerta tecnica 70, offerta economica 30, scenario di aggiudicazione con lotti singoli e combinatori.</p>
+          <h1>Simulatore gara TPL lotti 1-4</h1>
+          <p>Console operativa per confrontare lotti singoli, combinatorie, soglie tecniche, ribassi e criticità documentali.</p>
         </div>
         <div className="topbar-actions">
           <div className="theme-control" aria-label="Tema interfaccia">
@@ -1070,27 +533,27 @@ function App() {
             onExport={exportCurrentScenario}
             onImportFile={importScenarioFile}
             onLoadSaved={loadSavedScenario}
-            onResetDemo={resetCurrentDemoScenario}
+            onResetBaseScenario={resetCurrentBaseScenario}
           />
 
-          <section className="panel demo-panel">
+          <section className="panel base-panel">
             <div className="section-title">
               <ClipboardList size={18} />
-              Scenari demo
+              Scenari base
             </div>
-            <div className="demo-list">
-              {DEMO_SCENARIOS.map((scenario) => (
+            <div className="base-list">
+              {BASE_SCENARIOS.map((scenario) => (
                 <button
                   key={scenario.id}
-                  className={`demo-card ${scenario.id === demoScenarioId ? "active" : ""}`}
-                  onClick={() => loadDemoScenario(scenario)}
+                  className={`base-card ${scenario.id === baseScenarioId ? "active" : ""}`}
+                  onClick={() => loadBaseScenario(scenario)}
                 >
                   <strong>{scenario.title}</strong>
                   <span>{scenario.body}</span>
                 </button>
               ))}
             </div>
-            <div className="hint">Preset compilati da fonti pubbliche e modelli locali: servono per simulare, non rappresentano offerte ufficiali.</div>
+            <div className="hint">Profili simulati da fonti pubbliche e modelli locali: servono per confrontare scenari, non rappresentano offerte ufficiali.</div>
           </section>
 
           <section className="panel">
@@ -1100,9 +563,9 @@ function App() {
             </div>
             <div className="active-scenario">
               <span>Scenario attivo</span>
-              <strong>{selectedDemoScenario.title}</strong>
-              <ul className="scenario-basis" aria-label="Base scenario demo">
-                {selectedDemoScenario.basis.map((item) => (
+              <strong>{selectedBaseScenario.title}</strong>
+              <ul className="scenario-basis" aria-label="Base scenario">
+                {selectedBaseScenario.basis.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
@@ -1128,7 +591,7 @@ function App() {
               />
               <span>Applica deroga al limite di due lotti se necessaria per evitare lotti non assegnati</span>
             </label>
-            <div className="hint">Q/T max ricostruito: {formatPoints(maxQtPoints())} punti. Le incongruenze sono elencate nel pannello criticità.</div>
+            <div className="hint">Soglia attiva: scenario disciplinare se resta a 37 pt. Q/T max ricostruito: {formatPoints(maxQtPoints())} punti. Le incongruenze sono nel pannello criticità.</div>
           </section>
 
           <section className="panel">

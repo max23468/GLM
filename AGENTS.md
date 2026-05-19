@@ -4,7 +4,7 @@ Istruzioni operative per agenti che lavorano in questa repository.
 
 ## Identità del progetto
 
-`Gare Lotti Milanesi` è una web app React/Vite per simulare scenari della gara TPL MLMP 2026 sui lotti extraurbani `L1`-`L4`.
+`Simulatore gara TPL lotti 1-4` è una web app React/Vite per simulare scenari della gara TPL 2026 sui lotti extraurbani `L1`-`L4`.
 
 La repo combina:
 
@@ -50,9 +50,11 @@ npm run deploy:cloudflare
 ## Struttura da conoscere
 
 - `src/data/tender.ts`: lotti, coppie, criteri, soglie, fonti, warning documentali.
+- `src/data/base-scenarios.ts`: scenari base, profili simulati e baseline operative.
 - `src/lib/scoring.ts`: calcolo punteggi, combinatorie, ranking, scenario vincente.
-- `src/lib/scoring.test.ts`: test Vitest del motore di scoring.
-- `src/App.tsx`: UI principale, preset demo, persistenza locale, import/export, tradeoff.
+- `src/lib/scenario-persistence.ts`: normalizzazione workspace, migrazione storage e import/export JSON.
+- `src/lib/*.test.ts`: test Vitest del motore di scoring e della persistenza.
+- `src/App.tsx`: UI principale, persistenza locale, import/export, tradeoff.
 - `src/components/scenario-panels.tsx`: pannelli scenario, confronto, report.
 - `src/styles.css`: token CSS e layout responsive.
 - `docs/milano-lotti-extraurbani-om/`: allegati gara, da trattare come fonti e non come file da riscrivere.
@@ -61,8 +63,8 @@ npm run deploy:cloudflare
 ## Regole sui dati di gara
 
 - Non inventare formule, soglie, valori o fonti.
-- Distingui sempre tra `Documento di gara`, `Fonte pubblica` e `Assunzione demo`.
-- Non presentare i preset demo come offerte ufficiali.
+- Distingui sempre tra `Documento di gara`, `Fonte pubblica` e `Assunzione simulativa`.
+- Non presentare scenari base o profili simulati come offerte ufficiali.
 - Se aggiorni una fonte pubblica, verifica l'URL e aggiorna anche `verifiedAt`.
 - Se cambi criteri, massimi, soglie o warning, aggiorna i test e la documentazione collegata.
 - I costi dei tradeoff sono ipotesi dell'utente: non trattarli come dati di gara.
@@ -106,7 +108,13 @@ L'app usa `localStorage` con chiavi:
 - `tpl-simulator-workspace`
 - `tpl-simulator-scenarios`
 
-Se cambi la forma degli snapshot JSON, aggiorna normalizzazione/import in `src/App.tsx` e mantieni compatibilità ragionevole con export precedenti.
+Le chiavi attive sono:
+
+- `tpl-lotti-1-4-theme`
+- `tpl-lotti-1-4-workspace`
+- `tpl-lotti-1-4-scenarios`
+
+Le chiavi `tpl-simulator-*` sono legacy e vanno mantenute leggibili in fallback. Se cambi la forma degli snapshot JSON, aggiorna normalizzazione/import in `src/lib/scenario-persistence.ts` e mantieni compatibilità ragionevole con export precedenti.
 
 ## Verifiche prima di chiudere
 
@@ -130,7 +138,7 @@ npm run build
 npm run preview -- --port 4173
 ```
 
-Poi verifica nel browser i flussi coinvolti: preset demo, cambio offerente/lotto, salvataggio scenario, import/export, confronto, report e tema.
+Poi verifica nel browser i flussi coinvolti: scenario base, cambio offerente/lotto, salvataggio scenario, import/export, confronto, report e tema.
 
 ## Risposte finali e prossimi passi
 
@@ -163,4 +171,4 @@ Prima di pubblicare:
 npm run deploy:cloudflare
 ```
 
-Al termine verifica la produzione, di norma su `https://gare-lotti-milanesi.pages.dev`, almeno caricamento app, preset demo principale, salvataggio scenario, confronto/report se coinvolti e tema chiaro/scuro per modifiche UI. Comunica URL/risultato del deploy se il comando lo fornisce, commit o PR/merge rilevanti, controlli eseguiti e rischi residui.
+Al termine verifica la produzione, di norma su `https://gare-lotti-milanesi.pages.dev`, almeno caricamento app, scenario base principale, salvataggio scenario, confronto/report se coinvolti e tema chiaro/scuro per modifiche UI. Comunica URL/risultato del deploy se il comando lo fornisce, commit o PR/merge rilevanti, controlli eseguiti e rischi residui.
