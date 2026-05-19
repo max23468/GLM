@@ -460,4 +460,8 @@ export const DOCUMENT_WARNINGS = [
     title: "G.5.1 ha descrizione non identica tra PDF e modello",
     body: "Il PDF parla di continuità lavorativa dei lavoratori subaffidatari; il modello All 131_2.XLS cita il mantenimento delle garanzie del contratto di secondo livello.",
   },
+  {
+    title: "Nome del modello tecnico non coerente nel fascicolo",
+    body: "L'Allegato 13 richiama il modello come All 13.10, mentre nel set documentale locale è presente come All 131_2.XLS. Il simulatore usa il modello disponibile senza alterare formule o punteggi.",
+  },
 ];
