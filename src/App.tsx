@@ -245,6 +245,8 @@ const buildOptimizationInvestmentRows = (steps: OptimizationStep[]) => {
 
 const buildOptimizationImpactRows = (steps: OptimizationStep[]) => {
   const rows = new Map<string, Omit<OptimizationInvestmentRow, "focus" | "efficiency">>();
+  const hasImpact = (row: Omit<OptimizationInvestmentRow, "focus" | "efficiency">) =>
+    row.technicalDelta !== 0 || row.economicDelta !== 0 || row.objectiveDelta !== 0;
   const getRow = (key: string, label: string) => {
     const current = rows.get(key) ?? { key, label, objectiveDelta: 0, technicalDelta: 0, economicDelta: 0, cost: 0, moves: 0 };
     rows.set(key, current);
@@ -285,11 +287,27 @@ const buildOptimizationImpactRows = (steps: OptimizationStep[]) => {
   return [
     ...impactRows,
     economic ?? { key: "economica", label: "Offerta economica", technicalDelta: 0, economicDelta: 0, objectiveDelta: 0, cost: 0, moves: 0 },
-  ];
+  ].filter(hasImpact);
 };
 
 const signedPercent = (amount: number) =>
   `${amount >= 0 ? "+" : ""}${amount.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} pt`;
+
+const formatMoveCount = (moves: number) => `${moves} ${moves === 1 ? "mossa" : "mosse"}`;
+
+const formatReallocationSummary = (step: OptimizationStep) => {
+  const releasedValue = step.releasedValue ?? 0;
+  const fundedValue = Math.min(step.cost, releasedValue);
+  const releasedText = euroFormatter.format(releasedValue);
+  const fundedText = euroFormatter.format(fundedValue);
+  const ribassoText = `+${(step.economicUnits ?? 0).toLocaleString("it-IT", { maximumFractionDigits: 4 })}% di ribasso`;
+
+  if (releasedText === fundedText) {
+    return `rialloca ${releasedText} verso ${ribassoText}`;
+  }
+
+  return `libera ${releasedText}; ${fundedText} finanziano ${ribassoText}`;
+};
 
 const formatInputPercent = (value: number) =>
   `${value.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
@@ -2227,37 +2245,41 @@ function OptimizationWorkbench({
           Mappa impatto per ambito
           <HelpTooltip>Mostra dove il piano aggiunge o sacrifica punti tecnici e dove converte valore in punti economici.</HelpTooltip>
         </div>
-        <div className="impact-map">
-          {impactRows.map((row) => {
-            const width = `${Math.min(100, Math.max(4, (Math.abs(row.objectiveDelta) / maxImpact) * 100))}%`;
-            const style = { "--impact-width": width } as CSSProperties;
-            return (
-              <article key={row.key} className={`impact-row ${row.objectiveDelta > 0 ? "positive" : row.objectiveDelta < 0 ? "negative" : "neutral"}`}>
-                <div>
-                  <strong>{row.label}</strong>
-                  <small>{row.moves ? `${row.moves} mosse - ${euroFormatter.format(row.cost)}` : "nessuna mossa"}</small>
-                </div>
-                <div className="impact-bars" style={style}>
-                  <span />
-                </div>
-                <dl>
+        {impactRows.length ? (
+          <div className="impact-map">
+            {impactRows.map((row) => {
+              const width = `${Math.min(100, Math.max(4, (Math.abs(row.objectiveDelta) / maxImpact) * 100))}%`;
+              const style = { "--impact-width": width } as CSSProperties;
+              return (
+                <article key={row.key} className={`impact-row ${row.objectiveDelta > 0 ? "positive" : row.objectiveDelta < 0 ? "negative" : "neutral"}`}>
                   <div>
-                    <dt>Tecnica</dt>
-                    <dd>{signedPoints(row.technicalDelta)}</dd>
+                    <strong>{row.label}</strong>
+                    <small>{formatMoveCount(row.moves)} - {euroFormatter.format(row.cost)}</small>
                   </div>
-                  <div>
-                    <dt>Economica</dt>
-                    <dd>{signedPoints(row.economicDelta)}</dd>
+                  <div className="impact-bars" style={style}>
+                    <span />
                   </div>
-                  <div>
-                    <dt>Saldo</dt>
-                    <dd>{signedPoints(row.objectiveDelta)}</dd>
-                  </div>
-                </dl>
-              </article>
-            );
-          })}
-        </div>
+                  <dl>
+                    <div>
+                      <dt>Tecnica</dt>
+                      <dd>{signedPoints(row.technicalDelta)}</dd>
+                    </div>
+                    <div>
+                      <dt>Economica</dt>
+                      <dd>{signedPoints(row.economicDelta)}</dd>
+                    </div>
+                    <div>
+                      <dt>Saldo</dt>
+                      <dd>{signedPoints(row.objectiveDelta)}</dd>
+                    </div>
+                  </dl>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="empty-state compact">Nessun impatto per ambito con gli input correnti.</div>
+        )}
       </section>
 
       <section className="optimization-card">
@@ -2313,8 +2335,7 @@ function OptimizationWorkbench({
                   {step.kind === "reallocation" ? (
                     <small>
                       Riduce {step.units.toLocaleString("it-IT", { maximumFractionDigits: 2 })} {step.unitLabel} dell'offerta tecnica,
-                      libera {euroFormatter.format(step.releasedValue ?? 0)} e ne usa {euroFormatter.format(Math.min(step.cost, step.releasedValue ?? 0))}{" "}
-                      per finanziare +{(step.economicUnits ?? 0).toLocaleString("it-IT", { maximumFractionDigits: 4 })}% di ribasso.
+                      {" "}{formatReallocationSummary(step)}.
                       Delta punti: {signedPoints(step.technicalDelta ?? 0)} di offerta tecnica,{" "}
                       {signedPoints(step.economicDelta ?? 0)} di offerta economica,{" "}
                       saldo {signedPoints(step.objectiveDelta)}.

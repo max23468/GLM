@@ -94,7 +94,21 @@ const verifyOptimization = async (page, suffix, theme) => {
     if (!lowerText.includes(expected)) throw new Error(`${suffix}: manca ${expected}`);
   }
 
+  const impactRows = await page.locator(".impact-row").evaluateAll((rows) => rows.map((row) => ({
+    label: row.querySelector("strong")?.textContent?.trim(),
+    values: Array.from(row.querySelectorAll("dd")).map((cell) => cell.textContent?.trim() ?? ""),
+    detail: row.querySelector("small")?.textContent?.trim() ?? "",
+  })));
+  if (!impactRows.length) throw new Error(`${suffix}: mappa impatto vuota`);
+  const emptyImpactRows = impactRows.filter((row) =>
+    row.values.every((value) => value.replace(/[+\s]/g, "") === "0,00")
+    || row.detail.toLocaleLowerCase("it-IT").includes("nessuna mossa"));
+  if (emptyImpactRows.length) {
+    throw new Error(`${suffix}: righe impatto senza effetto visibile: ${JSON.stringify(emptyImpactRows)}`);
+  }
+
   const planText = await page.locator(".optimization-card").filter({ hasText: "Piano consigliato" }).innerText();
+  if (planText.includes(" e ne usa ")) throw new Error(`${suffix}: frase di riallocazione ripetitiva nel piano consigliato`);
   const spacingIssues = [/€\S/g, /\.Delta/g, /,\+/g].flatMap((pattern) => planText.match(pattern) ?? []);
   if (spacingIssues.length) throw new Error(`${suffix}: spaziatura sospetta ${spacingIssues.join(", ")}`);
 
