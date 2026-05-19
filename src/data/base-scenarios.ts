@@ -142,27 +142,23 @@ const SCENARIO_COST_MULTIPLIER: Record<ScenarioAssumptionProfile, number> = {
 
 const SCENARIO_OPTIMIZATION_SETTINGS: Record<
   ScenarioAssumptionProfile,
-  Pick<OptimizationConfig, "mode" | "scope" | "economic">
+  Pick<OptimizationConfig, "mode" | "scope">
 > = {
   market: {
     mode: "technical-economic",
     scope: "active-lot",
-    economic: { enabled: true, stepPercent: 0.1, maxDeltaPercent: 1.5 },
   },
   tech: {
     mode: "technical-economic",
     scope: "active-lot",
-    economic: { enabled: true, stepPercent: 0.1, maxDeltaPercent: 1 },
   },
   discount: {
     mode: "technical-economic",
     scope: "active-lot",
-    economic: { enabled: true, stepPercent: 0.15, maxDeltaPercent: 2.5 },
   },
   local: {
     mode: "technical-economic",
     scope: "active-lot",
-    economic: { enabled: true, stepPercent: 0.1, maxDeltaPercent: 1.2 },
   },
 };
 
@@ -338,7 +334,6 @@ export const buildScenarioOptimizationConfig = (profile: ScenarioAssumptionProfi
   return {
     ...defaultOptimizationConfig(),
     ...scenarioSettings,
-    economic: { ...scenarioSettings.economic },
     levers: Object.fromEntries(
       LOTS.map((lot) => [
         lot.id,

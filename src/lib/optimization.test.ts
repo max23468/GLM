@@ -55,7 +55,6 @@ describe("offer optimization", () => {
       ...defaultOptimizationConfig(),
       mode: "technical-economic",
       scope: "active-lot",
-      economic: { enabled: true, stepPercent: 0.1, maxDeltaPercent: 0.2 },
       levers: {},
     };
 
@@ -79,7 +78,6 @@ describe("offer optimization", () => {
       ...defaultOptimizationConfig(),
       mode: "technical-only",
       scope: "active-lot",
-      economic: { enabled: true, stepPercent: 0.5, maxDeltaPercent: 1 },
       levers: {
         L1: {
           "C.1.2": { enabled: true, granularityUnits: 1, maxUnits: 100, unitCost: 100_000, denominator: 100 },
@@ -107,7 +105,6 @@ describe("offer optimization", () => {
       ...defaultOptimizationConfig(),
       mode: "technical-economic",
       scope: "active-lot",
-      economic: { enabled: true, stepPercent: 0.5, maxDeltaPercent: 1 },
       levers: {
         L1: {
           "C.1.2": { enabled: true, granularityUnits: 1, maxUnits: 100, unitCost: 100_000, denominator: 100 },
@@ -122,6 +119,7 @@ describe("offer optimization", () => {
     expect(reallocation?.criterionId).toBe("C.1.2");
     expect(reallocation?.releasedValue).toBeGreaterThan(0);
     expect(reallocation?.economicUnits).toBeGreaterThan(0);
+    expect(reallocation?.economicUnits).toBeCloseTo(((reallocation?.releasedValue ?? 0) * 100) / LOTS.find((lot) => lot.id === "L1")!.totalBase, 4);
     expect(reallocation?.technicalDelta).toBeLessThan(0);
     expect(reallocation?.economicDelta).toBeGreaterThan(0);
     expect(result.optimizedBidders[0].lots.L1.quantityInputs["C.1.2"].numerator).toBeLessThan(100);

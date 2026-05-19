@@ -30,7 +30,7 @@ npm run preview -- --port 4173
 - Offre scenari base con profili simulati ispirati a fonti pubbliche e allegati locali, senza trasformarli in offerte reali.
 - Permette salvataggio locale, duplicazione, import/export JSON e confronto fra scenari.
 - Mostra l'analisi puntuale criterio per sub-criterio, con costo stimato e impatto su punteggio/ribasso.
-- Usa l'ottimizzazione per partire da un'offerta iniziale, massimizzare il punteggio con leve tecniche/economiche configurabili e riallocare tecnica verso ribasso.
+- Usa l'ottimizzazione per partire da un'offerta iniziale, massimizzare il punteggio con leve tecniche e riallocare automaticamente tecnica verso ribasso.
 - Genera un report stampabile o salvabile in PDF dal browser.
 - Espone una pagina web di istruzioni raggiungibile dal pulsante `Istruzioni` nella testata e dall'URL `/istruzioni/`.
 - Supporta tema chiaro/scuro/automatico e layout responsive.
@@ -91,7 +91,7 @@ Documenti principali:
 - `All 18 - Offerta economica.pdf`
 - modelli `All 18.1` - `All 18.8`
 
-I costi unitari dell'analisi puntuale criterio e delle leve di ottimizzazione non sono contenuti nei documenti di gara: sono ipotesi dell'utente. Gli scenari base li precompilano come assunzioni operative modificabili, inclusi quantità massime, granularità interna, basi di calcolo e catalogo leve per tutti i lotti. L'ottimizzazione cerca il miglior punteggio raggiungibile con le leve abilitate e i massimali configurati. Il ribasso può aumentare solo se una rinuncia tecnica libera risorse sufficienti; non esiste un fondo esterno implicito.
+I costi unitari dell'analisi puntuale criterio e delle leve di ottimizzazione non sono contenuti nei documenti di gara: sono ipotesi dell'utente. Gli scenari base li precompilano come assunzioni operative modificabili, inclusi quantità massime, granularità interna, basi di calcolo e catalogo leve per tutti i lotti. L'ottimizzazione cerca il miglior punteggio raggiungibile con le leve abilitate e i massimali configurati. In modalità `Tecnica + ribasso`, il ribasso può aumentare solo se una rinuncia tecnica libera risorse sufficienti; l'aumento finanziabile viene calcolato automaticamente e non esiste un fondo esterno implicito.
 
 Le fonti pubbliche citate negli scenari base includono Agenzia TPL, ARIA/Sintel, Autoguidovie, Arriva Italia, Gruppo ATM/NET/Movibus e STAR Mobility. Se cambiano metriche, URL o claim pubblici, verificare la fonte e aggiornare anche la data `verifiedAt` in `src/data/tender.ts`.
 
@@ -149,4 +149,4 @@ Eseguire il deploy solo quando richiesto esplicitamente. Quando la richiesta è 
 
 Le chiavi attive di `localStorage` sono `tpl-lotti-1-4-theme`, `tpl-lotti-1-4-workspace` e `tpl-lotti-1-4-scenarios`.
 
-Gli export correnti usano `schemaVersion: 6` e includono anche la configurazione della tab `Ottimizzazione`, senza tetti finanziari esterni o massimi. Gli scenari salvati con le vecchie chiavi `tpl-simulator-*` o senza configurazione di ottimizzazione restano leggibili: la normalizzazione in `src/lib/scenario-persistence.ts` migra i campi legacy, inclusi `demoScenarioId`, snapshot incompleti, vecchi `stepUnits` e input mancanti.
+Gli export correnti usano `schemaVersion: 7` e includono anche la configurazione della tab `Ottimizzazione`, senza tetti finanziari esterni, step economici o massimi di ribasso. Gli scenari salvati con le vecchie chiavi `tpl-simulator-*` o senza configurazione di ottimizzazione restano leggibili: la normalizzazione in `src/lib/scenario-persistence.ts` migra i campi legacy, inclusi `demoScenarioId`, snapshot incompleti, vecchi `stepUnits`, vecchi parametri economici e input mancanti.

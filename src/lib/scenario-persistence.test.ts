@@ -29,7 +29,7 @@ describe("scenario persistence normalization", () => {
     });
 
     expect(snapshot).toBeDefined();
-    expect(snapshot?.schemaVersion).toBe(6);
+    expect(snapshot?.schemaVersion).toBe(7);
     expect(snapshot?.baseScenarioId).toBe("market");
     expect(snapshot?.optimization.mode).toBe("technical-economic");
     expect(snapshot?.optimization.scope).toBe("active-lot");
@@ -65,7 +65,7 @@ describe("scenario persistence normalization", () => {
     });
 
     expect(workspace).toBeDefined();
-    expect(workspace?.schemaVersion).toBe(6);
+    expect(workspace?.schemaVersion).toBe(7);
     expect(workspace?.baseScenarioId).toBe("local");
     expect(workspace?.optimization.mode).toBe("technical-economic");
     expect(workspace?.optimization.levers.L4?.["C.2.1"].unitCost).toBeGreaterThan(0);
@@ -100,8 +100,8 @@ describe("scenario persistence normalization", () => {
     expect("budgetEnabled" in snapshot!.optimization).toBe(false);
     expect("budget" in snapshot!.optimization).toBe(false);
     expect("budgetMode" in snapshot!.optimization).toBe(false);
+    expect("economic" in snapshot!.optimization).toBe(false);
     expect(snapshot?.optimization.scope).toBe("active-lots");
-    expect(snapshot?.optimization.economic.enabled).toBe(false);
     expect(snapshot?.optimization.levers.L1?.["C.1.2"]).toEqual({
       enabled: true,
       granularityUnits: 5,

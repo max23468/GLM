@@ -2036,27 +2036,6 @@ input[type="checkbox"] {
   align-items: end;
 }
 
-.economic-optimizer {
-  display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto minmax(100px, 0.4fr) minmax(100px, 0.4fr);
-  gap: 10px;
-  align-items: end;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--control-bg);
-  padding: 10px;
-}
-
-.economic-optimizer.disabled {
-  opacity: 0.6;
-}
-
-.economic-optimizer > div:first-child {
-  display: grid;
-  gap: 2px;
-}
-
-.economic-optimizer > div:first-child span,
 .optimization-hint {
   color: var(--muted);
   font-size: 0.78rem;
@@ -2206,6 +2185,14 @@ input[type="checkbox"] {
   width: 100%;
   min-width: 82px;
   min-height: 32px;
+}
+
+.lever-table .not-applicable {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.74rem;
 }
 
 .economic-table-wrap {
@@ -2996,7 +2983,6 @@ input[type="checkbox"] {
   .phase-grid,
   .combo-checks,
   .optimization-controls,
-  .economic-optimizer,
   .optimization-summary-grid,
   .area-summary,
   .lot-toggle-grid {

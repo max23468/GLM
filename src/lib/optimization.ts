@@ -23,16 +23,9 @@ export type OptimizationLeverInput = {
   denominator: number;
 };
 
-export type OptimizationEconomicInput = {
-  enabled: boolean;
-  stepPercent: number;
-  maxDeltaPercent: number;
-};
-
 export type OptimizationConfig = {
   mode: OptimizationMode;
   scope: OptimizationScope;
-  economic: OptimizationEconomicInput;
   levers: Partial<Record<LotId, Record<string, OptimizationLeverInput>>>;
 };
 
@@ -82,11 +75,6 @@ type OptimizationCandidate = Omit<OptimizationStep, "id" | "afterScore"> & {
 export const defaultOptimizationConfig = (): OptimizationConfig => ({
   mode: "technical-economic",
   scope: "active-lot",
-  economic: {
-    enabled: true,
-    stepPercent: 0.1,
-    maxDeltaPercent: 2,
-  },
   levers: {},
 });
 
@@ -295,7 +283,7 @@ const buildCandidates = ({
     }
 
     const reallocationCandidates =
-      config.mode === "technical-economic" && config.economic.enabled
+      config.mode === "technical-economic"
         ? buildReallocationCandidates({
             baselineOffer,
             currentBidders,
@@ -350,7 +338,7 @@ const buildReallocationCandidates = ({
       const releasedValue = technicalReductionCost(criterion, reductionUnits, lever);
       if (reductionUnits <= 0 || releasedValue <= 0) return [];
 
-      const economicStep = fundedEconomicStepUnits(baselineOffer, currentOffer, config.economic, lot.totalBase, releasedValue);
+      const economicStep = fundedEconomicStepUnits(currentOffer, lot.totalBase, releasedValue);
       if (economicStep <= 0.0001) return [];
 
       const economicCost = (lot.totalBase * economicStep) / 100;
@@ -561,30 +549,16 @@ const technicalUnits = (offer: Bidder["lots"][LotId], criterion: Criterion, leve
   return Math.max(0, value);
 };
 
-const nextEconomicStepUnits = (baselineOffer: Bidder["lots"][LotId], currentOffer: Bidder["lots"][LotId], economic: OptimizationEconomicInput) => {
-  const step = Math.max(0, economic.stepPercent || 0);
-  const maxDelta = Math.max(0, economic.maxDeltaPercent || 0);
-  if (step <= 0 || maxDelta <= 0) return 0;
-  const baselineAverage = averageDiscount(baselineOffer.phaseDiscounts);
-  const currentAverage = averageDiscount(currentOffer.phaseDiscounts);
-  const usedDelta = Math.max(0, currentAverage - baselineAverage);
-  return Math.min(step, Math.max(0, maxDelta - usedDelta));
-};
-
 const fundedEconomicStepUnits = (
-  baselineOffer: Bidder["lots"][LotId],
   currentOffer: Bidder["lots"][LotId],
-  economic: OptimizationEconomicInput,
   lotTotalBase: number,
   availableFunding: number,
 ) => {
   if (lotTotalBase <= 0 || availableFunding <= 0) return 0;
-  const nextStep = nextEconomicStepUnits(baselineOffer, currentOffer, economic);
   const fundedStep = (availableFunding * 100) / lotTotalBase;
-  return round4(Math.min(nextStep, fundedStep));
+  const phaseHeadroom = Math.min(...currentOffer.phaseDiscounts.map((discount) => Math.max(0, 100 - discount)));
+  return Math.min(fundedStep, phaseHeadroom);
 };
-
-const averageDiscount = (discounts: [number, number, number]) => discounts.reduce((sum, value) => sum + value, 0) / discounts.length;
 
 const efficiency = (delta: number, cost: number) => (cost > 0 ? delta / cost : delta);
 

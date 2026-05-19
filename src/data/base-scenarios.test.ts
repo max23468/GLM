@@ -12,8 +12,6 @@ describe("base scenarios", () => {
       const config = scenario.buildOptimizationConfig();
 
       expect(config.mode).toBe("technical-economic");
-      expect(config.economic.stepPercent).toBeGreaterThan(0);
-      expect(config.economic.maxDeltaPercent).toBeGreaterThan(0);
 
       for (const lot of LOTS) {
         for (const criterion of automaticCriteria) {

@@ -69,7 +69,7 @@ Gli scenari base precompilano `deltaUnits`, `unitCost` e `denominator` per ogni 
 
 L'ottimizzazione parte dall'offerta corrente del concorrente selezionato e tiene fermi gli altri concorrenti. Il motore genera mosse candidate, le applica su copie dello scenario e sceglie progressivamente la leva con maggior incremento di punteggio finché non restano miglioramenti positivi. Il piano massimizza il punteggio entro massimali, costi unitari e input configurati, senza introdurre fondi esterni o ribassi diretti non finanziati.
 
-Quando `Tecnica + ribasso` è attivo, il motore valuta anche riallocazioni tecnico-economiche: riduce una leva tecnica rispetto all'offerta iniziale, calcola le risorse liberate con il costo unitario inserito dall'utente e usa tali risorse per finanziare un maggiore ribasso. La mossa entra nel piano solo se il saldo netto tra punti tecnici persi e punti economici guadagnati è positivo. Il ribasso può aumentare solo tramite questa riallocazione.
+Quando `Tecnica + ribasso` è attivo, il motore valuta anche riallocazioni tecnico-economiche: riduce una leva tecnica rispetto all'offerta iniziale, calcola le risorse liberate con il costo unitario inserito dall'utente e trasforma automaticamente quel valore nel maggiore ribasso finanziabile. La mossa entra nel piano solo se il saldo netto tra punti tecnici persi e punti economici guadagnati è positivo. Il ribasso può aumentare solo tramite questa riallocazione.
 
 Gli obiettivi disponibili sono:
 
@@ -82,7 +82,7 @@ Le modalità considerate sono:
 - `Tecnica + ribasso`: confronta leve tecniche Q/T e riallocazioni verso maggiore ribasso economico;
 - `Solo tecnica`: usa solo leve tecniche Q/T e ignora il ribasso.
 
-Il costo complessivo stimato del piano resta una lettura gestionale delle mosse consigliate. Per le riallocazioni, il simulatore mostra quante risorse vengono liberate dalla rinuncia tecnica e quanta parte finanzia il maggiore ribasso.
+Il costo complessivo stimato del piano resta una lettura gestionale delle mosse consigliate. Per le riallocazioni, il simulatore mostra quante risorse vengono liberate dalla rinuncia tecnica e quanta parte finanzia il maggiore ribasso. Non ci sono step o massimi di ribasso da configurare: il limite operativo è dato dal valore liberato dalla rinuncia tecnica e dal fatto che i ribassi di fase non possono superare il 100%.
 
 I criteri discrezionali `D` sono esclusi dall'ottimizzazione automatica perché dipendono dal giudizio della Commissione e non hanno una funzione deterministica costo-punteggio nel disciplinare. Restano compilabili manualmente nella tab `Tecnica`.
 
@@ -97,7 +97,7 @@ La granularità con cui il motore prova le quantità è un input interno precomp
 
 Per le riallocazioni tecnica-ribasso, `unitCost` viene letto come risorsa liberabile se quella leva tecnica viene ridotta. Sui criteri in cui un valore più alto migliora il punteggio, la riduzione può scendere sotto l'offerta iniziale; se `maxUnits` è maggiore di `0`, limita anche quanto si può sacrificare. Sui criteri inversi, come indici ambientali o consumo di suolo, la rinuncia tecnica richiede `maxUnits` maggiore di `0`, perché il simulatore non può dedurre da solo un peggioramento massimo credibile.
 
-La sezione `Leva economica` non introduce un ribasso autonomo: regola soltanto come le risorse liberate da una rinuncia tecnica possono essere trasformate in maggiore ribasso. `Step %` è l'incremento massimo di ribasso valutato in una singola mossa; `Max %` è l'aumento massimo complessivo del ribasso rispetto all'offerta iniziale. Il costo è calcolato come minore corrispettivo offerto sul lotto. Nel riepilogo del piano, `Impegno lordo del piano` somma i costi tecnici aggiunti e il valore economico dei ribassi prima delle riallocazioni; `Valore riallocato da tecnica` mostra solo la quota liberata da rinunce tecniche e assorbita dal maggiore ribasso. Se una rinuncia libera più valore di quanto serva alla mossa economica scelta, l'eccedenza resta informativa e non viene riutilizzata oltre quella mossa. Anche questo è un input simulativo, non un dato di gara.
+Nel riepilogo del piano, `Impegno lordo del piano` somma i costi tecnici aggiunti e il valore economico dei ribassi prima delle riallocazioni; `Valore riallocato da tecnica` mostra solo la quota liberata da rinunce tecniche e assorbita dal maggiore ribasso. Se una rinuncia libera più valore di quanto serve al ribasso finanziabile, l'eventuale quota non assorbita resta una lettura informativa di riepilogo. Anche questo è un input simulativo, non un dato di gara.
 
 ## Offerta economica
 
@@ -123,7 +123,7 @@ Lo stato vive nel browser:
 
 Le chiavi legacy `tpl-simulator-*` restano lette in fallback. L'import/export usa JSON con snapshot dello scenario; se cambia la forma dei dati, aggiornare i normalizzatori in `src/lib/scenario-persistence.ts` e mantenere compatibilità ragionevole con scenari esportati in precedenza.
 
-Gli snapshot correnti usano `schemaVersion: 6` e includono la configurazione di ottimizzazione senza tetti finanziari esterni o massimi. La normalizzazione deve continuare ad accettare snapshot precedenti privi del blocco `optimization` o con i vecchi campi legacy.
+Gli snapshot correnti usano `schemaVersion: 7` e includono la configurazione di ottimizzazione senza tetti finanziari esterni, step economici o massimi di ribasso. La normalizzazione deve continuare ad accettare snapshot precedenti privi del blocco `optimization` o con i vecchi campi legacy.
 
 La gestione di scenari, concorrenti, lotti e opzioni di partecipazione è concentrata nella barra laterale. La vista ordinaria mostra solo il riepilogo `Workspace`; il pulsante `Gestisci workspace` apre i controlli laterali e `Indietro` chiude l'intera gestione.
 

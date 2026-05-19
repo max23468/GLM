@@ -26,7 +26,7 @@ export const LEGACY_STORAGE_KEYS = {
 } as const;
 
 export type SavedScenarioSnapshot = {
-  schemaVersion: 6;
+  schemaVersion: 7;
   id: string;
   name: string;
   savedAt: string;
@@ -40,7 +40,7 @@ export type SavedScenarioSnapshot = {
 };
 
 export type StoredWorkspace = {
-  schemaVersion: 6;
+  schemaVersion: 7;
   scenarioName: string;
   activeSavedScenarioId?: string;
   baseScenarioId: BaseScenarioId;
@@ -143,7 +143,6 @@ const normalizeOptimizationLever = (
 export const normalizeOptimizationConfig = (value: unknown, fallbackConfig?: OptimizationConfig): OptimizationConfig => {
   const fallback = fallbackConfig ?? defaultOptimizationConfig();
   const source = isRecord(value) ? value : {};
-  const economic = isRecord(source.economic) ? source.economic : {};
   const sourceLevers = isRecord(source.levers) ? source.levers : {};
   const legacyMode = source.budgetMode === "technical" ? "technical-only" : source.budgetMode === "strategic" ? "technical-economic" : undefined;
 
@@ -156,11 +155,6 @@ export const normalizeOptimizationConfig = (value: unknown, fallbackConfig?: Opt
       source.scope === "active-lots" || source.scope === "scenario" || source.scope === "active-lot"
         ? source.scope
         : fallback.scope,
-    economic: {
-      enabled: typeof economic.enabled === "boolean" ? economic.enabled : fallback.economic.enabled,
-      stepPercent: nonNegativeNumber(economic.stepPercent, fallback.economic.stepPercent),
-      maxDeltaPercent: nonNegativeNumber(economic.maxDeltaPercent, fallback.economic.maxDeltaPercent),
-    },
     levers: Object.fromEntries(
       LOTS.map((lot) => {
         const lotLevers = recordValue(sourceLevers, lot.id);
@@ -283,7 +277,7 @@ export const normalizeScenarioSnapshot = (value: unknown): SavedScenarioSnapshot
   const firstBidderId = bidders[0]?.id ?? fallbackScenario.defaultBidderId;
 
   return {
-    schemaVersion: 6,
+    schemaVersion: 7,
     id: normalizedId(candidate.id, `scenario-${Date.now()}`),
     name: normalizedName(candidate.name, "Scenario importato"),
     savedAt: typeof candidate.savedAt === "string" ? candidate.savedAt : new Date().toISOString(),
@@ -308,7 +302,7 @@ export const normalizeStoredWorkspace = (value: unknown): StoredWorkspace | unde
   if (!bidders.length) return undefined;
 
   return {
-    schemaVersion: 6,
+    schemaVersion: 7,
     scenarioName: normalizedName(candidate.scenarioName, fallbackScenario.title),
     activeSavedScenarioId: typeof candidate.activeSavedScenarioId === "string" ? candidate.activeSavedScenarioId : undefined,
     baseScenarioId,

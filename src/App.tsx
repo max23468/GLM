@@ -273,7 +273,7 @@ function App() {
     window.localStorage.setItem(
       STORAGE_KEYS.workspace,
       JSON.stringify({
-        schemaVersion: 6,
+        schemaVersion: 7,
         scenarioName,
         activeSavedScenarioId,
         baseScenarioId,
@@ -477,7 +477,7 @@ function App() {
   };
 
   const currentScenarioSnapshot = (id = activeSavedScenarioId ?? `scenario-${Date.now()}`, name = scenarioName): SavedScenarioSnapshot => ({
-    schemaVersion: 6,
+    schemaVersion: 7,
     id,
     name: name.trim() || "Scenario senza nome",
     savedAt: new Date().toISOString(),
@@ -2000,8 +2000,6 @@ function OptimizationWorkbench({
   const reallocatedValue = result.steps.reduce((sum, step) => sum + Math.min(step.cost, step.releasedValue ?? 0), 0);
   const unusedReleasedValue = Math.max(0, releasedTechnicalValue - reallocatedValue);
   const netPlanCost = Math.max(0, grossPlanCost - reallocatedValue);
-  const economicDisabled = config.mode === "technical-only";
-
   return (
     <div className="optimization-board">
       <div className="metric-grid">
@@ -2066,49 +2064,6 @@ function OptimizationWorkbench({
         <div className="optimization-hint">
           Il piano massimizza il punteggio partendo dall'offerta corrente. Il ribasso aumenta solo se una rinuncia tecnica libera risorse sufficienti.
         </div>
-
-        <div className={`economic-optimizer ${economicDisabled ? "disabled" : ""}`}>
-          <div>
-            <strong>Leva economica</strong>
-            <span>
-              Regola solo le riallocazioni tecnica-ribasso: il ribasso aumenta quando una rinuncia tecnica libera risorse sufficienti.
-              Step % limita la singola mossa, Max % limita l'aumento totale rispetto all'offerta iniziale.
-            </span>
-          </div>
-          <label className="switch">
-            <input
-              type="checkbox"
-              checked={config.economic.enabled}
-              disabled={economicDisabled}
-              onChange={(event) => onConfigChange((current) => ({ ...current, economic: { ...current.economic, enabled: event.target.checked } }))}
-            />
-            <span>includi ribasso</span>
-          </label>
-          <label className="field compact">
-            <span>Step %</span>
-            <small>Incremento massimo di ribasso valutato in una singola mossa.</small>
-            <input
-              type="number"
-              min={0}
-              step={0.05}
-              value={config.economic.stepPercent}
-              disabled={economicDisabled}
-              onChange={(event) => onConfigChange((current) => ({ ...current, economic: { ...current.economic, stepPercent: Math.max(0, Number(event.target.value) || 0) } }))}
-            />
-          </label>
-          <label className="field compact">
-            <span>Max %</span>
-            <small>Aumento massimo complessivo del ribasso rispetto all'offerta iniziale.</small>
-            <input
-              type="number"
-              min={0}
-              step={0.1}
-              value={config.economic.maxDeltaPercent}
-              disabled={economicDisabled}
-              onChange={(event) => onConfigChange((current) => ({ ...current, economic: { ...current.economic, maxDeltaPercent: Math.max(0, Number(event.target.value) || 0) } }))}
-            />
-          </label>
-        </div>
       </section>
 
       <section className="optimization-card">
@@ -2128,7 +2083,7 @@ function OptimizationWorkbench({
             <strong>{euroFormatter.format(reallocatedValue)}</strong>
             <small>
               Quota liberata da rinunce tecniche e assorbita dal maggiore ribasso.
-              {unusedReleasedValue > 0 ? ` Eccedenza non riutilizzata: ${euroFormatter.format(unusedReleasedValue)}.` : ""}
+              {unusedReleasedValue > 0 ? ` Quota liberata non assorbita dal ribasso: ${euroFormatter.format(unusedReleasedValue)}.` : ""}
             </small>
           </div>
           <div>
@@ -2164,9 +2119,8 @@ function OptimizationWorkbench({
                   {step.kind === "reallocation" ? (
                     <small>
                       Riduce {step.units.toLocaleString("it-IT", { maximumFractionDigits: 2 })} {step.unitLabel} dell'offerta tecnica,
-                      libera {euroFormatter.format(step.releasedValue ?? 0)} e ne usa {euroFormatter.format(Math.min(step.cost, step.releasedValue ?? 0))}
+                      libera {euroFormatter.format(step.releasedValue ?? 0)} e ne usa {euroFormatter.format(Math.min(step.cost, step.releasedValue ?? 0))}{" "}
                       per finanziare +{(step.economicUnits ?? 0).toLocaleString("it-IT", { maximumFractionDigits: 4 })}% di ribasso.
-                      {(step.releasedValue ?? 0) > step.cost ? ` L'eccedenza di ${euroFormatter.format((step.releasedValue ?? 0) - step.cost)} non viene riutilizzata oltre questa mossa.` : ""}
                       Delta punti: {signedPoints(step.technicalDelta ?? 0)} di offerta tecnica,{" "}
                       {signedPoints(step.economicDelta ?? 0)} di offerta economica,{" "}
                       saldo {signedPoints(step.objectiveDelta)}.
@@ -2174,7 +2128,7 @@ function OptimizationWorkbench({
                   ) : (
                     <small>
                       Aggiunge {step.units.toLocaleString("it-IT", { maximumFractionDigits: 2 })} {step.unitLabel} alla proposta tecnica,
-                      con costo stimato {euroFormatter.format(step.cost)}.
+                      con costo stimato {euroFormatter.format(step.cost)}.{" "}
                       Delta punti: {signedPoints(step.technicalDelta ?? step.objectiveDelta)} di offerta tecnica,{" "}
                       {signedPoints(step.economicDelta ?? 0)} di offerta economica,{" "}
                       saldo {signedPoints(step.objectiveDelta)}.
@@ -2261,14 +2215,17 @@ function OptimizationWorkbench({
                           />
                         </td>
                         <td>
-                          <input
-                            type="number"
-                            min={0}
-                            step={1}
-                            value={needsDenominator ? lever.denominator : 0}
-                            disabled={!needsDenominator}
-                            onChange={(event) => onLeverChange(lotId, criterion.id, { denominator: Math.max(0, Number(event.target.value) || 0) })}
-                          />
+                          {needsDenominator ? (
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              value={lever.denominator}
+                              onChange={(event) => onLeverChange(lotId, criterion.id, { denominator: Math.max(0, Number(event.target.value) || 0) })}
+                            />
+                          ) : (
+                            <span className="not-applicable">non previsto</span>
+                          )}
                         </td>
                       </tr>
                     );
