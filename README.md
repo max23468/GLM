@@ -91,7 +91,7 @@ Documenti principali:
 - `All 18 - Offerta economica.pdf`
 - modelli `All 18.1` - `All 18.8`
 
-I costi unitari dell'analisi puntuale criterio e delle leve di ottimizzazione non sono contenuti nei documenti di gara: sono ipotesi dell'utente. Gli scenari base li precompilano come assunzioni operative modificabili, inclusi step, massimali, basi di calcolo e catalogo leve per tutti i lotti. L'ottimizzazione cerca il miglior punteggio raggiungibile con le leve abilitate e i massimali configurati. Il ribasso può aumentare solo se una rinuncia tecnica libera risorse sufficienti; non esiste un fondo esterno implicito.
+I costi unitari dell'analisi puntuale criterio e delle leve di ottimizzazione non sono contenuti nei documenti di gara: sono ipotesi dell'utente. Gli scenari base li precompilano come assunzioni operative modificabili, inclusi quantità massime, granularità interna, basi di calcolo e catalogo leve per tutti i lotti. L'ottimizzazione cerca il miglior punteggio raggiungibile con le leve abilitate e i massimali configurati. Il ribasso può aumentare solo se una rinuncia tecnica libera risorse sufficienti; non esiste un fondo esterno implicito.
 
 Le fonti pubbliche citate negli scenari base includono Agenzia TPL, ARIA/Sintel, Autoguidovie, Arriva Italia, Gruppo ATM/NET/Movibus e STAR Mobility. Se cambiano metriche, URL o claim pubblici, verificare la fonte e aggiornare anche la data `verifiedAt` in `src/data/tender.ts`.
 
@@ -149,4 +149,4 @@ Eseguire il deploy solo quando richiesto esplicitamente. Quando la richiesta è 
 
 Le chiavi attive di `localStorage` sono `tpl-lotti-1-4-theme`, `tpl-lotti-1-4-workspace` e `tpl-lotti-1-4-scenarios`.
 
-Gli export correnti usano `schemaVersion: 5` e includono anche la configurazione della tab `Ottimizzazione`, senza tetti finanziari esterni o massimi. Gli scenari salvati con le vecchie chiavi `tpl-simulator-*` o senza configurazione di ottimizzazione restano leggibili: la normalizzazione in `src/lib/scenario-persistence.ts` migra i campi legacy, inclusi `demoScenarioId`, snapshot incompleti e input mancanti.
+Gli export correnti usano `schemaVersion: 6` e includono anche la configurazione della tab `Ottimizzazione`, senza tetti finanziari esterni o massimi. Gli scenari salvati con le vecchie chiavi `tpl-simulator-*` o senza configurazione di ottimizzazione restano leggibili: la normalizzazione in `src/lib/scenario-persistence.ts` migra i campi legacy, inclusi `demoScenarioId`, snapshot incompleti, vecchi `stepUnits` e input mancanti.

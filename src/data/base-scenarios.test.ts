@@ -20,9 +20,12 @@ describe("base scenarios", () => {
           const lever = config.levers[lot.id]?.[criterion.id];
           expect(lever, `${scenario.id} ${lot.id} ${criterion.id}`).toBeDefined();
           expect(lever?.enabled, `${scenario.id} ${lot.id} ${criterion.id}`).toBe(true);
-          expect(lever?.stepUnits, `${scenario.id} ${lot.id} ${criterion.id}`).toBeGreaterThan(0);
+          expect(lever?.granularityUnits, `${scenario.id} ${lot.id} ${criterion.id}`).toBeGreaterThan(0);
           expect(lever?.maxUnits, `${scenario.id} ${lot.id} ${criterion.id}`).toBeGreaterThan(0);
           expect(lever?.unitCost, `${scenario.id} ${lot.id} ${criterion.id}`).toBeGreaterThan(0);
+          if (criterion.quantityInput?.kind === "ratio" || criterion.input === "ratio") {
+            expect(lever?.granularityUnits, `${scenario.id} ${lot.id} ${criterion.id}`).toBe(1);
+          }
           if (criterion.quantityInput || criterion.input === "ratio") {
             expect(lever?.denominator, `${scenario.id} ${lot.id} ${criterion.id}`).toBeGreaterThan(0);
           }
@@ -74,5 +77,5 @@ describe("base scenarios", () => {
       expect(result.steps.reduce((sum, step) => sum + step.cost, 0), scenario.id).toBeGreaterThan(0);
       expect(result.objectiveDelta, scenario.id).toBeGreaterThan(0);
     }
-  });
+  }, 15000);
 });

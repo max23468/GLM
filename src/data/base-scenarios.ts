@@ -225,7 +225,7 @@ const denominatorForCriterion = (lotId: LotId, criterion: Criterion) => {
   return 0;
 };
 
-const stepUnitsForCriterion = (lotId: LotId, criterion: Criterion) => {
+const granularityUnitsForCriterion = (lotId: LotId, criterion: Criterion) => {
   const baseline = LOT_BASELINES[lotId];
   const lot = lotById(lotId);
   if (criterion.kind === "T") return 1;
@@ -258,7 +258,7 @@ const stepUnitsForCriterion = (lotId: LotId, criterion: Criterion) => {
     case "F.4.1":
       return 40;
     default:
-      if (criterion.quantityInput?.kind === "ratio" || criterion.input === "ratio") return Math.max(1, Math.round(baseline.busBase * 0.125));
+      if (criterion.quantityInput?.kind === "ratio" || criterion.input === "ratio") return 1;
       return 1;
   }
 };
@@ -297,7 +297,7 @@ const maxUnitsForCriterion = (lotId: LotId, criterion: Criterion) => {
       return 80;
     default:
       if (criterion.quantityInput?.kind === "ratio" || criterion.input === "ratio") return Math.max(1, Math.round(baseline.busBase * 0.25));
-      return stepUnitsForCriterion(lotId, criterion) * 5;
+      return granularityUnitsForCriterion(lotId, criterion) * 5;
   }
 };
 
@@ -307,7 +307,7 @@ const assumptionForCriterion = (
   profile: ScenarioAssumptionProfile,
 ): OptimizationLeverInput => ({
   enabled: criterion.kind !== "D",
-  stepUnits: criterion.kind === "D" ? 0 : stepUnitsForCriterion(lotId, criterion),
+  granularityUnits: criterion.kind === "D" ? 0 : granularityUnitsForCriterion(lotId, criterion),
   maxUnits: criterion.kind === "D" ? 0 : maxUnitsForCriterion(lotId, criterion),
   unitCost: costForCriterion(criterion, profile),
   denominator: denominatorForCriterion(lotId, criterion),
@@ -316,7 +316,7 @@ const assumptionForCriterion = (
 const tradeoffForCriterion = (lotId: LotId, criterion: Criterion, profile: ScenarioAssumptionProfile): TradeoffPlan => {
   const assumption = assumptionForCriterion(lotId, criterion, profile);
   return {
-    deltaUnits: assumption.stepUnits,
+    deltaUnits: assumption.granularityUnits,
     unitCost: assumption.unitCost,
     denominator: assumption.denominator,
   };

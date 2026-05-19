@@ -89,14 +89,15 @@ I criteri discrezionali `D` sono esclusi dall'ottimizzazione automatica perché 
 Per ogni leva tecnica l'utente può indicare:
 
 - `enabled`: se la leva entra nel piano;
-- `stepUnits`: incremento operativo valutato a ogni iterazione;
-- `maxUnits`: incremento massimo rispetto all'offerta iniziale; se è `0`, il simulatore usa un limite operativo ricavabile dal criterio o dal migliore valore corrente;
+- `maxUnits`: quantità massima applicabile rispetto all'offerta iniziale; se è `0`, il simulatore usa un limite operativo ricavabile dal criterio o dal migliore valore corrente;
 - `unitCost`: costo unitario stimato dall'utente;
 - `denominator`: base di calcolo quando il criterio è un rapporto.
 
+La granularità con cui il motore prova le quantità è un input interno precompilato dagli scenari base (`granularityUnits`) e resta leggibile dai vecchi snapshot tramite il campo legacy `stepUnits`. L'utente non deve decidere lo step operativo: indica il costo di 1 unità, la quantità massima e la base; il simulatore valuta le quantità candidate fino al massimo e sceglie la mossa con il miglior incremento di punteggio.
+
 Per le riallocazioni tecnica-ribasso, `unitCost` viene letto come risorsa liberabile se quella leva tecnica viene ridotta. Sui criteri in cui un valore più alto migliora il punteggio, la riduzione può scendere sotto l'offerta iniziale; se `maxUnits` è maggiore di `0`, limita anche quanto si può sacrificare. Sui criteri inversi, come indici ambientali o consumo di suolo, la rinuncia tecnica richiede `maxUnits` maggiore di `0`, perché il simulatore non può dedurre da solo un peggioramento massimo credibile.
 
-Per la leva economica l'utente indica step e massimo in punti percentuali di ribasso. Il costo è calcolato come minore corrispettivo offerto sul lotto. Anche questo è un input simulativo, non un dato di gara.
+La sezione `Leva economica` non introduce un ribasso autonomo: regola soltanto come le risorse liberate da una rinuncia tecnica possono essere trasformate in maggiore ribasso. `Step %` è l'incremento massimo di ribasso valutato in una singola mossa; `Max %` è l'aumento massimo complessivo del ribasso rispetto all'offerta iniziale. Il costo è calcolato come minore corrispettivo offerto sul lotto. Nel riepilogo del piano, `Impegno lordo del piano` somma i costi tecnici aggiunti e il valore economico dei ribassi prima delle riallocazioni; `Valore riallocato da tecnica` mostra solo la quota liberata da rinunce tecniche e assorbita dal maggiore ribasso. Se una rinuncia libera più valore di quanto serva alla mossa economica scelta, l'eccedenza resta informativa e non viene riutilizzata oltre quella mossa. Anche questo è un input simulativo, non un dato di gara.
 
 ## Offerta economica
 
@@ -122,7 +123,7 @@ Lo stato vive nel browser:
 
 Le chiavi legacy `tpl-simulator-*` restano lette in fallback. L'import/export usa JSON con snapshot dello scenario; se cambia la forma dei dati, aggiornare i normalizzatori in `src/lib/scenario-persistence.ts` e mantenere compatibilità ragionevole con scenari esportati in precedenza.
 
-Gli snapshot correnti usano `schemaVersion: 5` e includono la configurazione di ottimizzazione senza tetti finanziari esterni o massimi. La normalizzazione deve continuare ad accettare snapshot precedenti privi del blocco `optimization` o con i vecchi campi legacy.
+Gli snapshot correnti usano `schemaVersion: 6` e includono la configurazione di ottimizzazione senza tetti finanziari esterni o massimi. La normalizzazione deve continuare ad accettare snapshot precedenti privi del blocco `optimization` o con i vecchi campi legacy.
 
 La gestione di scenari, concorrenti, lotti e opzioni di partecipazione è concentrata nella barra laterale. La vista ordinaria mostra solo il riepilogo `Workspace`; il pulsante `Gestisci workspace` apre i controlli laterali e `Indietro` chiude l'intera gestione.
 
@@ -137,7 +138,7 @@ Gli scenari base sono definiti in `src/data/base-scenarios.ts`:
 
 Usano basi ricavate dagli allegati locali e segnali pubblici per operatori reali. Non rappresentano offerte ufficiali e non devono essere descritti come tali in UI, README o report.
 
-Ogni scenario base genera anche una configurazione completa di ottimizzazione: modalità, leva economica, scope di default, step, massimali, basi e costi unitari per tutti i lotti. La normalizzazione di workspace e JSON usa questi valori come fallback quando uno scenario salvato non contiene ancora i campi introdotti dall'ottimizzazione.
+Ogni scenario base genera anche una configurazione completa di ottimizzazione: modalità, leva economica, scope di default, granularità interna, quantità massime, basi e costi unitari per tutti i lotti. La normalizzazione di workspace e JSON usa questi valori come fallback quando uno scenario salvato non contiene ancora i campi introdotti dall'ottimizzazione.
 
 ## Criticità documentali
 

@@ -591,6 +591,12 @@ button {
   font-weight: 650;
 }
 
+.field > small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
 input,
 select {
   width: 100%;
@@ -2089,6 +2095,12 @@ input[type="checkbox"] {
   font-weight: 720;
 }
 
+.optimization-summary-grid small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
 .optimization-summary-grid strong,
 .area-summary strong {
   color: var(--strong-text);
@@ -2156,7 +2168,7 @@ input[type="checkbox"] {
 
 .lever-table {
   width: 100%;
-  min-width: 820px;
+  min-width: 740px;
   border-collapse: collapse;
 }
 

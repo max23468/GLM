@@ -829,7 +829,7 @@ const buildSuggestions = (
       pairId: pair.id,
       title: `${pair.label} - rendi ammissibile la combinatoria`,
       body: combo.warnings.length
-        ? `${combo.warnings[0]} Incremento minimo stimato del ribasso combinatorio: ${(increase * 100).toLocaleString("it-IT", { maximumFractionDigits: 2 })} punti percentuali.`
+        ? `${combo.warnings[0]} Incremento minimo stimato del ribasso combinatorio: ${(increase * 100).toLocaleString("it-IT", { maximumFractionDigits: 2 })}%.`
         : "Verifica inserimento in entrambe le buste, PEF combinatorio e risparmio reale rispetto alle offerte singole.",
       priority: 50 + increase * 100,
       effort: "medio",

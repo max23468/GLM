@@ -26,7 +26,7 @@ export const LEGACY_STORAGE_KEYS = {
 } as const;
 
 export type SavedScenarioSnapshot = {
-  schemaVersion: 5;
+  schemaVersion: 6;
   id: string;
   name: string;
   savedAt: string;
@@ -40,7 +40,7 @@ export type SavedScenarioSnapshot = {
 };
 
 export type StoredWorkspace = {
-  schemaVersion: 5;
+  schemaVersion: 6;
   scenarioName: string;
   activeSavedScenarioId?: string;
   baseScenarioId: BaseScenarioId;
@@ -118,7 +118,7 @@ const normalizeTradeoff = (value: unknown, fallback?: TradeoffPlan): TradeoffPla
 
 const fallbackOptimizationLever = (criterionKind: "Q" | "T" | "D"): OptimizationLeverInput => ({
   enabled: criterionKind !== "D",
-  stepUnits: 1,
+  granularityUnits: 1,
   maxUnits: 0,
   unitCost: 0,
   denominator: 0,
@@ -133,7 +133,7 @@ const normalizeOptimizationLever = (
   const fallback = fallbackValue ?? fallbackOptimizationLever(criterionKind);
   return {
     enabled: typeof source.enabled === "boolean" ? source.enabled : fallback.enabled,
-    stepUnits: nonNegativeNumber(source.stepUnits, fallback.stepUnits),
+    granularityUnits: nonNegativeNumber(source.granularityUnits, nonNegativeNumber(source.stepUnits, fallback.granularityUnits)),
     maxUnits: nonNegativeNumber(source.maxUnits, fallback.maxUnits),
     unitCost: nonNegativeNumber(source.unitCost, fallback.unitCost),
     denominator: nonNegativeNumber(source.denominator, fallback.denominator),
@@ -283,7 +283,7 @@ export const normalizeScenarioSnapshot = (value: unknown): SavedScenarioSnapshot
   const firstBidderId = bidders[0]?.id ?? fallbackScenario.defaultBidderId;
 
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
     id: normalizedId(candidate.id, `scenario-${Date.now()}`),
     name: normalizedName(candidate.name, "Scenario importato"),
     savedAt: typeof candidate.savedAt === "string" ? candidate.savedAt : new Date().toISOString(),
@@ -308,7 +308,7 @@ export const normalizeStoredWorkspace = (value: unknown): StoredWorkspace | unde
   if (!bidders.length) return undefined;
 
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
     scenarioName: normalizedName(candidate.scenarioName, fallbackScenario.title),
     activeSavedScenarioId: typeof candidate.activeSavedScenarioId === "string" ? candidate.activeSavedScenarioId : undefined,
     baseScenarioId,

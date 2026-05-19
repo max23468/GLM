@@ -184,7 +184,7 @@ const formatInputPercent = (value: number) =>
   `${value.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 
 const formatPercentPointsFromDecimal = (value: number) =>
-  `${(value * 100).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} p.p.`;
+  `${(value * 100).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 
 const formatCriterionValue = (criterion: Criterion, value: number | boolean | undefined) => {
   if (criterion.kind === "T") return value ? "Sì" : "No";
@@ -273,7 +273,7 @@ function App() {
     window.localStorage.setItem(
       STORAGE_KEYS.workspace,
       JSON.stringify({
-        schemaVersion: 5,
+        schemaVersion: 6,
         scenarioName,
         activeSavedScenarioId,
         baseScenarioId,
@@ -477,7 +477,7 @@ function App() {
   };
 
   const currentScenarioSnapshot = (id = activeSavedScenarioId ?? `scenario-${Date.now()}`, name = scenarioName): SavedScenarioSnapshot => ({
-    schemaVersion: 5,
+    schemaVersion: 6,
     id,
     name: name.trim() || "Scenario senza nome",
     savedAt: new Date().toISOString(),
@@ -1750,7 +1750,7 @@ function EconomicsWorkbench({
     {
       label: "Profilo fasi",
       tone: phaseSpread > 1.5 ? "warn" : "ok",
-      body: phaseSpread > 1.5 ? "Scarto oltre 1,50 p.p.: verifica tenuta PEF e motivazione industriale." : "Ribassi allineati fra le tre fasi.",
+      body: phaseSpread > 1.5 ? "Scarto oltre 1,50%: verifica tenuta PEF e motivazione industriale." : "Ribassi allineati fra le tre fasi.",
     },
     {
       label: "Costi analisi puntuale",
@@ -1996,7 +1996,9 @@ function OptimizationWorkbench({
   const disabledByScope = !targetLots.length;
   const technicalCriteria = CRITERIA.filter((criterion) => criterion.kind !== "D");
   const grossPlanCost = result.steps.reduce((sum, step) => sum + step.cost, 0);
-  const reallocatedValue = result.steps.reduce((sum, step) => sum + (step.releasedValue ?? 0), 0);
+  const releasedTechnicalValue = result.steps.reduce((sum, step) => sum + (step.releasedValue ?? 0), 0);
+  const reallocatedValue = result.steps.reduce((sum, step) => sum + Math.min(step.cost, step.releasedValue ?? 0), 0);
+  const unusedReleasedValue = Math.max(0, releasedTechnicalValue - reallocatedValue);
   const netPlanCost = Math.max(0, grossPlanCost - reallocatedValue);
   const economicDisabled = config.mode === "technical-only";
 
@@ -2068,7 +2070,10 @@ function OptimizationWorkbench({
         <div className={`economic-optimizer ${economicDisabled ? "disabled" : ""}`}>
           <div>
             <strong>Leva economica</strong>
-            <span>Il ribasso viene valutato solo quando è finanziato da una rinuncia tecnica valorizzata nel catalogo leve.</span>
+            <span>
+              Regola solo le riallocazioni tecnica-ribasso: il ribasso aumenta quando una rinuncia tecnica libera risorse sufficienti.
+              Step % limita la singola mossa, Max % limita l'aumento totale rispetto all'offerta iniziale.
+            </span>
           </div>
           <label className="switch">
             <input
@@ -2080,7 +2085,8 @@ function OptimizationWorkbench({
             <span>includi ribasso</span>
           </label>
           <label className="field compact">
-            <span>Step p.p.</span>
+            <span>Step %</span>
+            <small>Incremento massimo di ribasso valutato in una singola mossa.</small>
             <input
               type="number"
               min={0}
@@ -2091,7 +2097,8 @@ function OptimizationWorkbench({
             />
           </label>
           <label className="field compact">
-            <span>Max p.p.</span>
+            <span>Max %</span>
+            <small>Aumento massimo complessivo del ribasso rispetto all'offerta iniziale.</small>
             <input
               type="number"
               min={0}
@@ -2112,16 +2119,22 @@ function OptimizationWorkbench({
         </div>
         <div className="optimization-summary-grid">
           <div>
-            <span>Impegno piano</span>
+            <span>Impegno lordo del piano</span>
             <strong>{euroFormatter.format(grossPlanCost)}</strong>
+            <small>Somma dei costi tecnici aggiunti e del valore economico dei ribassi prima delle riallocazioni.</small>
           </div>
           <div>
-            <span>Riallocato da tecnica</span>
+            <span>Valore riallocato da tecnica</span>
             <strong>{euroFormatter.format(reallocatedValue)}</strong>
+            <small>
+              Quota liberata da rinunce tecniche e assorbita dal maggiore ribasso.
+              {unusedReleasedValue > 0 ? ` Eccedenza non riutilizzata: ${euroFormatter.format(unusedReleasedValue)}.` : ""}
+            </small>
           </div>
           <div>
             <span>Costo netto stimato</span>
             <strong>{euroFormatter.format(netPlanCost)}</strong>
+            <small>Impegno lordo meno quota riallocata; i punti tecnici ed economici sono dettagliati nelle mosse.</small>
           </div>
           <div>
             <span>Mosse</span>
@@ -2150,13 +2163,21 @@ function OptimizationWorkbench({
                   <strong>{step.title}</strong>
                   {step.kind === "reallocation" ? (
                     <small>
-                      riduci {step.units.toLocaleString("it-IT", { maximumFractionDigits: 2 })} {step.unitLabel};
-                      {" "}libera {euroFormatter.format(step.releasedValue ?? 0)}; finanzia +{(step.economicUnits ?? 0).toLocaleString("it-IT", { maximumFractionDigits: 4 })} p.p. ribasso;
-                      {" "}tecnica {signedPoints(step.technicalDelta ?? 0)}, economia {signedPoints(step.economicDelta ?? 0)}, netto {signedPoints(step.objectiveDelta)}
+                      Riduce {step.units.toLocaleString("it-IT", { maximumFractionDigits: 2 })} {step.unitLabel} dell'offerta tecnica,
+                      libera {euroFormatter.format(step.releasedValue ?? 0)} e ne usa {euroFormatter.format(Math.min(step.cost, step.releasedValue ?? 0))}
+                      per finanziare +{(step.economicUnits ?? 0).toLocaleString("it-IT", { maximumFractionDigits: 4 })}% di ribasso.
+                      {(step.releasedValue ?? 0) > step.cost ? ` L'eccedenza di ${euroFormatter.format((step.releasedValue ?? 0) - step.cost)} non viene riutilizzata oltre questa mossa.` : ""}
+                      Delta punti: {signedPoints(step.technicalDelta ?? 0)} di offerta tecnica,{" "}
+                      {signedPoints(step.economicDelta ?? 0)} di offerta economica,{" "}
+                      saldo {signedPoints(step.objectiveDelta)}.
                     </small>
                   ) : (
                     <small>
-                      {step.units.toLocaleString("it-IT", { maximumFractionDigits: 2 })} {step.unitLabel} - {euroFormatter.format(step.cost)} - {signedPoints(step.objectiveDelta)}
+                      Aggiunge {step.units.toLocaleString("it-IT", { maximumFractionDigits: 2 })} {step.unitLabel} alla proposta tecnica,
+                      con costo stimato {euroFormatter.format(step.cost)}.
+                      Delta punti: {signedPoints(step.technicalDelta ?? step.objectiveDelta)} di offerta tecnica,{" "}
+                      {signedPoints(step.economicDelta ?? 0)} di offerta economica,{" "}
+                      saldo {signedPoints(step.objectiveDelta)}.
                     </small>
                   )}
                 </div>
@@ -2180,7 +2201,7 @@ function OptimizationWorkbench({
       <section className="optimization-card">
         <div className="section-title compact">
           Catalogo leve tecniche
-          <HelpTooltip>Costo, step e massimo sono input di scenario. Se Max è 0, il simulatore usa il limite operativo ricavabile dal criterio o dal migliore valore corrente.</HelpTooltip>
+          <HelpTooltip>Costo unitario, quantità massima e base sono input di scenario. Il simulatore sceglie quante unità applicare fino al massimo indicato.</HelpTooltip>
         </div>
         <div className="optimization-hint">
           I criteri discrezionali D sono esclusi perché non hanno una formula deterministica costo-punteggio nel disciplinare.
@@ -2197,9 +2218,8 @@ function OptimizationWorkbench({
                   <tr>
                     <th>Leva</th>
                     <th>Usa</th>
-                    <th>Step</th>
-                    <th>Max</th>
                     <th>Costo unitario</th>
+                    <th>Quantità max</th>
                     <th>Base</th>
                   </tr>
                 </thead>
@@ -2225,10 +2245,9 @@ function OptimizationWorkbench({
                           <input
                             type="number"
                             min={0}
-                            step={criterion.kind === "T" ? 1 : 0.01}
-                            value={lever.stepUnits}
-                            disabled={criterion.kind === "T"}
-                            onChange={(event) => onLeverChange(lotId, criterion.id, { stepUnits: Math.max(0, Number(event.target.value) || 0) })}
+                            step={1000}
+                            value={lever.unitCost}
+                            onChange={(event) => onLeverChange(lotId, criterion.id, { unitCost: Math.max(0, Number(event.target.value) || 0) })}
                           />
                         </td>
                         <td>
@@ -2239,15 +2258,6 @@ function OptimizationWorkbench({
                             value={lever.maxUnits}
                             disabled={criterion.kind === "T"}
                             onChange={(event) => onLeverChange(lotId, criterion.id, { maxUnits: Math.max(0, Number(event.target.value) || 0) })}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="number"
-                            min={0}
-                            step={1000}
-                            value={lever.unitCost}
-                            onChange={(event) => onLeverChange(lotId, criterion.id, { unitCost: Math.max(0, Number(event.target.value) || 0) })}
                           />
                         </td>
                         <td>

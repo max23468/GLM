@@ -30,7 +30,7 @@ describe("offer optimization", () => {
       scope: "active-lot",
       levers: {
         L1: {
-          "C.1.2": { enabled: true, stepUnits: 10, maxUnits: 20, unitCost: 1000, denominator: 100 },
+          "C.1.2": { enabled: true, granularityUnits: 1, maxUnits: 20, unitCost: 1000, denominator: 100 },
         },
       },
     };
@@ -40,6 +40,7 @@ describe("offer optimization", () => {
 
     expect(result.steps.length).toBeGreaterThan(0);
     expect(result.steps.every((step) => step.kind === "technical")).toBe(true);
+    expect(result.steps[0].units).toBeGreaterThan(1);
     expect(planCost).toBeGreaterThan(0);
     expect(result.objectiveDelta).toBeGreaterThan(0);
   });
@@ -81,7 +82,7 @@ describe("offer optimization", () => {
       economic: { enabled: true, stepPercent: 0.5, maxDeltaPercent: 1 },
       levers: {
         L1: {
-          "C.1.2": { enabled: true, stepUnits: 10, maxUnits: 100, unitCost: 100_000, denominator: 100 },
+          "C.1.2": { enabled: true, granularityUnits: 1, maxUnits: 100, unitCost: 100_000, denominator: 100 },
         },
       },
     };
@@ -109,7 +110,7 @@ describe("offer optimization", () => {
       economic: { enabled: true, stepPercent: 0.5, maxDeltaPercent: 1 },
       levers: {
         L1: {
-          "C.1.2": { enabled: true, stepUnits: 10, maxUnits: 100, unitCost: 100_000, denominator: 100 },
+          "C.1.2": { enabled: true, granularityUnits: 1, maxUnits: 100, unitCost: 100_000, denominator: 100 },
         },
       },
     };
@@ -142,7 +143,7 @@ describe("offer optimization", () => {
       scope: "active-lot",
       levers: {
         L1: {
-          "B.5.1": { enabled: true, stepUnits: 1, maxUnits: 1, unitCost: 1000, denominator: 0 },
+          "B.5.1": { enabled: true, granularityUnits: 1, maxUnits: 1, unitCost: 1000, denominator: 0 },
         },
       },
     };
