@@ -39,7 +39,7 @@ Non va usato come fonte ufficiale autonoma. Ogni dato deve restare riconducibile
    - inserimento nelle buste e PEF sono coerenti;
    - il valore combinatorio è economicamente migliorativo rispetto alle offerte singole.
 7. I candidati singoli e combinatori sono enumerati per costruire scenari di assegnazione.
-8. Lo scenario migliore massimizza il punteggio totale, poi il punteggio tecnico.
+8. Lo scenario migliore viene ordinato internamente sulla somma dei punteggi delle assegnazioni, poi sulla somma tecnica; la UI espone sempre i punteggi separati per lotto.
 9. Il limite ordinario di due lotti per concorrente può essere derogato solo se l'impostazione è attiva e il limite lascerebbe lotti non assegnati.
 10. La tab `Ottimizzazione` non sostituisce lo scoring: applica mosse candidate su una copia dello scenario e rivaluta sempre tramite `simulate()`.
 
@@ -75,7 +75,7 @@ Gli obiettivi disponibili sono:
 
 - `Lotto attivo`: massimizza il punteggio dell'offerta singola sul lotto selezionato;
 - `Tutti i lotti attivi`: massimizza la somma dei punteggi singoli del concorrente sui lotti attivi;
-- `Scenario complessivo`: massimizza il contributo del concorrente nelle assegnazioni dello scenario vincente simulato.
+- `Scenario assegnazioni`: massimizza il contributo del concorrente sui lotti dello scenario vincente simulato.
 
 Le modalità considerate sono:
 

@@ -162,13 +162,7 @@ export function StrategicSummary({
   onOpenResults,
 }: StrategicSummaryProps) {
   const selected = result.selectedScenario;
-  const assignmentsByLot = LOTS.map((lot) => {
-    const assignment = selected?.assignments.find((item) => item.lotIds.includes(lot.id));
-    return {
-      lot,
-      assignment,
-    };
-  });
+  const lotSummaries = scenarioLotSummaries(selected?.assignments ?? []);
 
   return (
     <section className="strategic-summary" aria-label="Riepilogo strategico">
@@ -177,9 +171,16 @@ export function StrategicSummary({
           <span>Scenario</span>
           <strong>{scenarioName}</strong>
         </div>
-        <div className="summary-score">
-          <span>Totale migliore</span>
-          <strong>{selected ? formatPoints(selected.totalScore) : "n/d"}</strong>
+        <div className="summary-score per-lot">
+          <span>Punteggio migliore per lotto</span>
+          <div className="summary-lot-score-grid" aria-label="Punteggio migliore per lotto">
+            {lotSummaries.map(({ lot, score }) => (
+              <div key={lot.id}>
+                <small>{lot.shortLabel}</small>
+                <strong>{typeof score === "number" ? formatPoints(score) : "n/d"}</strong>
+              </div>
+            ))}
+          </div>
         </div>
         <div className="summary-actions" aria-label="Azioni rapide">
           <button className="action-button compact" onClick={onOpenTechnical}>
@@ -195,7 +196,7 @@ export function StrategicSummary({
         </div>
       </div>
       <div className="strategic-grid">
-        {assignmentsByLot.map(({ lot, assignment }) => (
+        {lotSummaries.map(({ lot, assignment }) => (
           <div key={lot.id} className={`strategic-lot ${assignment ? "assigned" : "open"}`}>
             <span>{lot.shortLabel}</span>
             <strong>{assignment?.bidderName ?? "non assegnato"}</strong>
@@ -238,11 +239,18 @@ export function ScenarioComparison({
   currentResult,
   onCompareScenarioChange,
 }: ScenarioComparisonProps) {
-  const currentTotal = currentResult.selectedScenario?.totalScore ?? 0;
-  const compareTotal = compareResult?.selectedScenario?.totalScore ?? 0;
-  const delta = currentTotal - compareTotal;
   const currentAssignments = assignmentsByLot(currentResult.selectedScenario?.assignments ?? []);
   const compareAssignments = assignmentsByLot(compareResult?.selectedScenario?.assignments ?? []);
+  const currentLotSummaries = scenarioLotSummaries(currentResult.selectedScenario?.assignments ?? []);
+  const compareLotSummaries = scenarioLotSummaries(compareResult?.selectedScenario?.assignments ?? []);
+  const deltaLotSummaries = LOTS.map((lot) => {
+    const currentScore = currentAssignments[lot.id] ? candidateLotScore(currentAssignments[lot.id]!, lot.id) : 0;
+    const compareScore = compareAssignments[lot.id] ? candidateLotScore(compareAssignments[lot.id]!, lot.id) : 0;
+    return {
+      lot,
+      delta: currentScore - compareScore,
+    };
+  });
   const changedLots = LOTS.filter((lot) => {
     const current = currentAssignments[lot.id];
     const compared = compareAssignments[lot.id];
@@ -274,21 +282,28 @@ export function ScenarioComparison({
       </label>
       {compareScenario && compareResult ? (
         <>
-          <div className="comparison-grid">
+          <div className="comparison-grid per-lot">
             <div>
               <span>Scenario corrente</span>
-              <strong>{formatPoints(currentTotal)}</strong>
+              <LotScoreGrid summaries={currentLotSummaries} />
             </div>
             <div>
               <span>{compareScenario.name}</span>
-              <strong>{formatPoints(compareTotal)}</strong>
+              <LotScoreGrid summaries={compareLotSummaries} />
             </div>
-            <div className={delta >= 0 ? "positive" : "negative"}>
-              <span>Differenza</span>
-              <strong>
-                {delta >= 0 ? "+" : ""}
-                {formatPoints(delta)}
-              </strong>
+            <div>
+              <span>Delta per lotto</span>
+              <div className="summary-lot-score-grid compact" aria-label="Delta per lotto rispetto al confronto">
+                {deltaLotSummaries.map(({ lot, delta }) => (
+                  <div key={lot.id} className={delta >= 0 ? "positive" : "negative"}>
+                    <small>{lot.shortLabel}</small>
+                    <strong>
+                      {delta >= 0 ? "+" : ""}
+                      {formatPoints(delta)}
+                    </strong>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
           <div className="comparison-lots" aria-label="Delta per lotto">
@@ -327,3 +342,26 @@ const assignmentsByLot = (assignments: AssignmentCandidate[]) =>
   Object.fromEntries(
     LOTS.map((lot) => [lot.id, assignments.find((assignment) => assignment.lotIds.includes(lot.id))]),
   ) as Partial<Record<(typeof LOTS)[number]["id"], AssignmentCandidate>>;
+
+const scenarioLotSummaries = (assignments: AssignmentCandidate[]) =>
+  LOTS.map((lot) => {
+    const assignment = assignments.find((item) => item.lotIds.includes(lot.id));
+    return {
+      lot,
+      assignment,
+      score: assignment ? candidateLotScore(assignment, lot.id) : undefined,
+    };
+  });
+
+function LotScoreGrid({ summaries }: { summaries: ReturnType<typeof scenarioLotSummaries> }) {
+  return (
+    <div className="summary-lot-score-grid compact" aria-label="Punteggio per lotto">
+      {summaries.map(({ lot, score }) => (
+        <div key={lot.id}>
+          <small>{lot.shortLabel}</small>
+          <strong>{typeof score === "number" ? formatPoints(score) : "n/d"}</strong>
+        </div>
+      ))}
+    </div>
+  );
+}

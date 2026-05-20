@@ -6,6 +6,13 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [0.2.2] — 2026-05-20
+
+### Correzioni
+
+- **Punteggi scenario**: riepilogo, risultati, assegnazioni e confronto scenari mostrano i valori separati per lotto invece del punteggio aggregato sui quattro lotti.
+- **Istruzioni**: l'indice della guida è navigabile, include il percorso rapido e indica visivamente la sezione attiva durante la lettura.
+
 ## [0.2.1] — 2026-05-20
 
 ### Correzioni

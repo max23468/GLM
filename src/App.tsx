@@ -50,6 +50,7 @@ import {
   pairBaseByPhase,
   round4,
   simulate,
+  type AssignmentCandidate,
   type Bidder,
   type ComboScore,
   type LotScore,
@@ -129,7 +130,7 @@ const criterionFilterOptions: { value: CriterionFilter; label: string }[] = [
 const optimizationScopeOptions: { value: OptimizationConfig["scope"]; label: string }[] = [
   { value: "active-lot", label: "Lotto attivo" },
   { value: "active-lots", label: "Tutti i lotti attivi" },
-  { value: "scenario", label: "Scenario complessivo" },
+  { value: "scenario", label: "Scenario assegnazioni" },
 ];
 
 const optimizationModeOptions: { value: OptimizationConfig["mode"]; label: string }[] = [
@@ -351,6 +352,18 @@ const formatCriterionRowValue = (criterion: Criterion, value: number | boolean |
   if (!criterion.quantityInput || !quantityInput?.denominator) return formatCriterionValue(criterion, value);
   return `${formatPlainNumber(quantityInput.numerator)}/${formatPlainNumber(quantityInput.denominator)} -> ${formatCriterionValue(criterion, value)}`;
 };
+
+const buildScenarioLotSummaries = (assignments: AssignmentCandidate[]) =>
+  LOTS.map((lot) => {
+    const assignment = assignments.find((item) => item.lotIds.includes(lot.id));
+    return {
+      lot,
+      score: assignment ? candidateLotScore(assignment, lot.id) : undefined,
+    };
+  });
+
+const formatAssignmentLotScores = (assignment: AssignmentCandidate) =>
+  assignment.lotIds.map((lotId) => `${lotId} ${formatPoints(candidateLotScore(assignment, lotId))}`).join(" · ");
 
 const criterionStatus = (criterion: Criterion, score: number, note?: string) => {
   if (note) return { label: "Verifica", tone: "warn" };
@@ -2522,17 +2535,26 @@ function ResultsWorkbench({ result, selectedLotId, bidders }: { result: Simulati
   const scoreColumnCount = scoreBidders.length + 2;
   const qtMax = maxQtPoints();
   const technicalMax = AMBITS.reduce((sum, ambit) => sum + ambit.maxPoints, 0);
+  const lotSummaries = buildScenarioLotSummaries(result.selectedScenario?.assignments ?? []);
+  const assignedLotCount = lotSummaries.filter(({ score }) => typeof score === "number").length;
 
   return (
     <div className="results-board">
       <div className="metric-grid">
-        <div className="metric-tile">
-          <span>Scenario migliore</span>
-          <strong>{result.selectedScenario ? formatPoints(result.selectedScenario.totalScore) : "n/d"}</strong>
+        <div className="metric-tile lot-score-tile">
+          <span>Punteggio migliore per lotto</span>
+          <div className="summary-lot-score-grid compact" aria-label="Punteggio migliore per lotto nel tab risultati">
+            {lotSummaries.map(({ lot, score }) => (
+              <div key={lot.id}>
+                <small>{lot.shortLabel}</small>
+                <strong>{typeof score === "number" ? formatPoints(score) : "n/d"}</strong>
+              </div>
+            ))}
+          </div>
         </div>
         <div className="metric-tile">
-          <span>Tecnico complessivo</span>
-          <strong>{result.selectedScenario ? formatPoints(result.selectedScenario.technicalScore) : "n/d"}</strong>
+          <span>Lotti assegnati</span>
+          <strong>{assignedLotCount} / {LOTS.length}</strong>
         </div>
         <div className={`metric-tile ${result.selectedScenario?.unassignedLots.length ? "warn" : "ok"}`}>
           <span>Lotti non assegnati</span>
@@ -2551,7 +2573,7 @@ function ResultsWorkbench({ result, selectedLotId, bidders }: { result: Simulati
               <div key={assignment.id} className="assignment-row">
                 <span>{assignment.lotIds.join(" + ")}</span>
                 <strong>{assignment.bidderName}</strong>
-                <small>{assignment.kind === "combo" ? "combinatoria" : "singola"} - {formatPoints(assignment.totalScore)}</small>
+                <small>{assignment.kind === "combo" ? "combinatoria" : "singola"} - {formatAssignmentLotScores(assignment)}</small>
               </div>
             ))}
             {!result.selectedScenario?.assignments.length && <div className="empty-state compact">Nessuna assegnazione ammissibile.</div>}

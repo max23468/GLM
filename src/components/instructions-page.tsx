@@ -14,6 +14,7 @@ import {
   Sparkles,
   Trophy,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 type InstructionsPageProps = {
   onBack: () => void;
@@ -88,7 +89,7 @@ const sections: InstructionSection[] = [
     id: "istruzioni-tecnica",
     eyebrow: "Tecnica",
     title: "Compilare criteri Q/T/D",
-    body: "La tab `Tecnica` raccoglie criteri quantitativi, tabellari e discrezionali. I valori vengono usati per soglia Q/T, riparametrazione e punteggio tecnico complessivo.",
+    body: "La tab `Tecnica` raccoglie criteri quantitativi, tabellari e discrezionali. I valori vengono usati per soglia Q/T, riparametrazione e punteggio tecnico del lotto.",
     bullets: [
       "`Quantitativo`: inserisci il valore richiesto o, quando presente, numeratore e denominatore operativo.",
       "`Tabellare`: attiva il requisito solo se lo scenario lo prevede.",
@@ -149,7 +150,7 @@ const sections: InstructionSection[] = [
     bullets: [
       "Scegli `Lotto attivo` per ottimizzare solo il lotto selezionato.",
       "Scegli `Tutti i lotti attivi` per distribuire le mosse sulle offerte singole del concorrente.",
-      "Scegli `Scenario complessivo` per misurare il contributo del concorrente nello scenario vincente simulato.",
+      "Scegli `Scenario assegnazioni` per misurare il contributo del concorrente sui lotti dello scenario vincente simulato.",
       "`Tecnica + ribasso` confronta miglioramenti tecnici e riallocazioni da tecnica a ribasso.",
       "`Solo tecnica` esclude il ribasso e usa solo leve tecniche.",
       "Il ribasso aumenta solo se una rinuncia tecnica libera risorse sufficienti e il saldo netto è positivo.",
@@ -181,7 +182,7 @@ const sections: InstructionSection[] = [
     body: "La tab `Risultati` mostra assegnazioni, punteggi e confronto con scenari salvati. È il punto in cui trasformare la compilazione in una lettura operativa.",
     bullets: [
       "Controlla il vincitore simulato per ciascun lotto.",
-      "Guarda punteggio totale e punteggio tecnico, soprattutto nei casi vicini.",
+      "Guarda i punteggi per lotto e il dettaglio tecnico, soprattutto nei casi vicini.",
       "Se ci sono lotti non assegnati, torna a partecipazioni, soglia Q/T e combinatorie.",
       "Seleziona uno scenario salvato per confrontare delta di punteggio e assegnazioni.",
     ],
@@ -217,7 +218,42 @@ const sectionIcon = (id: string) => {
   return <ClipboardList size={iconSize} />;
 };
 
+const guideNavItems = [
+  { id: "istruzioni", label: "Percorso rapido" },
+  ...sections.map((section) => ({ id: section.id, label: section.eyebrow })),
+];
+
+const getInitialGuideId = () => {
+  if (typeof window === "undefined") return guideNavItems[0].id;
+  const hashId = window.location.hash.replace("#", "");
+  return guideNavItems.some((item) => item.id === hashId) ? hashId : guideNavItems[0].id;
+};
+
 export function InstructionsPage({ onBack }: InstructionsPageProps) {
+  const [activeGuideId, setActiveGuideId] = useState(getInitialGuideId);
+
+  useEffect(() => {
+    const targets = guideNavItems
+      .map((item) => document.getElementById(item.id))
+      .filter((element): element is HTMLElement => Boolean(element));
+
+    if (!targets.length || !("IntersectionObserver" in window)) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        const nextId = visible[0]?.target.id;
+        if (nextId) setActiveGuideId(nextId);
+      },
+      { rootMargin: "-18% 0px -68% 0px", threshold: [0, 0.2, 0.6] },
+    );
+
+    targets.forEach((target) => observer.observe(target));
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="guide-page">
       <header className="guide-topbar">
@@ -239,11 +275,20 @@ export function InstructionsPage({ onBack }: InstructionsPageProps) {
         <aside className="guide-index" aria-label="Indice istruzioni">
           <div className="guide-index-title">Indice</div>
           <nav>
-            {sections.map((section) => (
-              <a key={section.id} href={`#${section.id}`}>
-                {section.eyebrow}
-              </a>
-            ))}
+            {guideNavItems.map((item) => {
+              const isActive = item.id === activeGuideId;
+              return (
+                <a
+                  key={item.id}
+                  href={`#${item.id}`}
+                  className={isActive ? "active" : undefined}
+                  aria-current={isActive ? "true" : undefined}
+                  onClick={() => setActiveGuideId(item.id)}
+                >
+                  {item.label}
+                </a>
+              );
+            })}
           </nav>
         </aside>
 

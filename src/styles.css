@@ -295,17 +295,42 @@ button {
 
 .guide-index a {
   display: block;
+  position: relative;
   border-radius: 7px;
   color: var(--body-soft);
-  padding: 8px 9px;
+  padding: 8px 9px 8px 18px;
   text-decoration: none;
   font-size: 0.86rem;
   font-weight: 720;
 }
 
+.guide-index a::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--border-strong);
+  transform: translateY(-50%);
+}
+
 .guide-index a:hover {
   background: var(--teal-soft);
   color: var(--success-text);
+}
+
+.guide-index a.active,
+.guide-index a[aria-current="true"] {
+  background: var(--teal-soft);
+  color: var(--success-text);
+  box-shadow: inset 3px 0 0 var(--success-text);
+}
+
+.guide-index a.active::before,
+.guide-index a[aria-current="true"]::before {
+  background: var(--success-text);
 }
 
 .guide-content {
@@ -1080,6 +1105,45 @@ input[type="checkbox"] {
   color: var(--score-text);
   font-size: 1.35rem;
   font-variant-numeric: tabular-nums;
+}
+
+.summary-score.per-lot {
+  display: grid;
+  gap: 6px;
+  min-width: 260px;
+}
+
+.summary-lot-score-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.summary-lot-score-grid > div {
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--teal-border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 6px 7px;
+}
+
+.summary-lot-score-grid small {
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.summary-lot-score-grid strong {
+  color: var(--score-text);
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+}
+
+.summary-lot-score-grid.compact strong {
+  font-size: 0.9rem;
 }
 
 .summary-actions {
@@ -1972,6 +2036,20 @@ input[type="checkbox"] {
   line-height: 1.2;
 }
 
+.metric-tile.lot-score-tile {
+  gap: 8px;
+}
+
+.metric-tile .summary-lot-score-grid > div {
+  background: var(--surface);
+}
+
+.metric-tile .summary-lot-score-grid strong {
+  color: var(--score-text);
+  font-size: 0.9rem;
+  line-height: 1.05;
+}
+
 .metric-tile.ok {
   border-color: var(--teal-border);
   background: var(--teal-soft);
@@ -2727,17 +2805,6 @@ input[type="checkbox"] {
   color: var(--warning-strong);
 }
 
-.hero-score {
-  border-color: var(--teal-border);
-}
-
-.score-number {
-  font-size: 2.25rem;
-  font-weight: 820;
-  letter-spacing: 0;
-  color: var(--score-text);
-}
-
 .assignment-list,
 .ranking-list,
 .suggestion-list,
@@ -3024,6 +3091,10 @@ input[type="checkbox"] {
   gap: 8px;
 }
 
+.comparison-grid.per-lot {
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+}
+
 .comparison-grid > div {
   display: grid;
   gap: 3px;
@@ -3042,6 +3113,16 @@ input[type="checkbox"] {
 .comparison-grid strong {
   color: var(--strong-text);
   font-variant-numeric: tabular-nums;
+}
+
+.comparison-grid .summary-lot-score-grid > div {
+  background: var(--surface);
+}
+
+.comparison-grid .summary-lot-score-grid strong {
+  color: var(--score-text);
+  font-size: 0.86rem;
+  line-height: 1.05;
 }
 
 .comparison-grid .positive strong {
