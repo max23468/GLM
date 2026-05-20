@@ -1849,7 +1849,7 @@ function EconomicsWorkbench({
       <div className="economic-detail-grid">
         <section className="economic-card">
           <div className="section-title compact">
-            Modello All. 18 - valori comp.
+            Modello All. 18 - valori complessivi
             <HelpTooltip>Controlla qui come i tre ribassi di fase producono ribasso medio, corrispettivo offerto e peso ponderato.</HelpTooltip>
           </div>
           <div className="economic-table-wrap">

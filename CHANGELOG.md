@@ -6,6 +6,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [0.2.8] — 2026-05-20
+
+### Correzioni
+
+- **Economica**: resa esplicita la voce `valori complessivi` nel modello All. 18.
+
 ## [0.2.7] — 2026-05-20
 
 ### Correzioni
