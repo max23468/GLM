@@ -5,7 +5,6 @@ import {
   FileJson,
   GitCompareArrows,
   Plus,
-  Printer,
   RotateCcw,
   Save,
   Trophy,
@@ -320,63 +319,6 @@ export function ScenarioComparison({
       ) : (
         <div className="empty-state compact">Salva o importa uno scenario, poi selezionalo qui per vedere la differenza.</div>
       )}
-    </section>
-  );
-}
-
-type ReportPanelProps = {
-  scenarioName: string;
-  result: SimulationResult;
-  selectedLotId: string;
-  sourceCount: number;
-  onPrint: () => void;
-};
-
-export function ReportPanel({ scenarioName, result, selectedLotId, sourceCount, onPrint }: ReportPanelProps) {
-  const assignments = result.selectedScenario?.assignments ?? [];
-  const topWarnings = result.warnings.slice(0, 3);
-  return (
-    <section className="panel report-panel">
-      <div className="section-title">
-        <Printer size={18} />
-        Report scenario
-        <HelpTooltip>Usa il report per stampare o salvare in PDF una sintesi dopo aver controllato warning e lotti non assegnati.</HelpTooltip>
-      </div>
-      <div className="report-summary">
-        <div>
-          <span>Scenario</span>
-          <strong>{scenarioName}</strong>
-        </div>
-        <div>
-          <span>Punteggio migliore</span>
-          <strong>{result.selectedScenario ? formatPoints(result.selectedScenario.totalScore) : "n/d"}</strong>
-        </div>
-        <div>
-          <span>Classifica attiva</span>
-          <strong>{selectedLotId}</strong>
-        </div>
-        <div>
-          <span>Fonti collegate</span>
-          <strong>{sourceCount}</strong>
-        </div>
-      </div>
-      <button className="action-button primary" onClick={onPrint}>
-        <Printer size={16} />
-        Stampa / salva PDF
-      </button>
-      <div className="report-executive">
-        <div>
-          <span>Assegnazioni</span>
-          <strong>{assignments.length ? assignments.map((item) => item.lotIds.join("+")).join(", ") : "n/d"}</strong>
-        </div>
-        <div>
-          <span>Criticità scenario</span>
-          <strong>{topWarnings.length ? `${topWarnings.length} da verificare` : "nessuna prioritaria"}</strong>
-        </div>
-        <p>
-          Output esplorativo: scenari base e profili simulati non rappresentano offerte ufficiali. Verificare documenti e fonti prima di usare il report come base decisionale.
-        </p>
-      </div>
     </section>
   );
 }

@@ -32,7 +32,6 @@ import {
   LOT_CONTEXT,
   LOTS,
   PAIRS,
-  PUBLIC_SOURCE_NOTES,
   THRESHOLD_OPTIONS,
   type Criterion,
   type LotId,
@@ -63,7 +62,6 @@ import {
   type TradeoffPlan,
 } from "./lib/scoring";
 import {
-  ReportPanel,
   ScenarioComparison,
   ScenarioTools,
   StrategicSummary,
@@ -372,6 +370,8 @@ function App() {
   const [compareScenarioId, setCompareScenarioId] = useState("");
   const [scenarioNotice, setScenarioNotice] = useState("");
   const [isWorkspaceManagementOpen, setWorkspaceManagementOpen] = useState(false);
+  const [isSuggestionsPanelExpanded, setSuggestionsPanelExpanded] = useState(false);
+  const [isWarningsPanelExpanded, setWarningsPanelExpanded] = useState(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>(getStoredTheme);
   const [systemPrefersDark, setSystemPrefersDark] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(prefers-color-scheme: dark)").matches : false,
@@ -1017,6 +1017,15 @@ function App() {
               </button>
             </section>
           )}
+
+          <ScenarioComparison
+            savedScenarios={savedScenarios}
+            compareScenarioId={compareScenarioId}
+            compareScenario={compareScenario}
+            compareResult={compareResult}
+            currentResult={result}
+            onCompareScenarioChange={setCompareScenarioId}
+          />
         </aside>
 
         <main className="workspace">
@@ -1234,70 +1243,19 @@ function App() {
         </main>
 
         <aside className="right-panel">
-          <ReportPanel
-            scenarioName={scenarioName}
-            result={result}
-            selectedLotId={selectedLotId}
-            sourceCount={PUBLIC_SOURCE_NOTES.length}
-            onPrint={() => window.print()}
-          />
-
-          <ReleasePanel />
-
-          <ScenarioComparison
-            savedScenarios={savedScenarios}
-            compareScenarioId={compareScenarioId}
-            compareScenario={compareScenario}
-            compareResult={compareResult}
-            currentResult={result}
-            onCompareScenarioChange={setCompareScenarioId}
-          />
-
-          <section className="panel hero-score">
-            <div className="section-title">
-              <Trophy size={18} />
-              Scenario vincente
+          <section className={`panel insight-panel ${isSuggestionsPanelExpanded ? "expanded" : ""}`}>
+            <div className="section-title between">
+              <span>Migliora punteggio</span>
+              <button
+                className="action-button compact panel-size-toggle"
+                type="button"
+                aria-expanded={isSuggestionsPanelExpanded}
+                onClick={() => setSuggestionsPanelExpanded((expanded) => !expanded)}
+              >
+                {isSuggestionsPanelExpanded ? "Riduci" : "Allarga"}
+              </button>
             </div>
-            {result.selectedScenario ? (
-              <>
-                <div className="score-number">{formatPoints(result.selectedScenario.totalScore)}</div>
-                <div className="muted">Tecnico complessivo {formatPoints(result.selectedScenario.technicalScore)}</div>
-                <div className="assignment-list">
-                  {result.selectedScenario.assignments.map((assignment) => (
-                    <div key={assignment.id} className="assignment-row">
-                      <span>{assignment.lotIds.join(" + ")}</span>
-                      <strong>{assignment.bidderName}</strong>
-                      <small>{assignment.kind === "combo" ? "combinatoria" : "singola"} - {formatPoints(assignment.totalScore)}</small>
-                    </div>
-                  ))}
-                  {!result.selectedScenario.assignments.length && <div className="empty-state compact">Nessuna assegnazione ammissibile.</div>}
-                </div>
-              </>
-            ) : (
-              <div className="empty-state compact">Nessuno scenario calcolabile.</div>
-            )}
-          </section>
-
-          <section className="panel">
-            <div className="section-title">Classifica {selectedLotId}</div>
-            <div className="ranking-list">
-              {result.lotRankings[selectedLotId].slice(0, 6).map((candidate, index) => (
-                <div key={candidate.id} className="ranking-row">
-                  <span>{index + 1}</span>
-                  <div>
-                    <strong>{candidate.bidderName}</strong>
-                    <small>{candidate.kind === "combo" ? candidate.pairId : "Offerta singola"}</small>
-                  </div>
-                  <b>{formatPoints(candidateLotScore(candidate, selectedLotId))}</b>
-                </div>
-              ))}
-              {!result.lotRankings[selectedLotId].length && <div className="empty-state compact">Nessuna offerta ammessa sul lotto.</div>}
-            </div>
-          </section>
-
-          <section className="panel">
-            <div className="section-title">Migliora punteggio</div>
-            <div className="suggestion-list">
+            <div className="panel-scroll suggestion-list">
               {result.suggestions.map((suggestion) => (
                 <article key={`${suggestion.title}-${suggestion.body}`} className="suggestion">
                   <div>
@@ -1311,36 +1269,22 @@ function App() {
             </div>
           </section>
 
-          <section className="panel">
-            <div className="section-title">
-              <ClipboardList size={18} />
-              Fonti e basi usate
+          <section className={`panel insight-panel ${isWarningsPanelExpanded ? "expanded" : ""}`}>
+            <div className="section-title between">
+              <span className="warn-title">
+                <AlertTriangle size={18} />
+                Criticità
+              </span>
+              <button
+                className="action-button compact panel-size-toggle"
+                type="button"
+                aria-expanded={isWarningsPanelExpanded}
+                onClick={() => setWarningsPanelExpanded((expanded) => !expanded)}
+              >
+                {isWarningsPanelExpanded ? "Riduci" : "Allarga"}
+              </button>
             </div>
-            <div className="source-list">
-              {PUBLIC_SOURCE_NOTES.map((note) => (
-                <article key={note.id} className="source-card">
-                  <div>
-                    <strong>{note.title}</strong>
-                    <span>{note.metric}</span>
-                  </div>
-                  <p>{note.body}</p>
-                  <small>
-                    {note.reliability} - verificata il {note.verifiedAt}
-                  </small>
-                  <a href={note.sourceUrl} target="_blank" rel="noreferrer">
-                    {note.source}
-                  </a>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="panel">
-            <div className="section-title warn-title">
-              <AlertTriangle size={18} />
-              Criticità
-            </div>
-            <div className="warning-list">
+            <div className="panel-scroll warning-list">
               {DOCUMENT_WARNINGS.map((warning) => (
                 <article key={warning.title} className="warning-card">
                   <strong>{warning.title}</strong>
@@ -1355,6 +1299,10 @@ function App() {
               ))}
             </div>
           </section>
+
+          <div className="wide-panel">
+            <ReleasePanel />
+          </div>
         </aside>
       </div>
     </div>

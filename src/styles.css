@@ -477,6 +477,40 @@ button {
   min-width: 0;
 }
 
+.right-panel .wide-panel {
+  grid-column: 1 / -1;
+}
+
+.left-rail .comparison-grid,
+.left-rail .comparison-lots {
+  grid-template-columns: 1fr;
+}
+
+.insight-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.insight-panel.expanded {
+  grid-column: 1 / -1;
+}
+
+.panel-size-toggle {
+  min-height: 30px;
+  padding: 5px 9px;
+}
+
+.panel-scroll {
+  max-height: 300px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.insight-panel.expanded .panel-scroll {
+  max-height: none;
+}
+
 .panel {
   min-width: 0;
   background: var(--surface);
@@ -1053,16 +1087,14 @@ input[type="checkbox"] {
   font-size: 0.78rem;
 }
 
-.lot-context a,
-.source-card a {
+.lot-context a {
   color: var(--blue);
   font-size: 0.76rem;
   font-weight: 750;
   text-decoration: none;
 }
 
-.lot-context a:hover,
-.source-card a:hover {
+.lot-context a:hover {
   text-decoration: underline;
 }
 
@@ -2779,7 +2811,6 @@ input[type="checkbox"] {
 .assignment-list,
 .ranking-list,
 .suggestion-list,
-.source-list,
 .warning-list {
   display: grid;
   gap: 8px;
@@ -2833,8 +2864,7 @@ input[type="checkbox"] {
 
 .assignment-row strong,
 .ranking-row strong,
-.suggestion strong,
-.source-card strong {
+.suggestion strong {
   overflow-wrap: anywhere;
 }
 
@@ -2860,39 +2890,10 @@ input[type="checkbox"] {
 }
 
 .suggestion p,
-.source-card p,
 .warning-card p {
   margin: 0;
   color: var(--body-soft);
   font-size: 0.82rem;
-}
-
-.source-card {
-  display: grid;
-  gap: 7px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--control-bg);
-  padding: 10px;
-}
-
-.source-card > div {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-  min-width: 0;
-}
-
-.source-card strong {
-  color: var(--section-title);
-}
-
-.source-card span {
-  min-width: max-content;
-  color: var(--score-text);
-  font-size: 0.72rem;
-  font-weight: 850;
 }
 
 .effort {
@@ -2933,7 +2934,6 @@ input[type="checkbox"] {
 }
 
 .comparison-panel,
-.report-panel,
 .release-panel {
   display: grid;
   gap: 12px;
@@ -3088,19 +3088,13 @@ input[type="checkbox"] {
   padding: 10px;
 }
 
-.comparison-grid,
-.report-summary {
+.comparison-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
-.report-summary {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.comparison-grid > div,
-.report-summary > div {
+.comparison-grid > div {
   display: grid;
   gap: 3px;
   border: 1px solid var(--border);
@@ -3109,16 +3103,13 @@ input[type="checkbox"] {
   padding: 9px;
 }
 
-.comparison-grid span,
-.report-summary span,
-.source-card small {
+.comparison-grid span {
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 750;
 }
 
-.comparison-grid strong,
-.report-summary strong {
+.comparison-grid strong {
   color: var(--strong-text);
   font-variant-numeric: tabular-nums;
 }
@@ -3153,8 +3144,7 @@ input[type="checkbox"] {
 
 .comparison-lots span,
 .comparison-lots small,
-.comparison-notes,
-.report-executive span {
+.comparison-notes {
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 750;
@@ -3172,35 +3162,6 @@ input[type="checkbox"] {
   border-top: 1px solid var(--border);
   padding-top: 10px;
   line-height: 1.35;
-}
-
-.report-executive {
-  display: grid;
-  gap: 8px;
-  border-top: 1px solid var(--border);
-  padding-top: 10px;
-}
-
-.report-executive > div {
-  display: grid;
-  gap: 3px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface-soft);
-  padding: 9px;
-}
-
-.report-executive strong {
-  color: var(--strong-text);
-  font-size: 0.84rem;
-  line-height: 1.25;
-}
-
-.report-executive p {
-  margin: 0;
-  color: var(--body-soft);
-  font-size: 0.78rem;
-  line-height: 1.4;
 }
 
 @media (max-width: 1320px) {
@@ -3328,7 +3289,6 @@ input[type="checkbox"] {
   .contextual-grid,
   .comparison-grid,
   .comparison-lots,
-  .report-summary,
   .tradeoff-grid,
   .tradeoff-preview,
   .economic-detail-grid,
@@ -3403,41 +3363,5 @@ input[type="checkbox"] {
 
   .row-status {
     justify-self: end;
-  }
-}
-
-@media print {
-  body {
-    background: #fff;
-    color: #111;
-  }
-
-  .topbar-actions,
-  .left-rail,
-  .workspace-tabs,
-  .technical-workbench,
-  .action-button {
-    display: none !important;
-  }
-
-  .app-shell {
-    padding: 0;
-  }
-
-  .layout {
-    display: block;
-    max-width: none;
-  }
-
-  .workspace,
-  .right-panel {
-    display: grid;
-    gap: 12px;
-  }
-
-  .panel,
-  .strategic-summary {
-    box-shadow: none;
-    break-inside: avoid;
   }
 }

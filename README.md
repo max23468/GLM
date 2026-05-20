@@ -32,7 +32,6 @@ npm run preview -- --port 4173
 - Permette salvataggio locale, duplicazione, import/export JSON e confronto fra scenari.
 - Mostra l'analisi puntuale criterio per sub-criterio, con costo stimato e impatto su punteggio/ribasso.
 - Usa l'ottimizzazione per partire da un'offerta iniziale, massimizzare il punteggio con leve tecniche e riallocare automaticamente tecnica verso ribasso.
-- Genera un report stampabile o salvabile in PDF dal browser.
 - Mostra versione locale, data build e changelog bundlato direttamente nel sito.
 - Espone una pagina web di istruzioni raggiungibile dal pulsante `Istruzioni` nella testata e dall'URL `/istruzioni/`.
 - Supporta tema chiaro/scuro/automatico e layout responsive.
@@ -52,7 +51,7 @@ Le basi operative degli scenari derivano da documenti locali di gara e segnali p
 
 ```text
 src/App.tsx                            UI principale, gestione workspace laterale, stato, import/export, analisi puntuale criterio e ottimizzazione
-src/components/scenario-panels.tsx     Pannelli scenario, confronto, riepilogo e report
+src/components/scenario-panels.tsx     Pannelli scenario, confronto e riepilogo
 src/data/base-scenarios.ts             Scenari base, profili simulati e baseline operative
 src/data/tender.ts                     Lotti, coppie, criteri, soglie, fonti e criticità documentali
 src/lib/optimization.ts                Motore di ottimizzazione punteggio, leve tecniche e riallocazioni verso ribasso

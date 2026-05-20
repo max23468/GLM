@@ -34,7 +34,7 @@ const quickSteps = [
   "Compila la parte tecnica e verifica la soglia Q/T.",
   "Compila ribassi e controlli economici.",
   "Usa Ottimizzazione per confrontare investimenti tecnici, rinunce tecniche e ribasso.",
-  "Salva lo scenario, confrontalo e genera il report.",
+  "Salva lo scenario e confrontalo con le simulazioni precedenti.",
 ];
 
 const sections: InstructionSection[] = [
@@ -47,7 +47,7 @@ const sections: InstructionSection[] = [
       "Tratta i profili precaricati come basi di lavoro, non come offerte reali.",
       "Distingui sempre tra dati da documento di gara, fonti pubbliche e assunzioni simulative.",
       "Usa il risultato come supporto decisionale interno, non come certificazione dell'esito di gara.",
-      "Prima di condividere una simulazione, esporta il JSON e controlla i warning del report.",
+      "Prima di condividere una simulazione, esporta il JSON e controlla i warning visibili.",
     ],
     checks: ["Scenario base corretto", "Soglia Q/T coerente con l'ipotesi", "Warning letti e accettati"],
   },
@@ -176,16 +176,15 @@ const sections: InstructionSection[] = [
   {
     id: "istruzioni-risultati",
     eyebrow: "Risultati",
-    title: "Leggere scenario vincente, confronto e report",
+    title: "Leggere scenario vincente e confronto",
     body: "La tab `Risultati` mostra assegnazioni, punteggi e confronto con scenari salvati. È il punto in cui trasformare la compilazione in una lettura operativa.",
     bullets: [
       "Controlla il vincitore simulato per ciascun lotto.",
       "Guarda punteggio totale e punteggio tecnico, soprattutto nei casi vicini.",
       "Se ci sono lotti non assegnati, torna a partecipazioni, soglia Q/T e combinatorie.",
       "Seleziona uno scenario salvato per confrontare delta di punteggio e assegnazioni.",
-      "Usa il report per stampare o salvare una sintesi in PDF dal browser.",
     ],
-    checks: ["Scenario salvato prima del confronto", "Lotti non assegnati spiegati", "Report letto prima di stamparlo"],
+    checks: ["Scenario salvato prima del confronto", "Lotti non assegnati spiegati", "Warning letti"],
   },
   {
     id: "istruzioni-dati-locali",
@@ -231,7 +230,7 @@ export function InstructionsPage({ onBack }: InstructionsPageProps) {
             Guida operativa
           </span>
           <h1>Istruzioni di compilazione</h1>
-          <p>Pagina navigabile per compilare uno scenario, leggere i punteggi e preparare un report coerente.</p>
+          <p>Pagina navigabile per compilare uno scenario, leggere i punteggi e confrontare simulazioni salvate.</p>
         </div>
       </header>
 
@@ -254,7 +253,7 @@ export function InstructionsPage({ onBack }: InstructionsPageProps) {
                 <ClipboardCheck size={16} />
                 Percorso rapido
               </span>
-              <h2>Dal modello base al report</h2>
+              <h2>Dal modello base al confronto</h2>
               <p>
                 Usa questo percorso quando devi costruire una simulazione leggibile: prima definisci lo scenario, poi compili tecnica ed economica, infine salvi e confronti.
               </p>
