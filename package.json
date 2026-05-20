@@ -27,10 +27,10 @@
     "vite": "^8.0.13"
   },
   "devDependencies": {
-    "@types/react": "^19.2.14",
+    "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
     "playwright": "^1.57.0",
-    "vitest": "^4.1.6",
+    "vitest": "^4.1.7",
     "wrangler": "^4.93.0"
   },
   "overrides": {

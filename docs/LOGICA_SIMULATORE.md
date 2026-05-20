@@ -130,7 +130,7 @@ Le chiavi legacy `tpl-simulator-*` restano lette in fallback. L'import/export us
 
 Gli snapshot correnti usano `schemaVersion: 7` e includono la configurazione di ottimizzazione senza tetti finanziari esterni, step economici o massimi di ribasso. La normalizzazione deve continuare ad accettare snapshot precedenti privi del blocco `optimization` o con i vecchi campi legacy.
 
-La gestione di scenari, concorrenti e opzioni di partecipazione è concentrata nella barra laterale. La vista ordinaria mostra il riepilogo `Workspace`; il pulsante `Gestisci workspace` apre i controlli laterali e `Indietro` chiude l'intera gestione. Il lotto di lavoro si cambia dalla scheda centrale, così tecnica, economica e risultati restano sempre allineati al lotto selezionato.
+La gestione di scenari, concorrenti e opzioni di partecipazione è concentrata nella barra laterale, sempre visibile senza passaggi intermedi. Il lotto di lavoro si cambia dalla scheda centrale, così tecnica, economica e risultati restano sempre allineati al lotto selezionato.
 
 ## Scenari base
 
