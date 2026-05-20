@@ -30,6 +30,7 @@ npm run preview -- --port 4173
 - Evidenzia warning su soglie, dipendenze, combinatorie non ammissibili, sorteggio e deroga al limite di due lotti.
 - Offre scenari base con profili simulati ispirati a fonti pubbliche e allegati locali, senza trasformarli in offerte reali.
 - Permette salvataggio locale, duplicazione, import/export JSON e confronto fra scenari.
+- Evidenzia delta decisionali fra scenari salvati, warning nuovi/risolti e sensitività minima su soglia e deroga.
 - Mostra l'analisi puntuale criterio per sub-criterio, con costo stimato e impatto su punteggio/ribasso.
 - Usa l'ottimizzazione per partire da un'offerta iniziale, massimizzare il punteggio con leve tecniche e riallocare automaticamente tecnica verso ribasso.
 - Mostra versione locale, data build e changelog bundlato direttamente nel sito.
@@ -129,7 +130,7 @@ Documenti principali:
 
 I costi unitari dell'analisi puntuale criterio e delle leve di ottimizzazione non sono contenuti nei documenti di gara: sono ipotesi dell'utente. Gli scenari base li precompilano come assunzioni operative modificabili, inclusi quantità massime, granularità interna, basi di calcolo e catalogo leve per tutti i lotti. L'ottimizzazione cerca il miglior punteggio raggiungibile con le leve abilitate e i massimali configurati. In modalità `Tecnica + ribasso`, il ribasso può aumentare solo se una rinuncia tecnica libera risorse sufficienti; l'aumento finanziabile viene calcolato automaticamente e non esiste un fondo esterno implicito.
 
-Le fonti pubbliche citate negli scenari base includono Agenzia TPL, ARIA/Sintel, Autoguidovie, Arriva Italia, Gruppo ATM/NET/Movibus e STAR Mobility. Se cambiano metriche, URL o claim pubblici, verificare la fonte e aggiornare anche la data `verifiedAt` in `src/data/tender.ts`.
+Le fonti pubbliche citate negli scenari base includono Agenzia TPL, ARIA/Sintel, Autoguidovie, Arriva Italia, Gruppo ATM/NET/Movibus e STAR Mobility. Sono contesto esemplificativo per i profili simulati: nello scenario operativo contano i dati inseriti dall'utente. Se cambiano metriche, URL o claim pubblici, verificare la fonte e aggiornare anche la data `verifiedAt` in `src/data/tender.ts`.
 
 ## Sviluppo
 

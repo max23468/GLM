@@ -255,6 +255,17 @@ export function ScenarioComparison({
   });
   const newWarnings = currentResult.warnings.filter((warning) => !(compareResult?.warnings ?? []).includes(warning));
   const resolvedWarnings = (compareResult?.warnings ?? []).filter((warning) => !currentResult.warnings.includes(warning));
+  const currentTotal = LOTS.reduce((sum, lot) => {
+    const assignment = currentAssignments[lot.id];
+    return sum + (assignment ? candidateLotScore(assignment, lot.id) : 0);
+  }, 0);
+  const compareTotal = LOTS.reduce((sum, lot) => {
+    const assignment = compareAssignments[lot.id];
+    return sum + (assignment ? candidateLotScore(assignment, lot.id) : 0);
+  }, 0);
+  const totalDelta = currentTotal - compareTotal;
+  const currentUnassigned = currentResult.selectedScenario?.unassignedLots.length ?? LOTS.length;
+  const compareUnassigned = compareResult?.selectedScenario?.unassignedLots.length ?? LOTS.length;
 
   return (
     <section className="panel comparison-panel">
@@ -279,6 +290,29 @@ export function ScenarioComparison({
       </label>
       {compareScenario && compareResult ? (
         <>
+          <div className="comparison-decision-strip" aria-label="Sintesi confronto decisionale">
+            <div className={totalDelta >= 0 ? "positive" : "negative"}>
+              <span>Delta totale</span>
+              <strong>{formatSignedPoints(totalDelta)}</strong>
+              <small>somma dei punteggi per lotto</small>
+            </div>
+            <div className={changedLots.length ? "warn" : "ok"}>
+              <span>Assegnazioni</span>
+              <strong>{changedLots.length ? changedLots.map((lot) => lot.shortLabel).join(", ") : "stabili"}</strong>
+              <small>{changedLots.length ? "lotti con vincitore o forma cambiata" : "nessun cambio di vincitore"}</small>
+            </div>
+            <div className={newWarnings.length ? "warn" : "ok"}>
+              <span>Warning nuovi</span>
+              <strong>{newWarnings.length}</strong>
+              <small>{resolvedWarnings.length} risolti rispetto al confronto</small>
+            </div>
+            <div className={currentUnassigned ? "warn" : "ok"}>
+              <span>Copertura lotti</span>
+              <strong>{LOTS.length - currentUnassigned} / {LOTS.length}</strong>
+              <small>{compareUnassigned !== currentUnassigned ? `prima ${LOTS.length - compareUnassigned}/${LOTS.length}` : "copertura invariata"}</small>
+            </div>
+          </div>
+
           <div className="comparison-grid per-lot">
             <div>
               <span>Scenario corrente</span>
@@ -310,17 +344,37 @@ export function ScenarioComparison({
               const currentScore = current ? candidateLotScore(current, lot.id) : 0;
               const comparedScore = compared ? candidateLotScore(compared, lot.id) : 0;
               const lotDelta = currentScore - comparedScore;
+              const assignmentChanged = current?.bidderName !== compared?.bidderName || current?.kind !== compared?.kind || current?.pairId !== compared?.pairId;
               return (
-                <div key={lot.id} className={current?.bidderName === compared?.bidderName && current?.kind === compared?.kind ? "" : "changed"}>
-                  <span>{lot.shortLabel}</span>
-                  <strong>{current?.bidderName ?? "non assegnato"}</strong>
-                  <small>
-                    {lotDelta >= 0 ? "+" : ""}
-                    {formatPoints(lotDelta)} pt rispetto al confronto
-                  </small>
+                <div key={lot.id} className={assignmentChanged ? "changed" : ""}>
+                  <div className="comparison-lot-card-head">
+                    <span>{lot.shortLabel}</span>
+                    <strong className={lotDelta >= 0 ? "positive" : "negative"}>{formatSignedPoints(lotDelta)}</strong>
+                  </div>
+                  <div className="comparison-lot-pair">
+                    <div>
+                      <span>Corrente</span>
+                      <strong>{formatAssignmentLabel(current)}</strong>
+                    </div>
+                    <div>
+                      <span>Confronto</span>
+                      <strong>{formatAssignmentLabel(compared)}</strong>
+                    </div>
+                  </div>
+                  <small>{assignmentChanged ? "assegnazione cambiata" : "assegnazione invariata"}</small>
                 </div>
               );
             })}
+          </div>
+          <div className="comparison-warning-detail" aria-label="Dettaglio warning confronto">
+            <div>
+              <strong>Warning nuovi</strong>
+              <WarningPreview warnings={newWarnings} emptyText="Nessun warning nuovo." />
+            </div>
+            <div>
+              <strong>Warning risolti</strong>
+              <WarningPreview warnings={resolvedWarnings} emptyText="Nessun warning risolto." />
+            </div>
           </div>
           <div className="comparison-notes">
             <span>{changedLots.length ? `Assegnazioni cambiate: ${changedLots.map((lot) => lot.shortLabel).join(", ")}` : "Assegnazioni invariate per tutti i lotti."}</span>
@@ -339,6 +393,13 @@ const assignmentsByLot = (assignments: AssignmentCandidate[]) =>
   Object.fromEntries(
     LOTS.map((lot) => [lot.id, assignments.find((assignment) => assignment.lotIds.includes(lot.id))]),
   ) as Partial<Record<(typeof LOTS)[number]["id"], AssignmentCandidate>>;
+
+const formatSignedPoints = (value: number) => `${value >= 0 ? "+" : ""}${formatPoints(value)}`;
+
+const formatAssignmentLabel = (assignment?: AssignmentCandidate) => {
+  if (!assignment) return "non assegnato";
+  return `${assignment.bidderName} · ${assignment.kind === "combo" ? assignment.pairId : "singola"}`;
+};
 
 const scenarioLotSummaries = (assignments: AssignmentCandidate[]) =>
   LOTS.map((lot) => {
@@ -360,5 +421,20 @@ function LotScoreGrid({ summaries }: { summaries: ReturnType<typeof scenarioLotS
         </div>
       ))}
     </div>
+  );
+}
+
+function WarningPreview({ warnings, emptyText }: { warnings: string[]; emptyText: string }) {
+  if (!warnings.length) return <p>{emptyText}</p>;
+  const visibleWarnings = warnings.slice(0, 3);
+  const hiddenCount = warnings.length - visibleWarnings.length;
+
+  return (
+    <ul className="warning-mini-list">
+      {visibleWarnings.map((warning) => (
+        <li key={warning}>{warning}</li>
+      ))}
+      {hiddenCount > 0 && <li>Altri {hiddenCount} warning nel pannello criticità.</li>}
+    </ul>
   );
 }

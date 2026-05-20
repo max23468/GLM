@@ -12,6 +12,17 @@ Non va usato come fonte ufficiale autonoma. Ogni dato deve restare riconducibile
 - `Fonte pubblica`
 - `Assunzione simulativa`
 
+## Contratto di fiducia del modello
+
+La fiducia nel simulatore non deriva dal fatto che gli scenari base siano "veri", ma dal fatto che formule, assunzioni e limiti restino visibili e verificabili:
+
+- lo scoring vive in `src/lib/scoring.ts` e gli esiti degli scenari base sono bloccati da golden test, così ogni cambio di formula o dato produce un diff esplicito;
+- workspace, scenari salvati e JSON importati passano da `src/lib/scenario-persistence.ts`, che migra snapshot legacy e ripara campi mancanti prima della simulazione;
+- le criticità documentali note restano centralizzate in `DOCUMENT_WARNINGS` e collegate ai criteri interessati tramite fonte o nota;
+- le fonti pubbliche sono contesto esemplificativo per i profili simulati, non un feed aggiornato in tempo reale e non sostituiscono i dati inseriti dall'utente;
+- costi, massimali, tradeoff e leve di ottimizzazione sono ipotesi simulative: quando l'utente compila valori propri, quei dati diventano la base effettiva dello scenario;
+- ogni nuova assunzione rilevante va resa tracciabile in dati, warning, documentazione o test, evitando correzioni implicite nel codice.
+
 ## Dove vive la logica
 
 - `src/data/tender.ts`: definisce lotti, coppie combinatorie, ambiti A-G, sub-criteri, soglie di sbarramento, fonti pubbliche e warning documentali.
@@ -131,6 +142,8 @@ Le chiavi legacy `tpl-simulator-*` restano lette in fallback. L'import/export us
 Gli snapshot correnti usano `schemaVersion: 7` e includono la configurazione di ottimizzazione senza tetti finanziari esterni, step economici o massimi di ribasso. La normalizzazione deve continuare ad accettare snapshot precedenti privi del blocco `optimization` o con i vecchi campi legacy.
 
 La gestione di scenari, concorrenti e opzioni di partecipazione è concentrata nella barra laterale, sempre visibile senza passaggi intermedi. Il lotto di lavoro si cambia dalla scheda centrale, così tecnica, economica e risultati restano sempre allineati al lotto selezionato.
+
+Il confronto fra scenari deve aiutare una decisione, non solo mostrare numeri grezzi: per questo espone delta totale sui lotti, assegnazioni cambiate, warning nuovi o risolti e dettaglio lotto per lotto. La tab `Risultati` aggiunge una lettura decisionale con vincitore, scarto dal primo candidato alternativo e una sensitività minima sulle soglie documentali e sulla deroga al limite di due lotti.
 
 ## Scenari base
 

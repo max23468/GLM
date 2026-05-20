@@ -7,6 +7,21 @@ const automaticCriteria = CRITERIA.filter((criterion) => criterion.kind !== "D")
 const discretionaryCriteria = CRITERIA.filter((criterion) => criterion.kind === "D");
 
 describe("base scenarios", () => {
+  it("esplicitano basi e assunzioni senza presentarsi come offerte ufficiali", () => {
+    for (const scenario of BASE_SCENARIOS) {
+      expect(scenario.body.trim(), scenario.id).not.toBe("");
+      expect(scenario.basis.length, scenario.id).toBeGreaterThanOrEqual(3);
+
+      const basisText = scenario.basis.join(" ");
+      expect(basisText, scenario.id).toMatch(/All\.|allegati|fonti|segnali pubblici|benchmark|simulate|ricavate/i);
+      expect(`${scenario.body} ${basisText}`, scenario.id).not.toMatch(/sono offerte ufficiali|rappresentano offerte ufficiali|offerte certificate/i);
+
+      for (const item of scenario.basis) {
+        expect(item.trim(), scenario.id).not.toBe("");
+      }
+    }
+  });
+
   it("precompilano le leve di ottimizzazione per tutti i lotti", () => {
     for (const scenario of BASE_SCENARIOS) {
       const config = scenario.buildOptimizationConfig();

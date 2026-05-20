@@ -2666,6 +2666,99 @@ input[type="checkbox"] {
   gap: 12px;
 }
 
+.decision-report,
+.sensitivity-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.decision-grid,
+.sensitivity-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.decision-card,
+.sensitivity-card,
+.decision-next-step {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 10px;
+}
+
+.decision-card.assigned,
+.sensitivity-card.ok {
+  border-color: var(--teal-border);
+}
+
+.decision-card.warn,
+.sensitivity-card.warn {
+  border-color: var(--amber-border);
+  background: var(--amber-soft);
+}
+
+.decision-card > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.decision-card span,
+.sensitivity-card span,
+.decision-card dt,
+.decision-card small,
+.sensitivity-card small,
+.decision-next-step strong {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.decision-card strong,
+.sensitivity-card strong {
+  color: var(--strong-text);
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+
+.decision-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+}
+
+.decision-card dl > div {
+  display: grid;
+  gap: 2px;
+}
+
+.decision-card dd {
+  margin: 0;
+  color: var(--score-text);
+  font-size: 0.92rem;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+}
+
+.decision-card dd.negative {
+  color: var(--red);
+}
+
+.decision-next-step {
+  border-color: var(--teal-border);
+  background: var(--summary-bg);
+}
+
+.decision-next-step span {
+  color: var(--body-soft);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
 .subcriteria-score-section {
   display: grid;
   gap: 10px;
@@ -3082,6 +3175,61 @@ input[type="checkbox"] {
   gap: 8px;
 }
 
+.comparison-decision-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.comparison-decision-strip > div,
+.comparison-warning-detail > div {
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 9px;
+}
+
+.comparison-decision-strip > div.ok,
+.comparison-decision-strip > div.positive {
+  border-color: var(--teal-border);
+}
+
+.comparison-decision-strip > div.warn {
+  border-color: var(--amber-border);
+  background: var(--amber-soft);
+}
+
+.comparison-decision-strip > div.negative {
+  border-color: var(--red);
+  background: var(--red-soft);
+}
+
+.comparison-decision-strip span,
+.comparison-decision-strip small,
+.comparison-warning-detail strong,
+.comparison-warning-detail p {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.comparison-decision-strip strong {
+  color: var(--strong-text);
+  overflow-wrap: anywhere;
+  font-size: 0.92rem;
+  line-height: 1.15;
+}
+
+.comparison-decision-strip .positive strong {
+  color: var(--success-text);
+}
+
+.comparison-decision-strip .negative strong {
+  color: var(--red);
+}
+
 .comparison-grid.per-lot {
   grid-template-columns: repeat(3, minmax(180px, 1fr));
 }
@@ -3144,6 +3292,37 @@ input[type="checkbox"] {
   background: var(--amber-soft);
 }
 
+.comparison-lot-card-head,
+.comparison-lot-pair {
+  display: grid;
+  gap: 6px;
+}
+
+.comparison-lot-card-head {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+
+.comparison-lot-card-head strong {
+  justify-self: end;
+  color: var(--success-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.comparison-lot-card-head strong.negative {
+  color: var(--red);
+}
+
+.comparison-lot-pair {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.comparison-lot-pair > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
 .comparison-lots span,
 .comparison-lots small,
 .comparison-notes {
@@ -3156,6 +3335,26 @@ input[type="checkbox"] {
   color: var(--strong-text);
   overflow-wrap: anywhere;
   font-size: 0.8rem;
+}
+
+.comparison-warning-detail {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.comparison-warning-detail strong {
+  color: var(--section-title);
+}
+
+.warning-mini-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 16px;
+  color: var(--body-soft);
+  font-size: 0.74rem;
+  line-height: 1.35;
 }
 
 .comparison-notes {
@@ -3288,8 +3487,13 @@ input[type="checkbox"] {
   .criterion-inspector-main,
   .quantity-input-grid,
   .strategic-grid,
+  .decision-grid,
+  .sensitivity-grid,
+  .comparison-decision-strip,
   .comparison-grid,
   .comparison-lots,
+  .comparison-warning-detail,
+  .comparison-lot-pair,
   .tradeoff-grid,
   .tradeoff-preview,
   .economic-detail-grid,

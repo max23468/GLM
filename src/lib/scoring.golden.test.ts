@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BASE_SCENARIOS } from "../data/base-scenarios";
+import { LOTS } from "../data/tender";
 import { simulate, type AssignmentCandidate } from "./scoring";
 
 const summarizeAssignment = (assignment: AssignmentCandidate) => ({
@@ -14,6 +15,32 @@ const summarizeAssignment = (assignment: AssignmentCandidate) => ({
 });
 
 describe("scoring golden fixtures", () => {
+  it("mantiene invarianti operative sugli scenari base", () => {
+    const lotIds = LOTS.map((lot) => lot.id).sort();
+
+    for (const scenario of BASE_SCENARIOS) {
+      const result = simulate(scenario.buildBidders(), scenario.settings, scenario.defaultBidderId);
+      const selected = result.selectedScenario;
+
+      expect(selected, scenario.id).toBeDefined();
+      expect(result.warnings, scenario.id).toHaveLength(0);
+      expect(selected?.totalScore, scenario.id).toBeGreaterThan(0);
+      expect(selected?.technicalScore, scenario.id).toBeGreaterThan(0);
+      expect(selected?.unassignedLots, scenario.id).toEqual([]);
+      expect(selected?.awardLimitDerogationUsed, scenario.id).toBe(false);
+
+      const assignedLots = selected?.assignments.flatMap((assignment) => assignment.lotIds) ?? [];
+      expect([...assignedLots].sort(), scenario.id).toEqual(lotIds);
+      expect(new Set(assignedLots).size, scenario.id).toBe(assignedLots.length);
+
+      for (const lot of LOTS) {
+        const ranking = result.lotRankings[lot.id];
+        expect(ranking[0]?.lotIds, `${scenario.id} ${lot.id}`).toContain(lot.id);
+        expect(ranking[0]?.scoreByLot[lot.id], `${scenario.id} ${lot.id}`).toBeGreaterThan(0);
+      }
+    }
+  });
+
   it("mantiene stabili esiti e ranking degli scenari base", () => {
     const fixture = BASE_SCENARIOS.map((scenario) => {
       const result = simulate(scenario.buildBidders(), scenario.settings, scenario.defaultBidderId);

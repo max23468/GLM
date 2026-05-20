@@ -30,6 +30,7 @@ import {
   LOT_CONTEXT,
   LOTS,
   PAIRS,
+  THRESHOLD_OPTIONS,
   type Criterion,
   type LotId,
   type PairId,
@@ -351,6 +352,28 @@ const buildScenarioLotSummaries = (assignments: AssignmentCandidate[]) =>
       score: assignment ? candidateLotScore(assignment, lot.id) : undefined,
     };
   });
+
+const assignmentByLot = (result: SimulationResult, lotId: LotId) =>
+  result.selectedScenario?.assignments.find((assignment) => assignment.lotIds.includes(lotId));
+
+const scenarioLotScoreTotal = (result: SimulationResult) =>
+  LOTS.reduce((sum, lot) => {
+    const assignment = assignmentByLot(result, lot.id);
+    return sum + (assignment ? candidateLotScore(assignment, lot.id) : 0);
+  }, 0);
+
+const changedLotsBetween = (current: SimulationResult, variant: SimulationResult) =>
+  LOTS.filter((lot) => {
+    const currentAssignment = assignmentByLot(current, lot.id);
+    const variantAssignment = assignmentByLot(variant, lot.id);
+    return (
+      currentAssignment?.bidderId !== variantAssignment?.bidderId ||
+      currentAssignment?.kind !== variantAssignment?.kind ||
+      currentAssignment?.pairId !== variantAssignment?.pairId
+    );
+  });
+
+const formatLotList = (lots: LotId[]) => lots.length ? lots.join(", ") : "nessuno";
 
 const formatAssignmentLotScores = (assignment: AssignmentCandidate) =>
   assignment.lotIds.map((lotId) => `${lotId} ${formatPoints(candidateLotScore(assignment, lotId))}`).join(" · ");
@@ -1067,7 +1090,15 @@ function App() {
                       />
                     )}
 
-                    {activeTab === "risultati" && <ResultsWorkbench result={result} selectedLotId={selectedLotId} bidders={bidders} />}
+                    {activeTab === "risultati" && (
+                      <ResultsWorkbench
+                        result={result}
+                        selectedLotId={selectedLotId}
+                        bidders={bidders}
+                        settings={settings}
+                        selectedBidderId={selectedBidder.id}
+                      />
+                    )}
                   </>
                 )}
               </section>
@@ -2267,7 +2298,19 @@ function ComboWorkbench({
   );
 }
 
-function ResultsWorkbench({ result, selectedLotId, bidders }: { result: SimulationResult; selectedLotId: LotId; bidders: Bidder[] }) {
+function ResultsWorkbench({
+  result,
+  selectedLotId,
+  bidders,
+  settings,
+  selectedBidderId,
+}: {
+  result: SimulationResult;
+  selectedLotId: LotId;
+  bidders: Bidder[];
+  settings: Settings;
+  selectedBidderId: string;
+}) {
   const scoreBidders = bidders.filter((bidder) => result.lotScores[bidder.id]?.[selectedLotId]?.participates);
   const scoreColumnCount = scoreBidders.length + 2;
   const qtMax = maxQtPoints();
@@ -2276,6 +2319,50 @@ function ResultsWorkbench({ result, selectedLotId, bidders }: { result: Simulati
   const totalMax = technicalMax + economicMax;
   const lotSummaries = buildScenarioLotSummaries(result.selectedScenario?.assignments ?? []);
   const assignedLotCount = lotSummaries.filter(({ score }) => typeof score === "number").length;
+  const currentLotTotal = scenarioLotScoreTotal(result);
+  const decisionRows = LOTS.map((lot) => {
+    const assignment = assignmentByLot(result, lot.id);
+    const score = assignment ? candidateLotScore(assignment, lot.id) : undefined;
+    const alternative = result.lotRankings[lot.id].find((candidate) => candidate.id !== assignment?.id);
+    const alternativeScore = alternative ? candidateLotScore(alternative, lot.id) : undefined;
+    return {
+      lot,
+      assignment,
+      score,
+      alternative,
+      margin: typeof score === "number" && typeof alternativeScore === "number" ? round4(score - alternativeScore) : undefined,
+    };
+  });
+  const closeLots = decisionRows.filter((row) => typeof row.margin === "number" && Math.abs(row.margin) <= 0.5);
+  const decisionNextStep = result.selectedScenario?.unassignedLots.length
+    ? `Prima verifica partecipazioni, soglia e combinatorie sui lotti non assegnati: ${result.selectedScenario.unassignedLots.join(", ")}.`
+    : result.selectedScenario?.drawRequired
+      ? "Scenario in ex aequo: serve trattare il sorteggio come rischio operativo esplicito."
+      : result.warnings.length
+        ? "Leggi i warning prima di usare lo scenario: possono cambiare ammissibilità o lettura documentale."
+        : closeLots.length
+          ? `Scarti sotto 0,50 pt su ${closeLots.map((row) => row.lot.shortLabel).join(", ")}: utile stressare ribassi e criteri sensibili.`
+          : "Scenario completo e senza warning runtime: passa al confronto con scenari salvati o all'ottimizzazione mirata.";
+  const thresholdSensitivity = THRESHOLD_OPTIONS.map((option) => {
+    const variant = simulate(bidders, { ...settings, threshold: option.value }, selectedBidderId);
+    const changedLots = changedLotsBetween(result, variant);
+    return {
+      id: option.id,
+      label: option.label,
+      value: option.value,
+      variant,
+      changedLots,
+      totalDelta: round4(scenarioLotScoreTotal(variant) - currentLotTotal),
+      assignedCount: LOTS.length - (variant.selectedScenario?.unassignedLots.length ?? LOTS.length),
+    };
+  });
+  const derogationVariant = simulate(
+    bidders,
+    { ...settings, applyAwardLimitDerogation: !settings.applyAwardLimitDerogation },
+    selectedBidderId,
+  );
+  const derogationChangedLots = changedLotsBetween(result, derogationVariant);
+  const derogationTotalDelta = round4(scenarioLotScoreTotal(derogationVariant) - currentLotTotal);
 
   return (
     <div className="results-board">
@@ -2300,6 +2387,69 @@ function ResultsWorkbench({ result, selectedLotId, bidders }: { result: Simulati
           <strong>{result.selectedScenario?.unassignedLots.join(", ") || "nessuno"}</strong>
         </div>
       </div>
+
+      <section className="decision-report">
+        <div className="section-title compact">
+          Lettura decisionale
+          <HelpTooltip>Riassume subito perché lo scenario è usabile: vincitore per lotto, margine rispetto al primo candidato alternativo e prossima verifica consigliata.</HelpTooltip>
+        </div>
+        <div className="decision-grid">
+          {decisionRows.map((row) => (
+            <article key={row.lot.id} className={`decision-card ${row.assignment ? "assigned" : "warn"}`}>
+              <div>
+                <span>{row.lot.shortLabel}</span>
+                <strong>{row.assignment?.bidderName ?? "non assegnato"}</strong>
+              </div>
+              <dl>
+                <div>
+                  <dt>Punteggio</dt>
+                  <dd>{typeof row.score === "number" ? formatPoints(row.score) : "n/d"}</dd>
+                </div>
+                <div>
+                  <dt>Scarto dal secondo</dt>
+                  <dd className={typeof row.margin === "number" && row.margin < 0 ? "negative" : ""}>
+                    {typeof row.margin === "number" ? signedPoints(row.margin) : "n/d"}
+                  </dd>
+                </div>
+              </dl>
+              <small>
+                {row.assignment
+                  ? `${row.assignment.kind === "combo" ? `combinatoria ${row.assignment.pairId}` : "offerta singola"}${row.alternative ? `; alternativa: ${row.alternative.bidderName}` : ""}`
+                  : "nessuna offerta ammessa nello scenario"}
+              </small>
+            </article>
+          ))}
+        </div>
+        <div className="decision-next-step">
+          <strong>Prossima verifica</strong>
+          <span>{decisionNextStep}</span>
+        </div>
+      </section>
+
+      <section className="sensitivity-panel">
+        <div className="section-title compact">
+          Sensitività soglia/deroga
+          <HelpTooltip>Ricalcola lo stesso scenario con le soglie documentali alternative e con la deroga al limite di due lotti invertita.</HelpTooltip>
+        </div>
+        <div className="sensitivity-grid">
+          {thresholdSensitivity.map((item) => (
+            <article key={item.id} className={`sensitivity-card ${item.changedLots.length ? "warn" : "ok"}`}>
+              <span>{item.label}</span>
+              <strong>{item.changedLots.length ? `cambia ${item.changedLots.map((lot) => lot.shortLabel).join(", ")}` : "stabile"}</strong>
+              <small>
+                {item.assignedCount}/{LOTS.length} lotti · delta {signedPoints(item.totalDelta)} · non assegnati {formatLotList(item.variant.selectedScenario?.unassignedLots ?? [])}
+              </small>
+            </article>
+          ))}
+          <article className={`sensitivity-card ${derogationChangedLots.length ? "warn" : "ok"}`}>
+            <span>{settings.applyAwardLimitDerogation ? "Deroga disattivata" : "Deroga attivata"}</span>
+            <strong>{derogationChangedLots.length ? `cambia ${derogationChangedLots.map((lot) => lot.shortLabel).join(", ")}` : "stabile"}</strong>
+            <small>
+              {LOTS.length - (derogationVariant.selectedScenario?.unassignedLots.length ?? LOTS.length)}/{LOTS.length} lotti · delta {signedPoints(derogationTotalDelta)}
+            </small>
+          </article>
+        </div>
+      </section>
 
       <div className="results-grid">
         <section>

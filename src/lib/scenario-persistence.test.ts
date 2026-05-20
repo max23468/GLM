@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CRITERIA, LOTS, PAIRS } from "../data/tender";
 import { normalizeScenarioSnapshot, normalizeScenarioSnapshotWithReport, normalizeStoredWorkspace } from "./scenario-persistence";
+import { simulate } from "./scoring";
 
 describe("scenario persistence normalization", () => {
   it("repairs partial imported bidders before simulation uses them", () => {
@@ -112,6 +113,50 @@ describe("scenario persistence normalization", () => {
     expect(snapshot?.optimization.levers.L2?.["C.1.2"]).toBeDefined();
     expect(snapshot?.optimization.levers.L2?.["C.1.2"].unitCost).toBeGreaterThan(0);
     expect(snapshot?.optimization.levers.L1?.["B.5.1"].enabled).toBe(false);
+  });
+
+  it("rende simulabili anche snapshot legacy molto parziali", () => {
+    const report = normalizeScenarioSnapshotWithReport({
+      schemaVersion: 1,
+      demoScenarioId: "tech",
+      name: "Legacy quasi vuoto",
+      bidders: [
+        {
+          id: "legacy-a",
+          name: "Operatore legacy",
+          lots: {
+            L2: {
+              enabled: true,
+              qValues: { "A.1.1": 3 },
+              phaseDiscounts: [4],
+            },
+          },
+        },
+      ],
+      settings: { threshold: 38, applyAwardLimitDerogation: false },
+      selectedBidderId: "legacy-a",
+      selectedLotId: "L2",
+      selectedPairId: "L2+L3",
+    });
+
+    expect(report.snapshot).toBeDefined();
+    expect(report.messages).toContain("Schema aggiornato alla versione corrente.");
+    expect(report.messages).toContain("Campo legacy demoScenarioId migrato a baseScenarioId.");
+    expect(report.messages).toContain("Offerte incomplete riparate con lotti, combinatorie e campi mancanti.");
+    expect(report.messages).toContain("Configurazione Ottimizzazione assente o non valida: usati i valori dello scenario base.");
+
+    const snapshot = report.snapshot!;
+    expect(snapshot.baseScenarioId).toBe("tech");
+    expect(snapshot.bidders[0].lots.L2.enabled).toBe(true);
+    expect(snapshot.bidders[0].lots.L2.qValues["A.1.1"]).toBe(3);
+    expect(snapshot.bidders[0].lots.L2.phaseDiscounts).toEqual([4, 0, 0]);
+    expect(snapshot.bidders[0].lots.L2.tradeoffs["C.2.1"].unitCost).toBeGreaterThan(0);
+    expect(snapshot.bidders[0].combos["L2+L3"]).toBeDefined();
+    expect(snapshot.optimization.levers.L2?.["C.2.1"].unitCost).toBeGreaterThan(0);
+
+    const result = simulate(snapshot.bidders, snapshot.settings, snapshot.selectedBidderId);
+    expect(result.lotScores["legacy-a"].L2.participates).toBe(true);
+    expect(result.scenarios.length).toBeGreaterThan(0);
   });
 
   it("segnala le riparazioni applicate durante l'import JSON", () => {

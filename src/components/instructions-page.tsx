@@ -181,6 +181,8 @@ const sections: InstructionSection[] = [
     bullets: [
       "Controlla il vincitore simulato per ciascun lotto.",
       "Guarda i punteggi per lotto e il dettaglio tecnico, soprattutto nei casi vicini.",
+      "Usa la lettura decisionale per vedere scarto dal secondo, alternativa e prossima verifica.",
+      "Controlla la sensitività soglia/deroga prima di considerare stabile un esito.",
       "Se ci sono lotti non assegnati, torna a partecipazioni, soglia di sbarramento e combinatorie.",
       "Seleziona uno scenario salvato per confrontare delta di punteggio e assegnazioni.",
     ],

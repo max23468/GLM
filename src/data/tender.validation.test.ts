@@ -87,4 +87,19 @@ describe("dati gara", () => {
       expect(warning.body.trim()).not.toBe("");
     }
   });
+
+  it("mantiene tracciate le criticità documentali sui criteri coinvolti", () => {
+    const warningText = DOCUMENT_WARNINGS.map((warning) => `${warning.title} ${warning.body}`).join("\n");
+
+    for (const expectedFragment of ["Soglia di sbarramento", "C.2.1", "C.2.4", "D.1.2", "G.5.1", "All 131_2.XLS"]) {
+      expect(warningText).toContain(expectedFragment);
+    }
+
+    for (const criterionId of ["C.2.1", "C.2.4", "D.1.2", "G.5.1"]) {
+      const criterion = CRITERIA.find((item) => item.id === criterionId);
+      expect(criterion, criterionId).toBeDefined();
+      expect(criterion?.source, criterionId).toMatch(/All/i);
+      expect(criterion?.note, criterionId).toBeTruthy();
+    }
+  });
 });

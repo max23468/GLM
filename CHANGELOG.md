@@ -6,6 +6,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.0.0] — 2026-05-20
+
+### Novità
+
+- **Qualità decisionale**: il confronto scenari evidenzia delta totale, lotti cambiati, warning nuovi/risolti e dettaglio per lotto; i risultati includono lettura decisionale, scarto dal secondo e sensitività rapida su soglie e deroga.
+
 ## [0.2.12] — 2026-05-20
 
 ### Correzioni

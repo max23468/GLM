@@ -123,7 +123,10 @@ const verifyImportExportAndComparison = async (page, suffix) => {
 
     await page.locator(".comparison-panel select").selectOption({ label: importName });
     const comparisonText = await page.locator(".comparison-panel").innerText();
-    if (!comparisonText.includes(importName) || !comparisonText.includes("Delta per lotto")) {
+    for (const expected of ["Delta totale", "Assegnazioni", "Warning nuovi", "Warning risolti", "Delta per lotto", importName]) {
+      if (!comparisonText.includes(expected)) throw new Error(`${suffix}: confronto scenari senza ${expected}`);
+    }
+    if (!comparisonText.includes("Corrente") || !comparisonText.includes("Confronto")) {
       throw new Error(`${suffix}: confronto scenari non aggiornato dopo import`);
     }
   } finally {
@@ -238,6 +241,12 @@ const verifyOptimization = async (page, suffix, theme) => {
   }
 
   await verifyImportExportAndComparison(page, suffix);
+
+  await clickWorkspaceTab(page, "Risultati");
+  const resultsText = await page.locator(".results-board").innerText();
+  for (const expected of ["Lettura decisionale", "Scarto dal secondo", "Prossima verifica", "Sensitività soglia/deroga", "Deroga"]) {
+    if (!resultsText.includes(expected)) throw new Error(`${suffix}: risultati senza ${expected}`);
+  }
 
   const activeTheme = await page.evaluate(() => document.documentElement.dataset.theme);
   if (activeTheme !== theme) throw new Error(`${suffix}: tema atteso ${theme}, trovato ${activeTheme}`);
