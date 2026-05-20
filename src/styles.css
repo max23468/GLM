@@ -1508,7 +1508,7 @@ input[type="checkbox"] {
 
 .criterion-jump-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 8px;
   flex: 1;
   min-width: 0;
@@ -1536,14 +1536,12 @@ input[type="checkbox"] {
 }
 
 .criterion-jump-list button span {
-  display: -webkit-box;
-  overflow: hidden;
+  display: block;
   color: var(--body-soft);
   font-size: 0.72rem;
   font-weight: 720;
   line-height: 1.24;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  white-space: normal;
 }
 
 .criterion-jump-list button small {
