@@ -6,6 +6,21 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.1.0] — 2026-05-20
+
+### Novità
+
+- **Lotto di lavoro**: il simulatore permette di lavorare solo sui lotti a cui partecipa il concorrente selezionato e riallinea il focus quando la partecipazione cambia.
+- **Economica**: aggiunta una lettura PEF/CEA con stress rapido sui ribassi, scostamento €/km fra fasi e margine simulato dopo i costi puntuali.
+- **Risultati**: aggiunta una matrice batch che incrocia soglie, deroga e stress ribasso per individuare lotti fragili e varianti ancora stabili.
+- **Reset totale**: nuovo comando per riportare workspace, scenari salvati, input e preferenze locali allo stato iniziale del simulatore.
+
+### Correzioni
+
+- **Import JSON**: gli scenari importati sono più robusti con file incapsulati, librerie esportate, ID concorrente duplicati e valori booleani legacy.
+- **Fonti e soglie**: aggiornate le verifiche delle fonti pubbliche e resa più esplicita la lettura operativa della soglia di sbarramento.
+- **Sidebar**: la barra laterale resta integrata nello scroll della pagina e non introduce spostamenti orizzontali quando cambia il contenuto.
+
 ## [1.0.0] — 2026-05-20
 
 ### Novità

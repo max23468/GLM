@@ -206,9 +206,9 @@ export const PUBLIC_SOURCE_NOTES: PublicSourceNote[] = [
     metric: "4 lotti / 30.09.2026",
     body: "La pubblicazione dell'Agenzia TPL indica procedura aperta, quattro lotti extraurbani e scadenza bando al 30 settembre 2026.",
     source: "Agenzia TPL Milano, Monza Brianza, Lodi e Pavia",
-    sourceUrl: "https://www.agenziatpl.it/agenzia/amministrazione-trasparente/19-bandi-di-gara-e-contratti/287-bando-di-gara-per-l-affidamento-di-servizi-di-tpl",
-    verifiedAt: "19/05/2026",
-    reliability: "Documento di gara",
+    sourceUrl: "https://www.agenziatpl.it/news/286-pubblicato-il-bando-di-gara-per-l-affidamento-di-servizi-di-tpl",
+    verifiedAt: "20/05/2026",
+    reliability: "Fonte pubblica",
   },
   {
     id: "sintel",
@@ -217,7 +217,7 @@ export const PUBLIC_SOURCE_NOTES: PublicSourceNote[] = [
     body: "Il fascicolo pubblico Sintel espone il set documentale della procedura, inclusi allegati tecnici, PEF, offerta economica e modelli di partecipazione.",
     source: "ARIA Lombardia - Sintel",
     sourceUrl: "https://www.sintel.regione.lombardia.it/eprocdata/auctionDetail.xhtml?id=218044617",
-    verifiedAt: "19/05/2026",
+    verifiedAt: "20/05/2026",
     reliability: "Documento di gara",
   },
   {
@@ -227,7 +227,7 @@ export const PUBLIC_SOURCE_NOTES: PublicSourceNote[] = [
     body: "Le basi simulate usano All. 09 per mezzi, All. 05 per fermate e All. 04.9-04.12 per corse annue stimate per lotto.",
     source: "Allegati locali di gara / Sintel",
     sourceUrl: "https://www.sintel.regione.lombardia.it/eprocdata/auctionDetail.xhtml?id=218044617",
-    verifiedAt: "19/05/2026",
+    verifiedAt: "20/05/2026",
     reliability: "Assunzione simulativa",
   },
   {
@@ -235,9 +235,9 @@ export const PUBLIC_SOURCE_NOTES: PublicSourceNote[] = [
     title: "Autoguidovie",
     metric: "777 mezzi",
     body: "Il profilo simulato usa dati pubblici su classe emissiva Euro 5+, AVM, accessibilità, videosorveglianza, ADAS e rinnovo medio della flotta.",
-    source: "Autoguidovie - Flotta",
-    sourceUrl: "https://autoguidovie.it/it/flotta",
-    verifiedAt: "19/05/2026",
+    source: "Autoguidovie - Profilo",
+    sourceUrl: "https://autoguidovie.it/it/profilo",
+    verifiedAt: "20/05/2026",
     reliability: "Fonte pubblica",
   },
   {
@@ -247,7 +247,7 @@ export const PUBLIC_SOURCE_NOTES: PublicSourceNote[] = [
     body: "Il profilo simulato usa la scala nazionale del gruppo e gli investimenti dichiarati su rinnovo flotta, quota clean e classe emissiva minima.",
     source: "Arriva Italia - Piano investimenti",
     sourceUrl: "https://arriva.it/news/investimenti-pari-a-156-milioni-di-euro-nei-prossimi-5-anni/",
-    verifiedAt: "19/05/2026",
+    verifiedAt: "20/05/2026",
     reliability: "Fonte pubblica",
   },
   {
@@ -256,8 +256,8 @@ export const PUBLIC_SOURCE_NOTES: PublicSourceNote[] = [
     metric: "28 linee bus",
     body: "Il profilo RTI Ovest è ispirato al perimetro pubblico di Movibus nell'Alto Milanese e nell'area ovest della città metropolitana.",
     source: "Gruppo ATM - Movibus",
-    sourceUrl: "https://www.atm.it/en/IlGruppo/ChiSiamo/Pages/Movibus.aspx",
-    verifiedAt: "19/05/2026",
+    sourceUrl: "https://www.atm.it/it/IlGruppo/ChiSiamo/Pagine/Movibus.aspx",
+    verifiedAt: "20/05/2026",
     reliability: "Fonte pubblica",
   },
   {
@@ -267,7 +267,7 @@ export const PUBLIC_SOURCE_NOTES: PublicSourceNote[] = [
     body: "Il profilo urbano-tecnologico deriva dal presidio NET nel nord-est milanese e dalla traiettoria ATM verso una flotta bus elettrica.",
     source: "Gruppo ATM - NET",
     sourceUrl: "https://www.atm.it/it/IlGruppo/ChiSiamo/Pagine/NET.aspx",
-    verifiedAt: "19/05/2026",
+    verifiedAt: "20/05/2026",
     reliability: "Fonte pubblica",
   },
   {
@@ -277,7 +277,7 @@ export const PUBLIC_SOURCE_NOTES: PublicSourceNote[] = [
     body: "Il profilo locale sul lotto 4 usa segnali pubblici su servizio urbano, bigliettazione elettronica, pagamento contactless e presidio lodigiano.",
     source: "STAR Mobility - Servizio urbano",
     sourceUrl: "https://starmobility.it/servizio-urbano/",
-    verifiedAt: "19/05/2026",
+    verifiedAt: "20/05/2026",
     reliability: "Fonte pubblica",
   },
 ];
@@ -487,7 +487,7 @@ export const THRESHOLD_OPTIONS = [
 export const DOCUMENT_WARNINGS = [
   {
     title: "Soglia di sbarramento non univoca",
-    body: "Il Disciplinare indica 37 punti, l'Allegato 13 indica 38 punti, mentre il 70% dei criteri quantitativi e tabellari ricostruiti dalla tabella è 43,4 punti.",
+    body: "La lettura operativa predefinita resta 37 punti perché è indicata nel Disciplinare, ma l'Allegato 13 indica 38 punti e il 70% dei criteri quantitativi e tabellari ricostruiti dalla tabella è 43,4 punti. Usa le soglie alternative come stress test documentale, non come correzione automatica.",
   },
   {
     title: "Massimi di alcuni sub-criteri non allineati al testo formula",

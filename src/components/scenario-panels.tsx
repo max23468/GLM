@@ -32,6 +32,7 @@ type ScenarioToolsProps = {
   onImportFile: (file: File) => void;
   onLoadSaved: (scenarioId: string) => void;
   onResetBaseScenario: () => void;
+  onResetTool: () => void;
 };
 
 export function ScenarioTools({
@@ -49,6 +50,7 @@ export function ScenarioTools({
   onImportFile,
   onLoadSaved,
   onResetBaseScenario,
+  onResetTool,
 }: ScenarioToolsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -132,6 +134,10 @@ export function ScenarioTools({
       <button className="action-button subtle" onClick={onResetBaseScenario}>
         <RotateCcw size={16} />
         Ripristina scenario base
+      </button>
+      <button className="action-button danger subtle" onClick={onResetTool}>
+        <RotateCcw size={16} />
+        Reset totale tool
       </button>
       {scenarioNotice && <div className="scenario-notice">{scenarioNotice}</div>}
     </section>

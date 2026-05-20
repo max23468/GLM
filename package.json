@@ -1,7 +1,7 @@
 {
   "name": "gare-lotti-milanesi",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
@@ -17,21 +17,21 @@
     "benchmark:optimization": "vitest run --config vitest.benchmark.config.ts",
     "smoke": "node scripts/smoke.mjs",
     "test": "vitest run",
-    "validate:data": "vitest run src/data/tender.validation.test.ts src/data/demo-data.validation.test.ts",
-    "validate:demo": "vitest run src/data/demo-data.validation.test.ts"
+    "validate:data": "vitest run src/data/tender.validation.test.ts src/data/base-scenarios.validation.test.ts",
+    "validate:base": "vitest run src/data/base-scenarios.validation.test.ts"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^6.0.2",
     "lucide-react": "^1.16.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
     "typescript": "^6.0.3",
     "vite": "^8.0.13"
   },
   "devDependencies": {
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
-    "playwright": "^1.57.0",
+    "playwright": "^1.60.0",
     "vitest": "^4.1.7",
     "wrangler": "^4.93.0"
   },

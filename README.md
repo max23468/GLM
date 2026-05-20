@@ -24,14 +24,15 @@ npm run preview -- --port 4173
 
 - Gestisce scenari, concorrenti, partecipazioni e parametri direttamente dalla barra laterale, senza passaggi intermedi.
 - Gestisce più concorrenti e la partecipazione ai lotti singoli `L1`, `L2`, `L3`, `L4`.
-- Cambia lotto di lavoro dalla scheda centrale, senza aprire la gestione laterale.
+- Cambia lotto di lavoro dalla scheda centrale, limitandolo ai lotti a cui partecipa il concorrente selezionato.
 - Simula le combinatorie ammesse `L1+L2`, `L2+L3`, `L3+L4`, `L1+L4`.
 - Calcola punteggi tecnici, soglia di sbarramento, riparametrazione per ambito, punteggio economico e scenario vincente.
 - Evidenzia warning su soglie, dipendenze, combinatorie non ammissibili, sorteggio e deroga al limite di due lotti.
 - Offre scenari base con profili simulati ispirati a fonti pubbliche e allegati locali, senza trasformarli in offerte reali.
-- Permette salvataggio locale, duplicazione, import/export JSON e confronto fra scenari.
-- Evidenzia delta decisionali fra scenari salvati, warning nuovi/risolti e sensitività minima su soglia e deroga.
+- Permette salvataggio locale, duplicazione, import/export JSON, confronto fra scenari e reset totale allo stato iniziale.
+- Evidenzia delta decisionali fra scenari salvati, warning nuovi/risolti e matrice batch di stabilità su soglie, deroga e stress ribasso.
 - Mostra l'analisi puntuale criterio per sub-criterio, con costo stimato e impatto su punteggio/ribasso.
+- Rafforza la lettura economica All. 18 con corrispettivi €/km, segnali PEF/CEA e stress rapido sui ribassi.
 - Usa l'ottimizzazione per partire da un'offerta iniziale, massimizzare il punteggio con leve tecniche e riallocare automaticamente tecnica verso ribasso.
 - Mostra versione locale, data build e changelog bundlato direttamente nel sito.
 - Espone una pagina web di istruzioni raggiungibile dal pulsante `Istruzioni` nella testata e dall'URL `/istruzioni/`.
@@ -92,7 +93,7 @@ npm run dev -- --port 4173
 npm test
 npm run build
 npm run validate:data
-npm run validate:demo
+npm run validate:base
 npm run smoke
 npm run prepublish:check
 npm run benchmark:optimization
@@ -104,7 +105,7 @@ npm run release
 npm run preview -- --port 4173
 ```
 
-`npm test` esegue i test Vitest su scoring, persistenza e dati demo. `npm run validate:data` concentra i controlli automatici su dati gara e scenari demo. `npm run build` esegue TypeScript e build Vite. `npm run smoke` avvia una preview locale e verifica con Playwright ottimizzazione, salvataggio, import/export, confronto, istruzioni e pannello versione. `npm run benchmark:optimization` misura il costo dell'ottimizzazione sui profili base senza entrare nel test ordinario. `npm run deploy:doctor` controlla prerequisiti locali, variabili Cloudflare o login Wrangler senza stampare segreti. `npm run prepublish:check` raggruppa i controlli prima della pubblicazione. `npm run release` prepara una nuova versione locale aggiornando `CHANGELOG.md`, data build in `src/lib/version.ts`, `package.json` e `package-lock.json`, ma non esegue il deploy.
+`npm test` esegue i test Vitest su scoring, persistenza e scenari base. `npm run validate:data` concentra i controlli automatici su dati gara e scenari base. `npm run build` esegue TypeScript e build Vite. `npm run smoke` avvia una preview locale e verifica con Playwright ottimizzazione, salvataggio, import/export, confronto, istruzioni e pannello versione. `npm run benchmark:optimization` misura il costo dell'ottimizzazione sui profili base senza entrare nel test ordinario. `npm run deploy:doctor` controlla prerequisiti locali, variabili Cloudflare o login Wrangler senza stampare segreti. `npm run prepublish:check` raggruppa i controlli prima della pubblicazione. `npm run release` prepara una nuova versione locale aggiornando `CHANGELOG.md`, data build in `src/lib/version.ts`, `package.json` e `package-lock.json`, ma non esegue il deploy.
 
 ## CI e changelog locale
 
@@ -113,7 +114,7 @@ Il repository espone controlli automatici e un changelog locale bundlato nel sit
 - CI GitHub Actions su push, pull request e avvio manuale, con `npm run validate:data`, `npm test` e `npm run build`;
 - deploy preview Cloudflare Pages su pull request interne, con smoke sull'URL pubblicato quando i secret Cloudflare sono configurati;
 - deploy produzione solo manuale con `npm run deploy:cloudflare`, quando richiesto esplicitamente;
-- validatori Vitest per coerenza di lotti, criteri, soglie, fonti, warning e scenari demo;
+- validatori Vitest per coerenza di lotti, criteri, soglie, fonti, warning e scenari base;
 - pannello `Versione e changelog` con versione locale, data build e note lette da `CHANGELOG.md` a build time, senza link o rimandi a repository esterni nel frontend.
 
 ## Fonti e allegati

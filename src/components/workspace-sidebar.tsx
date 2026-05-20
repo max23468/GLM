@@ -22,6 +22,7 @@ type WorkspaceSidebarProps = {
   onImportFile: (file: File) => void;
   onLoadSaved: (scenarioId: string) => void;
   onResetBaseScenario: () => void;
+  onResetTool: () => void;
   selectedBaseScenario: BaseScenario;
   visibleBaseScenarios: BaseScenario[];
   hiddenBaseScenarioCount: number;
@@ -57,6 +58,7 @@ export function WorkspaceSidebar({
   onImportFile,
   onLoadSaved,
   onResetBaseScenario,
+  onResetTool,
   selectedBaseScenario,
   visibleBaseScenarios,
   hiddenBaseScenarioCount,
@@ -78,6 +80,7 @@ export function WorkspaceSidebar({
 }: WorkspaceSidebarProps) {
   const [isBaseScenariosExpanded, setBaseScenariosExpanded] = useState(false);
   const [isBaseScenarioManagementOpen, setBaseScenarioManagementOpen] = useState(false);
+  const activeThresholdOption = THRESHOLD_OPTIONS.find((option) => option.value === settings.threshold) ?? THRESHOLD_OPTIONS[0];
 
   const restoreBaseScenarios = () => {
     onRestoreBaseScenarios();
@@ -102,6 +105,7 @@ export function WorkspaceSidebar({
         onImportFile={onImportFile}
         onLoadSaved={onLoadSaved}
         onResetBaseScenario={onResetBaseScenario}
+        onResetTool={onResetTool}
       />
 
       <section className="panel base-panel">
@@ -304,6 +308,7 @@ export function WorkspaceSidebar({
           <span>Applica deroga al limite di due lotti se necessaria per evitare lotti non assegnati</span>
         </label>
         <div className="hint">Soglia attiva: scenario disciplinare se resta a 37 pt. Le letture alternative più selettive restano nel menu. Le incongruenze sono nel pannello criticità.</div>
+        <div className="hint">Fonte soglia attiva: {activeThresholdOption.source}.</div>
       </section>
     </aside>
   );

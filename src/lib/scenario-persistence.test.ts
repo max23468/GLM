@@ -163,7 +163,10 @@ describe("scenario persistence normalization", () => {
     const report = normalizeScenarioSnapshotWithReport({
       schemaVersion: 2,
       demoScenarioId: "market",
-      bidders: [{ id: "a", lots: { L1: { enabled: true } } }],
+      bidders: [
+        { id: "a", lots: { L1: { enabled: true } } },
+        { id: "a", lots: { L2: { enabled: "true" } } },
+      ],
       settings: { threshold: 999, applyAwardLimitDerogation: "yes" },
       selectedBidderId: "missing",
       selectedLotId: "bad",
@@ -176,6 +179,37 @@ describe("scenario persistence normalization", () => {
     expect(report.messages).toContain("Offerte incomplete riparate con lotti, combinatorie e campi mancanti.");
     expect(report.messages).toContain("Configurazione Ottimizzazione assente o non valida: usati i valori dello scenario base.");
     expect(report.messages).toContain("Parametri scenario non validi riallineati ai valori supportati.");
+    expect(report.messages).toContain("ID concorrente duplicati resi univoci per evitare sovrapposizioni nei punteggi.");
     expect(report.messages).toContain("Focus di lavoro non valido riallineato a concorrente, lotto e combinatoria disponibili.");
+    expect(report.snapshot?.bidders.map((bidder) => bidder.id)).toEqual(["a", "a-2"]);
+    expect(report.snapshot?.bidders[1].lots.L2.enabled).toBe(true);
+  });
+
+  it("riconosce export incapsulati e librerie di scenari", () => {
+    const wrapped = normalizeScenarioSnapshotWithReport({
+      scenarios: [
+        {
+          schemaVersion: 7,
+          baseScenarioId: "market",
+          id: "wrapped",
+          name: "Scenario incapsulato",
+          bidders: [{ id: "a", lots: { L1: { enabled: true } } }],
+        },
+      ],
+    });
+    const library = normalizeScenarioSnapshotWithReport([
+      {
+        schemaVersion: 7,
+        baseScenarioId: "local",
+        id: "library-first",
+        name: "Scenario da libreria",
+        bidders: [{ id: "local-a", lots: { L4: { enabled: true } } }],
+      },
+    ]);
+
+    expect(wrapped.snapshot?.name).toBe("Scenario incapsulato");
+    expect(wrapped.messages).toContain("Struttura JSON riconosciuta: importato il primo scenario disponibile.");
+    expect(library.snapshot?.baseScenarioId).toBe("local");
+    expect(library.messages).toContain("Struttura JSON riconosciuta: importato il primo scenario disponibile.");
   });
 });

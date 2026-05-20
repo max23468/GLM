@@ -484,11 +484,16 @@ button {
 
 .left-rail {
   grid-area: rail;
+  align-self: start;
   position: sticky;
   top: 18px;
-  max-height: calc(100vh - 36px);
-  overflow: auto;
-  padding-right: 2px;
+  min-width: 0;
+  overflow: visible;
+  padding-right: 0;
+}
+
+.left-rail .panel {
+  width: 100%;
 }
 
 .right-panel {
@@ -1311,6 +1316,19 @@ input[type="checkbox"] {
 
 .lot-switcher-buttons button:hover {
   border-color: var(--teal-border);
+}
+
+.lot-switcher-buttons button:disabled,
+.lot-switcher-buttons button.disabled {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.lot-switcher-buttons button:disabled:hover {
+  border-color: var(--border);
 }
 
 .lot-switcher-buttons button.active {
@@ -2503,15 +2521,23 @@ input[type="checkbox"] {
 
 .economic-kpis,
 .combo-economic-grid,
-.unit-rate-grid {
+.unit-rate-grid,
+.pef-grid,
+.stress-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
+.pef-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .economic-kpis div,
 .combo-economic-grid div,
-.unit-rate {
+.unit-rate,
+.pef-grid > div,
+.stress-grid > div {
   display: grid;
   gap: 3px;
   min-height: 62px;
@@ -2524,6 +2550,8 @@ input[type="checkbox"] {
 .economic-kpis span,
 .combo-economic-grid span,
 .unit-rate span,
+.pef-grid span,
+.stress-grid span,
 .target-control > span,
 .target-result span {
   color: var(--muted);
@@ -2534,10 +2562,25 @@ input[type="checkbox"] {
 .economic-kpis strong,
 .combo-economic-grid strong,
 .unit-rate strong,
+.pef-grid strong,
+.stress-grid strong,
 .target-result strong {
   color: var(--strong-text);
   font-size: 0.95rem;
   font-variant-numeric: tabular-nums;
+}
+
+.pef-grid small,
+.stress-grid small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.stress-title {
+  color: var(--section-title);
+  font-size: 0.8rem;
+  font-weight: 780;
 }
 
 .combo-economic-grid .ok {
@@ -2667,7 +2710,8 @@ input[type="checkbox"] {
 }
 
 .decision-report,
-.sensitivity-panel {
+.sensitivity-panel,
+.batch-panel {
   display: grid;
   gap: 10px;
 }
@@ -2757,6 +2801,113 @@ input[type="checkbox"] {
   color: var(--body-soft);
   font-size: 0.84rem;
   line-height: 1.45;
+}
+
+.batch-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.batch-summary-card,
+.batch-decision-line {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 10px;
+}
+
+.batch-summary-card.ok {
+  border-color: var(--teal-border);
+}
+
+.batch-summary-card.warn {
+  border-color: var(--amber-border);
+  background: var(--amber-soft);
+}
+
+.batch-summary-card span,
+.batch-summary-card small,
+.batch-decision-line strong,
+.batch-matrix small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.3;
+}
+
+.batch-summary-card strong,
+.batch-decision-line span,
+.batch-matrix strong {
+  color: var(--strong-text);
+  overflow-wrap: anywhere;
+}
+
+.batch-decision-line {
+  border-color: var(--teal-border);
+  background: var(--summary-bg);
+}
+
+.batch-decision-line span {
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.batch-matrix-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.batch-matrix {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.batch-matrix th,
+.batch-matrix td {
+  padding: 9px;
+  border-bottom: 1px solid var(--border-soft);
+  text-align: left;
+  vertical-align: top;
+}
+
+.batch-matrix th {
+  background: var(--matrix-head-bg);
+  color: var(--matrix-head-text);
+  font-size: 0.7rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.batch-matrix td {
+  color: var(--body-soft);
+}
+
+.batch-matrix tr:last-child td {
+  border-bottom: 0;
+}
+
+.batch-matrix tr.warn td:first-child {
+  border-left: 3px solid var(--amber-border);
+}
+
+.batch-matrix tr.ok td:first-child {
+  border-left: 3px solid var(--teal-border);
+}
+
+.batch-matrix td > strong,
+.batch-matrix td > small {
+  display: block;
+}
+
+.batch-matrix td > small {
+  margin-top: 3px;
 }
 
 .subcriteria-score-section {
@@ -3489,6 +3640,7 @@ input[type="checkbox"] {
   .strategic-grid,
   .decision-grid,
   .sensitivity-grid,
+  .batch-summary-grid,
   .comparison-decision-strip,
   .comparison-grid,
   .comparison-lots,
@@ -3500,6 +3652,8 @@ input[type="checkbox"] {
   .economic-kpis,
   .combo-economic-grid,
   .unit-rate-grid,
+  .pef-grid,
+  .stress-grid,
   .metric-grid,
   .phase-grid,
   .combo-checks,

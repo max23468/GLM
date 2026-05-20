@@ -127,6 +127,8 @@ La sezione economica replica in forma navigabile la struttura dell'All. 18:
 
 I corrispettivi unitari sono una lettura di gestione della flessibilità contrattuale. Non modificano il punteggio economico e non vanno presentati come valore ufficiale di offerta se l'utente non ha compilato un'offerta reale.
 
+Il pannello `PEF, CEA e stress All. 18` affianca alla formula economica alcuni segnali gestionali: ribasso residuo dopo i costi stimati nell'analisi puntuale, fase economica prevalente, valore/punteggio del criterio ambientale `F.1.1 - I_CEA`, scostamento dei corrispettivi unitari fra fasi e impatto di piccoli incrementi di ribasso. Sono controlli di coerenza dello scenario, non nuove formule di gara.
+
 Il simulatore inverso del target economico usa lo scenario corrente come fotografia statica: stima il ribasso medio necessario a raggiungere un punteggio economico scelto rispetto all'`Rmax` corrente. Se il concorrente selezionato è già il riferimento `Rmax`, un ulteriore ribasso non aumenta il suo punteggio oltre 30, ma può ridurre il punteggio relativo degli altri concorrenti.
 
 ## Persistenza e scambio scenari
@@ -143,7 +145,9 @@ Gli snapshot correnti usano `schemaVersion: 7` e includono la configurazione di 
 
 La gestione di scenari, concorrenti e opzioni di partecipazione è concentrata nella barra laterale, sempre visibile senza passaggi intermedi. Il lotto di lavoro si cambia dalla scheda centrale, così tecnica, economica e risultati restano sempre allineati al lotto selezionato.
 
-Il confronto fra scenari deve aiutare una decisione, non solo mostrare numeri grezzi: per questo espone delta totale sui lotti, assegnazioni cambiate, warning nuovi o risolti e dettaglio lotto per lotto. La tab `Risultati` aggiunge una lettura decisionale con vincitore, scarto dal primo candidato alternativo e una sensitività minima sulle soglie documentali e sulla deroga al limite di due lotti.
+Il reset totale rimuove workspace corrente, libreria scenari, preferenze tema, scenari base nascosti e chiavi legacy dal browser, poi ricostruisce lo stato iniziale dallo scenario base predefinito. Non recupera dati esportati altrove e non tocca file locali o allegati.
+
+Il confronto fra scenari deve aiutare una decisione, non solo mostrare numeri grezzi: per questo espone delta totale sui lotti, assegnazioni cambiate, warning nuovi o risolti e dettaglio lotto per lotto. La tab `Risultati` aggiunge una lettura decisionale con vincitore, scarto dal primo candidato alternativo e una matrice batch di stabilità. La matrice ricalcola varianti temporanee incrociando soglie documentali, deroga al limite di due lotti e piccoli stress di ribasso sul concorrente selezionato; serve a capire quali lotti sono fragili, non a creare o salvare scenari ufficiali.
 
 ## Scenari base
 
@@ -158,7 +162,7 @@ Usano basi ricavate dagli allegati locali e segnali pubblici per operatori reali
 
 Ogni scenario base genera anche una configurazione completa di ottimizzazione: modalità, scope di default, granularità interna, quantità massime, basi e costi unitari per tutti i lotti. La normalizzazione di workspace e JSON usa questi valori come fallback quando uno scenario salvato non contiene ancora i campi introdotti dall'ottimizzazione.
 
-I dati demo sono protetti da validator automatici: `npm run validate:demo` controlla che scenari base, tradeoff puntuali e catalogo leve tecniche restino completi e coerenti. `npm run validate:data` aggiunge controlli su lotti, criteri, soglie, fonti, warning documentali e scenari demo. `npm run smoke` verifica in browser ottimizzazione, salvataggio, import/export, confronto, istruzioni e pannello versione. `npm run benchmark:optimization` misura il costo dell'ottimizzazione sui profili base senza entrare nel test ordinario. `npm run prepublish:check` unisce controlli statici, validazione dati, test, build e smoke prima della pubblicazione.
+Gli scenari base sono protetti da validator automatici: `npm run validate:base` controlla che scenari base, tradeoff puntuali e catalogo leve tecniche restino completi e coerenti. `npm run validate:data` aggiunge controlli su lotti, criteri, soglie, fonti, warning documentali e scenari base. `npm run smoke` verifica in browser ottimizzazione, salvataggio, import/export, confronto, istruzioni e pannello versione. `npm run benchmark:optimization` misura il costo dell'ottimizzazione sui profili base senza entrare nel test ordinario. `npm run prepublish:check` unisce controlli statici, validazione dati, test, build e smoke prima della pubblicazione.
 
 ## CI e changelog locale
 

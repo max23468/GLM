@@ -4,7 +4,7 @@ import { CRITERIA, LOTS } from "./tender";
 
 const automaticCriteria = CRITERIA.filter((criterion) => criterion.kind !== "D");
 
-describe("demo data validation", () => {
+describe("base scenarios validation", () => {
   it("compila tutti gli input necessari per il catalogo leve tecniche", () => {
     for (const scenario of BASE_SCENARIOS) {
       const config = scenario.buildOptimizationConfig();
@@ -32,7 +32,7 @@ describe("demo data validation", () => {
     }
   });
 
-  it("mantiene coerenti tradeoff puntuali e leve di ottimizzazione nei dati demo", () => {
+  it("mantiene coerenti tradeoff puntuali e leve di ottimizzazione negli scenari base", () => {
     for (const scenario of BASE_SCENARIOS) {
       const config = scenario.buildOptimizationConfig();
       const bidders = scenario.buildBidders();

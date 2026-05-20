@@ -71,6 +71,20 @@ export type ScenarioImportReport = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
 
+const normalizeBoolean = (value: unknown, fallback = false) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true" || normalized === "1") return true;
+    if (normalized === "false" || normalized === "0") return false;
+  }
+  if (typeof value === "number") {
+    if (value === 1) return true;
+    if (value === 0) return false;
+  }
+  return fallback;
+};
+
 const finiteNumber = (value: unknown, fallback = 0) => {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : fallback;
@@ -97,6 +111,17 @@ const normalizeBaseScenarioId = (value: unknown): BaseScenarioId =>
   typeof value === "string" && isBaseScenarioId(value) ? value : BASE_SCENARIOS[0].id;
 
 const recordValue = (value: unknown, key: string) => (isRecord(value) ? value[key] : undefined);
+
+const extractScenarioImportCandidate = (value: unknown) => {
+  if (Array.isArray(value)) return value.find(isRecord);
+  if (!isRecord(value)) return value;
+  for (const key of ["snapshot", "scenario", "workspace"]) {
+    const nested = value[key];
+    if (isRecord(nested)) return nested;
+  }
+  if (Array.isArray(value.scenarios)) return value.scenarios.find(isRecord);
+  return value;
+};
 
 const normalizePhaseDiscounts = (value: unknown): [number, number, number] => {
   const source = Array.isArray(value) ? value : [];
@@ -214,7 +239,7 @@ export const normalizeLotOffer = (value: unknown, fallbackOffer?: LotOffer): Lot
   );
 
   return {
-    enabled: Boolean(source.enabled),
+    enabled: normalizeBoolean(source.enabled, fallback.enabled),
     qValues,
     quantityInputs,
     tValues,
@@ -228,10 +253,10 @@ export const normalizeComboOffer = (value: unknown): ComboOffer => {
   const fallback = emptyComboOffer();
   const source = isRecord(value) ? value : {};
   return {
-    enabled: Boolean(source.enabled),
+    enabled: normalizeBoolean(source.enabled, fallback.enabled),
     phaseDiscounts: normalizePhaseDiscounts(source.phaseDiscounts),
-    insertedInBothBuste: typeof source.insertedInBothBuste === "boolean" ? source.insertedInBothBuste : fallback.insertedInBothBuste,
-    pefCoherent: typeof source.pefCoherent === "boolean" ? source.pefCoherent : fallback.pefCoherent,
+    insertedInBothBuste: normalizeBoolean(source.insertedInBothBuste, fallback.insertedInBothBuste),
+    pefCoherent: normalizeBoolean(source.pefCoherent, fallback.pefCoherent),
   };
 };
 
@@ -253,10 +278,20 @@ export const normalizeBidder = (value: unknown, index = 0, fallbackBidder?: Bidd
 export const normalizeBidders = (value: unknown, baseScenarioId: BaseScenarioId): Bidder[] => {
   const fallbackBidders = getBaseScenario(baseScenarioId).buildBidders();
   if (!Array.isArray(value) || !value.length) return fallbackBidders;
+  const usedIds = new Set<string>();
   return value.map((item, index) => {
     const source = isRecord(item) ? item : {};
     const fallbackById = typeof source.id === "string" ? fallbackBidders.find((bidder) => bidder.id === source.id) : undefined;
-    return normalizeBidder(item, index, fallbackById ?? fallbackBidders[index]);
+    const bidder = normalizeBidder(item, index, fallbackById ?? fallbackBidders[index]);
+    const baseId = bidder.id;
+    let candidateId = baseId;
+    let suffix = 2;
+    while (usedIds.has(candidateId)) {
+      candidateId = `${baseId}-${suffix}`;
+      suffix += 1;
+    }
+    usedIds.add(candidateId);
+    return { ...bidder, id: candidateId };
   });
 };
 
@@ -312,16 +347,25 @@ const hasIncompleteBidderShape = (value: unknown) => {
   });
 };
 
+const hasDuplicateBidderIds = (value: unknown) => {
+  if (!Array.isArray(value)) return false;
+  const ids = value
+    .map((item) => recordValue(item, "id"))
+    .filter((id): id is string => typeof id === "string" && id.trim() !== "");
+  return new Set(ids).size !== ids.length;
+};
+
 export const normalizeScenarioSnapshotWithReport = (value: unknown): ScenarioImportReport => {
-  if (!isRecord(value)) {
+  const importCandidate = extractScenarioImportCandidate(value);
+  if (!isRecord(importCandidate)) {
     return {
       snapshot: undefined,
       messages: ["Il JSON non contiene un oggetto scenario riconoscibile."],
     };
   }
 
-  const candidate = value as LegacyScenarioLike;
-  const snapshot = normalizeScenarioSnapshot(value);
+  const candidate = importCandidate as LegacyScenarioLike;
+  const snapshot = normalizeScenarioSnapshot(importCandidate);
   if (!snapshot) {
     return {
       snapshot: undefined,
@@ -330,6 +374,7 @@ export const normalizeScenarioSnapshotWithReport = (value: unknown): ScenarioImp
   }
 
   const messages: string[] = [];
+  if (importCandidate !== value) messages.push("Struttura JSON riconosciuta: importato il primo scenario disponibile.");
   if (candidate.schemaVersion !== 7) messages.push("Schema aggiornato alla versione corrente.");
   if (!candidate.baseScenarioId && candidate.demoScenarioId) messages.push("Campo legacy demoScenarioId migrato a baseScenarioId.");
   if (!Array.isArray(candidate.bidders) || candidate.bidders.length === 0) {
@@ -337,6 +382,7 @@ export const normalizeScenarioSnapshotWithReport = (value: unknown): ScenarioImp
   } else if (hasIncompleteBidderShape(candidate.bidders)) {
     messages.push("Offerte incomplete riparate con lotti, combinatorie e campi mancanti.");
   }
+  if (hasDuplicateBidderIds(candidate.bidders)) messages.push("ID concorrente duplicati resi univoci per evitare sovrapposizioni nei punteggi.");
   if (!isRecord(candidate.optimization)) messages.push("Configurazione Ottimizzazione assente o non valida: usati i valori dello scenario base.");
   if (!isRecord(candidate.settings)) {
     messages.push("Parametri scenario assenti o non validi: usati i valori predefiniti.");
@@ -387,10 +433,12 @@ export const getStoredJson = <T,>(keys: readonly string[]): T | undefined => {
   return undefined;
 };
 
+const normalizeStoredScenarioList = (value: unknown) => (Array.isArray(value) ? value : []);
+
 export const readStoredWorkspace = (): StoredWorkspace | undefined =>
   normalizeStoredWorkspace(getStoredJson([STORAGE_KEYS.workspace, LEGACY_STORAGE_KEYS.workspace]));
 
 export const readStoredSavedScenarios = (): SavedScenarioSnapshot[] =>
-  (getStoredJson<unknown[]>([STORAGE_KEYS.scenarios, LEGACY_STORAGE_KEYS.scenarios]) ?? [])
+  normalizeStoredScenarioList(getStoredJson<unknown>([STORAGE_KEYS.scenarios, LEGACY_STORAGE_KEYS.scenarios]))
     .map(normalizeScenarioSnapshot)
     .filter((scenario): scenario is SavedScenarioSnapshot => Boolean(scenario));

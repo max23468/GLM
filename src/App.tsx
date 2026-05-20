@@ -187,6 +187,56 @@ type TradeoffPreview = {
 
 const signedPoints = (amount: number) => `${amount >= 0 ? "+" : ""}${formatPoints(amount)}`;
 
+const batchDiscountStressOptions = [
+  { id: "base", label: "0,00 p.p.", delta: 0 },
+  { id: "stress-025", label: "+0,25 p.p.", delta: 0.25 },
+  { id: "stress-050", label: "+0,50 p.p.", delta: 0.5 },
+  { id: "stress-100", label: "+1,00 p.p.", delta: 1 },
+] as const;
+
+const clampDiscountPercent = (value: number) => round4(Math.min(100, Math.max(0, value)));
+
+const stressPhaseDiscounts = (discounts: [number, number, number], delta: number) =>
+  discounts.map((discount) => clampDiscountPercent(discount + delta)) as [number, number, number];
+
+const applySelectedBidderDiscountStress = (bidders: Bidder[], selectedBidderId: string, delta: number) => {
+  if (delta <= 0) return bidders;
+  const nextBidders = structuredClone(bidders);
+  const bidder = nextBidders.find((item) => item.id === selectedBidderId);
+  if (!bidder) return nextBidders;
+
+  for (const lot of LOTS) {
+    const offer = bidder.lots[lot.id];
+    if (offer.enabled) offer.phaseDiscounts = stressPhaseDiscounts(offer.phaseDiscounts, delta);
+  }
+
+  for (const pair of PAIRS) {
+    const combo = bidder.combos[pair.id];
+    if (combo.enabled) combo.phaseDiscounts = stressPhaseDiscounts(combo.phaseDiscounts, delta);
+  }
+
+  return nextBidders;
+};
+
+const sameLotSet = (left: LotId[], right: LotId[]) => {
+  if (left.length !== right.length) return false;
+  const rightSet = new Set(right);
+  return left.every((lotId) => rightSet.has(lotId));
+};
+
+const assignedLotsForBidder = (result: SimulationResult, bidderId: string) => {
+  const lotIds = result.selectedScenario?.assignments
+    .filter((assignment) => assignment.bidderId === bidderId)
+    .flatMap((assignment) => assignment.lotIds) ?? [];
+  return LOTS.map((lot) => lot.id).filter((lotId) => lotIds.includes(lotId));
+};
+
+const formatBatchAssignments = (result: SimulationResult) =>
+  LOTS.map((lot) => {
+    const assignment = assignmentByLot(result, lot.id);
+    return `${lot.shortLabel}: ${assignment?.bidderName ?? "n/d"}`;
+  }).join(" · ");
+
 type OptimizationInvestmentRow = {
   key: string;
   label: string;
@@ -462,6 +512,10 @@ function App() {
   }, [hiddenBaseScenarioIds]);
 
   const selectedBidder = bidders.find((bidder) => bidder.id === selectedBidderId) ?? bidders[0];
+  const participatingLots = useMemo(
+    () => selectedBidder ? LOTS.filter((lot) => selectedBidder.lots[lot.id].enabled) : [],
+    [selectedBidder],
+  );
   const selectedLot = LOTS.find((lot) => lot.id === selectedLotId) ?? LOTS[0];
   const selectedLotContext = LOT_CONTEXT[selectedLotId];
   const selectedBaseScenario = BASE_SCENARIOS.find((scenario) => scenario.id === baseScenarioId) ?? BASE_SCENARIOS[0];
@@ -497,6 +551,15 @@ function App() {
       setSelectedCriterionId(selectedAmbitCriteria[0].id);
     }
   }, [selectedAmbitCriteria, selectedCriterionId]);
+
+  useEffect(() => {
+    if (!selectedBidder || selectedBidder.lots[selectedLotId].enabled) return;
+    const nextLot = participatingLots[0];
+    if (nextLot) {
+      setSelectedLotId(nextLot.id);
+      setScenarioNotice(`Lotto di lavoro riallineato a ${nextLot.shortLabel}: il concorrente selezionato non partecipa al lotto precedente.`);
+    }
+  }, [participatingLots, selectedBidder, selectedLotId]);
 
   const buildTradeoffPreview = (criterion: Criterion) => {
     if (!selectedBidder || !selectedLotScore || !selectedBidder.lots[selectedLotId].enabled) return undefined;
@@ -621,6 +684,14 @@ function App() {
     });
   };
 
+  const selectWorkingLot = (lotId: LotId) => {
+    if (!selectedBidder?.lots[lotId].enabled) {
+      setScenarioNotice("Lotto non selezionabile: attiva prima la partecipazione del concorrente selezionato.");
+      return;
+    }
+    setSelectedLotId(lotId);
+  };
+
   const applyOptimizationPlan = () => {
     if (!selectedBidder || !optimizationResult.steps.length) return;
     setBidders(structuredClone(optimizationResult.optimizedBidders));
@@ -743,6 +814,36 @@ function App() {
     setScenarioNotice(`Scenario base ripristinato: ${selectedBaseScenario.title}`);
   };
 
+  const resetToolToInitialState = () => {
+    const confirmed = window.confirm(
+      "Reset totale del tool: verranno cancellati workspace, scenari salvati, preferenze locali e vecchie chiavi di compatibilità. Continuare?",
+    );
+    if (!confirmed) return;
+
+    [...Object.values(STORAGE_KEYS), ...Object.values(LEGACY_STORAGE_KEYS)].forEach((key) => window.localStorage.removeItem(key));
+    const initialScenario = BASE_SCENARIOS[0];
+    const nextBidders = initialScenario.buildBidders();
+    setView("simulatore");
+    window.history.pushState({}, "", "/");
+    setBaseScenarioId(initialScenario.id);
+    setScenarioName(initialScenario.title);
+    setActiveSavedScenarioId(undefined);
+    setBidders(nextBidders);
+    setOptimizationConfig(initialScenario.buildOptimizationConfig());
+    setSettings(initialScenario.settings);
+    setSelectedBidderId(initialScenario.defaultBidderId);
+    setSelectedLotId(initialScenario.defaultLotId);
+    setSelectedPairId(initialScenario.defaultPairId);
+    setSavedScenarios([]);
+    setHiddenBaseScenarioIds([]);
+    setCompareScenarioId("");
+    setActiveTab("tecnica");
+    setSelectedAmbitId(AMBITS[0].id);
+    setSelectedCriterionId(CRITERIA[0].id);
+    setThemePreference("auto");
+    setScenarioNotice("Tool ripristinato allo stato iniziale: scenari base e input sono tornati ai valori di default.");
+  };
+
   const renameCurrentScenario = (name: string) => {
     setScenarioName(name);
     if (!activeSavedScenarioId) return;
@@ -853,6 +954,7 @@ function App() {
           onImportFile={importScenarioFile}
           onLoadSaved={loadSavedScenario}
           onResetBaseScenario={resetCurrentBaseScenario}
+          onResetTool={resetToolToInitialState}
           selectedBaseScenario={selectedBaseScenario}
           visibleBaseScenarios={visibleBaseScenarios}
           hiddenBaseScenarioCount={hiddenBaseScenarioIds.length}
@@ -937,17 +1039,22 @@ function App() {
                     </a>
                   </div>
                   <div className="lot-switcher-buttons" role="group" aria-label="Seleziona lotto">
-                    {LOTS.map((lot) => (
-                      <button
-                        key={lot.id}
-                        type="button"
-                        className={selectedLotId === lot.id ? "active" : ""}
-                        onClick={() => setSelectedLotId(lot.id)}
-                        aria-pressed={selectedLotId === lot.id}
-                      >
-                        {lot.shortLabel}
-                      </button>
-                    ))}
+                    {LOTS.map((lot) => {
+                      const participates = Boolean(selectedBidder.lots[lot.id].enabled);
+                      return (
+                        <button
+                          key={lot.id}
+                          type="button"
+                          className={`${selectedLotId === lot.id ? "active" : ""} ${participates ? "" : "disabled"}`.trim()}
+                          onClick={() => selectWorkingLot(lot.id)}
+                          aria-pressed={selectedLotId === lot.id}
+                          disabled={!participates}
+                          title={participates ? `Lavora su ${lot.shortLabel}` : `Attiva la partecipazione a ${lot.shortLabel} per lavorare su questo lotto`}
+                        >
+                          {lot.shortLabel}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -969,8 +1076,10 @@ function App() {
                   })}
                 </div>
 
-                {!selectedBidder.lots[selectedLotId].enabled && activeTab !== "ottimizza" && activeTab !== "combinatorie" && activeTab !== "risultati" ? (
-                  <div className="empty-state">Attiva la partecipazione al lotto per inserire i punteggi.</div>
+                {!participatingLots.length && activeTab !== "combinatorie" && activeTab !== "risultati" ? (
+                  <div className="empty-state">Attiva almeno un lotto nella partecipazione per compilare tecnica, economica o ottimizzazione.</div>
+                ) : !selectedBidder.lots[selectedLotId].enabled && activeTab !== "ottimizza" && activeTab !== "combinatorie" && activeTab !== "risultati" ? (
+                  <div className="empty-state">Il concorrente selezionato non partecipa a questo lotto.</div>
                 ) : (
                   <>
                     {activeTab === "tecnica" && selectedLotScore && (
@@ -1612,6 +1721,38 @@ function EconomicsWorkbench({
     const plan = lotOffer.tradeoffs[criterion.id];
     return sum + (plan ? tradeoffCost(criterion, plan) : 0);
   }, 0);
+  const pefCostDrag = breakdown.baseTotal > 0 ? plannedTradeoffCost / breakdown.baseTotal : 0;
+  const ribassoAfterTradeoffCosts = Math.max(0, lotScore.singleRibasso - pefCostDrag);
+  const phaseRates = ECONOMIC_PHASES.map((phase, index) => {
+    const offered = unitBreakdown.phases[index].offered;
+    const km = unitKm[index] ?? 0;
+    return {
+      phase,
+      rate: km > 0 ? offered / km : 0,
+      km,
+      offered,
+      weight: breakdown.phases[index].weight,
+    };
+  });
+  const averageRate = unitKm.reduce((sum, km) => sum + km, 0) > 0 ? breakdown.offeredTotal / unitKm.reduce((sum, km) => sum + km, 0) : 0;
+  const rateSpread = Math.max(...phaseRates.map((phase) => phase.rate)) - Math.min(...phaseRates.map((phase) => phase.rate));
+  const rateSpreadRatio = averageRate > 0 ? rateSpread / averageRate : 0;
+  const dominantPhase = [...phaseRates].sort((left, right) => right.weight - left.weight)[0];
+  const ceaCriterion = CRITERIA.find((criterion) => criterion.id === "F.1.1");
+  const ceaScore = lotScore.subScores["F.1.1"];
+  const ceaScoreRatio = ceaCriterion && ceaCriterion.maxPoints > 0 ? (ceaScore?.rawScore ?? 0) / ceaCriterion.maxPoints : 0;
+  const stressRows = [0.0025, 0.005, 0.01].map((delta) => {
+    const nextRibasso = Math.min(1, lotScore.singleRibasso + delta);
+    const nextRmax = Math.max(rMax, nextRibasso);
+    const nextEconomic = nextRmax > 0 ? round4(30 * (nextRibasso / nextRmax)) : 0;
+    const effectiveDelta = nextRibasso - lotScore.singleRibasso;
+    return {
+      delta,
+      lowerRevenue: breakdown.baseTotal * effectiveDelta,
+      nextEconomic,
+      scoreDelta: round4(nextEconomic - lotScore.singleEconomic),
+    };
+  });
   const comboBreakdown = economicBreakdown(pairBaseByPhase(selectedPairId), bidder.combos[selectedPairId].phaseDiscounts);
   const comboUnitBreakdown = economicBreakdown(ECONOMIC_UNIT_BASE_BY_PAIR[selectedPairId], bidder.combos[selectedPairId].phaseDiscounts);
   const comboUnitKm = ECONOMIC_UNIT_KM_BY_PAIR[selectedPairId];
@@ -1638,6 +1779,30 @@ function EconomicsWorkbench({
         plannedTradeoffCost > 0
           ? `${euroFormatter.format(plannedTradeoffCost)} di costi stimati riducono il margine del ribasso.`
           : "Nessun costo da analisi puntuale aperto sul lotto selezionato.",
+    },
+    {
+      label: "Margine PEF simulato",
+      tone: plannedTradeoffCost > 0 && ribassoAfterTradeoffCosts < lotScore.singleRibasso * 0.5 ? "warn" : "ok",
+      body:
+        plannedTradeoffCost > 0
+          ? `Dopo i costi puntuali, il ribasso gestionale letto sul PEF scende a ${formatPercent(ribassoAfterTradeoffCosts)}.`
+          : "Nessun assorbimento costi rilevato sul ribasso del lotto.",
+    },
+    {
+      label: "Scostamento €/km",
+      tone: rateSpreadRatio > 0.08 ? "warn" : "ok",
+      body:
+        rateSpreadRatio > 0.08
+          ? `Scostamento fra fasi pari a ${formatPercent(rateSpreadRatio)} della media: verifica coerenza dei corrispettivi unitari.`
+          : "Corrispettivi unitari medi coerenti fra le fasi.",
+    },
+    {
+      label: "CEA ambientale",
+      tone: ceaScoreRatio >= 0.7 ? "ok" : "warn",
+      body:
+        ceaScoreRatio >= 0.7
+          ? "Il punteggio CEA è già robusto nello scenario corrente."
+          : "Il criterio I_CEA resta sensibile: verifica flotta, metodologia All. 13.11 e costo della leva ambientale.",
     },
   ];
 
@@ -1787,6 +1952,45 @@ function EconomicsWorkbench({
             })}
           </div>
           <div className="hint">Vett*km da modelli All. 18.1-18.4, foglio valori unitari. Il dato serve per leggere la flessibilità contrattuale, non cambia il punteggio.</div>
+        </section>
+
+        <section className="economic-card">
+          <div className="section-title compact">
+            PEF, CEA e stress All. 18
+            <HelpTooltip>Unisce letture gestionali: assorbimento costi nel PEF, coerenza €/km, indice CEA e impatto di ribassi aggiuntivi.</HelpTooltip>
+          </div>
+          <div className="pef-grid">
+            <div>
+              <span>Ribasso dopo costi puntuali</span>
+              <strong>{formatPercent(ribassoAfterTradeoffCosts)}</strong>
+              <small>{plannedTradeoffCost > 0 ? `${euroFormatter.format(plannedTradeoffCost)} assorbiti come costo stimato` : "nessun costo puntuale aperto"}</small>
+            </div>
+            <div>
+              <span>Fase economica prevalente</span>
+              <strong>{dominantPhase?.phase.label ?? "n/d"}</strong>
+              <small>{dominantPhase ? `${formatPercent(dominantPhase.weight)} del valore complessivo` : "peso non calcolabile"}</small>
+            </div>
+            <div>
+              <span>I_CEA</span>
+              <strong>{typeof ceaScore?.value === "number" ? ceaScore.value.toLocaleString("it-IT", { maximumFractionDigits: 4 }) : "n/d"}</strong>
+              <small>{formatPoints(ceaScore?.rawScore ?? 0)} / {formatPoints(ceaCriterion?.maxPoints ?? 0)} pt</small>
+            </div>
+            <div>
+              <span>Scostamento €/km fasi</span>
+              <strong>{formatPercent(rateSpreadRatio)}</strong>
+              <small>media {euroPerKmFormatter.format(averageRate)} / km</small>
+            </div>
+          </div>
+          <div className="stress-title">Stress rapido ribasso</div>
+          <div className="stress-grid" aria-label="Stress rapido ribasso">
+            {stressRows.map((row) => (
+              <div key={row.delta}>
+                <span>+{formatPercentPointsFromDecimal(row.delta)}</span>
+                <strong>{euroFormatter.format(row.lowerRevenue)}</strong>
+                <small>punteggio econ. {formatPoints(row.nextEconomic)} ({signedPoints(row.scoreDelta)})</small>
+              </div>
+            ))}
+          </div>
         </section>
 
         <section className="economic-card">
@@ -2349,6 +2553,7 @@ function ResultsWorkbench({
     return {
       id: option.id,
       label: option.label,
+      source: option.source,
       value: option.value,
       variant,
       changedLots,
@@ -2363,6 +2568,58 @@ function ResultsWorkbench({
   );
   const derogationChangedLots = changedLotsBetween(result, derogationVariant);
   const derogationTotalDelta = round4(scenarioLotScoreTotal(derogationVariant) - currentLotTotal);
+  const currentUnassignedLots = result.selectedScenario?.unassignedLots ?? [];
+  const currentDrawRequired = Boolean(result.selectedScenario?.drawRequired);
+  const batchRows = THRESHOLD_OPTIONS.flatMap((thresholdOption) =>
+    [false, true].flatMap((applyAwardLimitDerogation) =>
+      batchDiscountStressOptions.map((stressOption) => {
+        const variantBidders = applySelectedBidderDiscountStress(bidders, selectedBidderId, stressOption.delta);
+        const variant = simulate(variantBidders, { threshold: thresholdOption.value, applyAwardLimitDerogation }, selectedBidderId);
+        const changedLots = changedLotsBetween(result, variant);
+        const unassignedLots = variant.selectedScenario?.unassignedLots ?? [];
+        const selectedLotIds = assignedLotsForBidder(variant, selectedBidderId);
+        const drawRequired = Boolean(variant.selectedScenario?.drawRequired);
+        const changed =
+          changedLots.length > 0 ||
+          !sameLotSet(unassignedLots, currentUnassignedLots) ||
+          drawRequired !== currentDrawRequired;
+
+        return {
+          id: `${thresholdOption.id}-${applyAwardLimitDerogation ? "deroga" : "ordinario"}-${stressOption.id}`,
+          thresholdLabel: thresholdOption.label,
+          derogationLabel: applyAwardLimitDerogation ? "Deroga sì" : "Deroga no",
+          stressLabel: stressOption.label,
+          variant,
+          changed,
+          changedLots,
+          unassignedLots,
+          selectedLotIds,
+          assignedCount: LOTS.length - unassignedLots.length,
+          totalDelta: round4(scenarioLotScoreTotal(variant) - currentLotTotal),
+          warningDelta: variant.warnings.length - result.warnings.length,
+          drawRequired,
+          assignments: formatBatchAssignments(variant),
+        };
+      }),
+    ),
+  );
+  const stableBatchRows = batchRows.filter((row) => !row.changed).length;
+  const sensitiveLots = LOTS.map((lot) => ({
+    lot,
+    changes: batchRows.filter((row) => row.changedLots.some((changedLot) => changedLot.id === lot.id)).length,
+  })).filter((item) => item.changes > 0);
+  const selectedLotCounts = batchRows.map((row) => row.selectedLotIds.length);
+  const minSelectedLots = selectedLotCounts.length ? Math.min(...selectedLotCounts) : 0;
+  const maxSelectedLots = selectedLotCounts.length ? Math.max(...selectedLotCounts) : 0;
+  const selectedLotRange =
+    minSelectedLots === maxSelectedLots ? `${minSelectedLots}` : `${minSelectedLots}-${maxSelectedLots}`;
+  const selectedLotRangeLabel = selectedLotRange === "1" ? "1 lotto" : `${selectedLotRange} lotti`;
+  const batchDecision =
+    stableBatchRows === batchRows.length
+      ? "Le assegnazioni restano stabili in tutte le varianti batch considerate."
+      : sensitiveLots.length
+        ? `I lotti più sensibili sono ${sensitiveLots.map((item) => `${item.lot.shortLabel} (${item.changes})`).join(", ")}.`
+        : "Le variazioni riguardano lotti non assegnati, ex aequo o warning di scenario più che cambi diretti di vincitore.";
 
   return (
     <div className="results-board">
@@ -2437,7 +2694,7 @@ function ResultsWorkbench({
               <span>{item.label}</span>
               <strong>{item.changedLots.length ? `cambia ${item.changedLots.map((lot) => lot.shortLabel).join(", ")}` : "stabile"}</strong>
               <small>
-                {item.assignedCount}/{LOTS.length} lotti · delta {signedPoints(item.totalDelta)} · non assegnati {formatLotList(item.variant.selectedScenario?.unassignedLots ?? [])}
+                {item.source} · {item.assignedCount}/{LOTS.length} lotti · delta {signedPoints(item.totalDelta)} · non assegnati {formatLotList(item.variant.selectedScenario?.unassignedLots ?? [])}
               </small>
             </article>
           ))}
@@ -2448,6 +2705,78 @@ function ResultsWorkbench({
               {LOTS.length - (derogationVariant.selectedScenario?.unassignedLots.length ?? LOTS.length)}/{LOTS.length} lotti · delta {signedPoints(derogationTotalDelta)}
             </small>
           </article>
+        </div>
+      </section>
+
+      <section className="batch-panel">
+        <div className="section-title compact">
+          Matrice batch stabilità
+          <HelpTooltip>Ricalcola varianti temporanee incrociando soglie documentali, deroga al limite di due lotti e stress di ribasso sul concorrente selezionato. Non salva scenari e non modifica gli input.</HelpTooltip>
+        </div>
+        <div className="batch-summary-grid">
+          <article className="batch-summary-card">
+            <span>Varianti testate</span>
+            <strong>{batchRows.length}</strong>
+            <small>Soglie x deroga x stress ribasso</small>
+          </article>
+          <article className={`batch-summary-card ${stableBatchRows === batchRows.length ? "ok" : "warn"}`}>
+            <span>Stabili</span>
+            <strong>{stableBatchRows} / {batchRows.length}</strong>
+            <small>Stessa assegnazione e stessi lotti non assegnati</small>
+          </article>
+          <article className={`batch-summary-card ${sensitiveLots.length ? "warn" : "ok"}`}>
+            <span>Lotti sensibili</span>
+            <strong>{sensitiveLots.length ? sensitiveLots.map((item) => item.lot.shortLabel).join(", ") : "nessuno"}</strong>
+            <small>{sensitiveLots.length ? "Almeno un cambio nella matrice" : "Nessun cambio diretto di vincitore"}</small>
+          </article>
+          <article className="batch-summary-card">
+            <span>Concorrente selezionato</span>
+            <strong>{selectedLotRangeLabel}</strong>
+            <small>Range di assegnazioni nelle varianti</small>
+          </article>
+        </div>
+        <div className="batch-decision-line">
+          <strong>Lettura batch</strong>
+          <span>{batchDecision}</span>
+        </div>
+        <div className="batch-matrix-wrap">
+          <table className="batch-matrix">
+            <thead>
+              <tr>
+                <th>Soglia</th>
+                <th>Deroga</th>
+                <th>Stress ribasso</th>
+                <th>Esito</th>
+                <th>Lotti cambiati</th>
+                <th>Non assegnati</th>
+                <th>Delta</th>
+              </tr>
+            </thead>
+            <tbody>
+              {batchRows.map((row) => (
+                <tr key={row.id} className={row.changed ? "warn" : "ok"}>
+                  <td>
+                    <strong>{row.thresholdLabel}</strong>
+                  </td>
+                  <td>{row.derogationLabel}</td>
+                  <td>
+                    <strong>{row.stressLabel}</strong>
+                    <small>su offerte economiche del concorrente selezionato</small>
+                  </td>
+                  <td>
+                    <strong>{row.changed ? "da verificare" : "stabile"}</strong>
+                    <small>{row.assignments}</small>
+                  </td>
+                  <td>{row.changedLots.length ? row.changedLots.map((lot) => lot.shortLabel).join(", ") : "nessuno"}</td>
+                  <td>{formatLotList(row.unassignedLots)}{row.drawRequired ? " · ex aequo" : ""}</td>
+                  <td>
+                    <strong>{signedPoints(row.totalDelta)}</strong>
+                    <small>warning {row.warningDelta >= 0 ? "+" : ""}{row.warningDelta}</small>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
 

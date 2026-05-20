@@ -154,6 +154,19 @@ const verifyOptimization = async (page, suffix, theme) => {
     throw new Error(`${suffix}: pannello versione non disponibile`);
   }
 
+  const disabledLots = await page.locator(".lot-switcher-buttons button:disabled").evaluateAll((buttons) =>
+    buttons.map((button) => button.textContent?.trim() ?? ""),
+  );
+  if (!disabledLots.includes("L2") || !disabledLots.includes("L3")) {
+    throw new Error(`${suffix}: lotti non partecipati selezionabili nel lotto di lavoro ${JSON.stringify(disabledLots)}`);
+  }
+
+  await clickWorkspaceTab(page, "Economica");
+  const economicText = await page.locator(".economics-board").innerText();
+  for (const expected of ["PEF, CEA e stress All. 18", "Ribasso dopo costi puntuali", "Scostamento €/km fasi", "Stress rapido ribasso"]) {
+    if (!economicText.includes(expected)) throw new Error(`${suffix}: economica senza ${expected}`);
+  }
+
   await clickWorkspaceTab(page, "Ottimizzazione");
   const text = await page.locator("body").innerText();
   const lowerText = text.toLocaleLowerCase("it-IT");
@@ -244,12 +257,33 @@ const verifyOptimization = async (page, suffix, theme) => {
 
   await clickWorkspaceTab(page, "Risultati");
   const resultsText = await page.locator(".results-board").innerText();
-  for (const expected of ["Lettura decisionale", "Scarto dal secondo", "Prossima verifica", "Sensitività soglia/deroga", "Deroga"]) {
+  for (const expected of [
+    "Lettura decisionale",
+    "Scarto dal secondo",
+    "Prossima verifica",
+    "Sensitività soglia/deroga",
+    "Matrice batch stabilità",
+    "Varianti testate",
+    "Deroga",
+  ]) {
     if (!resultsText.includes(expected)) throw new Error(`${suffix}: risultati senza ${expected}`);
+  }
+  if (!resultsText.toLocaleLowerCase("it-IT").includes("stress ribasso")) {
+    throw new Error(`${suffix}: risultati senza stress ribasso`);
   }
 
   const activeTheme = await page.evaluate(() => document.documentElement.dataset.theme);
   if (activeTheme !== theme) throw new Error(`${suffix}: tema atteso ${theme}, trovato ${activeTheme}`);
+
+  page.once("dialog", async (dialog) => {
+    await dialog.accept();
+  });
+  await page.getByRole("button", { name: "Reset totale tool" }).click();
+  await page.waitForFunction(() => {
+    const scenarios = JSON.parse(localStorage.getItem("tpl-lotti-1-4-scenarios") || "[]");
+    const workspace = JSON.parse(localStorage.getItem("tpl-lotti-1-4-workspace") || "{}");
+    return Array.isArray(scenarios) && scenarios.length === 0 && workspace.scenarioName === "Mercato realistico";
+  });
 };
 
 const main = async () => {
