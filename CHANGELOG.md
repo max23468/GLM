@@ -6,6 +6,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [0.2.3] — 2026-05-20
+
+### Correzioni
+
+- **Soglia di sbarramento**: il simulatore usa una dicitura più chiara e mostra un indicatore con spunta o X senza esporre il punteggio tecnico grezzo nella vista principale.
+
 ## [0.2.2] — 2026-05-20
 
 ### Correzioni
@@ -31,7 +37,7 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 ### Novità
 
 - **Console simulatore**: gestione workspace, concorrenti, lotti singoli e combinatorie ammesse per la gara TPL lotti 1-4.
-- **Motore di scoring**: calcolo locale di punteggi Q/T/D, soglie, riparametrazione, punteggio economico e scenario vincente.
+- **Motore di scoring**: calcolo locale di punteggi tecnici, soglie di sbarramento, riparametrazione, punteggio economico e scenario vincente.
 - **Scenari base**: profili simulati, fonti e warning documentali separati tra documento di gara, fonte pubblica e assunzione simulativa.
 - **Import/export e report**: salvataggio locale, duplicazione, import/export JSON, confronto tra scenari e report stampabile.
 - **Ottimizzazione**: analisi puntuale dei criteri e piano consigliato per riallocare investimenti tecnici verso ribasso quando sostenibile.

@@ -32,7 +32,7 @@ type InstructionSection = {
 const quickSteps = [
   "Scegli scenario base, concorrente e partecipazioni dalla barra laterale.",
   "Cambia lotto dalla barra `Lotto di lavoro`.",
-  "Compila la parte tecnica e verifica la soglia Q/T.",
+  "Compila la parte tecnica e verifica la soglia di sbarramento.",
   "Compila ribassi e controlli economici.",
   "Usa Ottimizzazione per confrontare investimenti tecnici, rinunce tecniche e ribasso.",
   "Salva lo scenario e confrontalo con le simulazioni precedenti.",
@@ -50,7 +50,7 @@ const sections: InstructionSection[] = [
       "Usa il risultato come supporto decisionale interno, non come certificazione dell'esito di gara.",
       "Prima di condividere una simulazione, esporta il JSON e controlla i warning visibili.",
     ],
-    checks: ["Scenario base corretto", "Soglia Q/T coerente con l'ipotesi", "Warning letti e accettati"],
+    checks: ["Scenario base corretto", "Soglia di sbarramento coerente con l'ipotesi", "Warning letti e accettati"],
   },
   {
     id: "istruzioni-scenario",
@@ -88,8 +88,8 @@ const sections: InstructionSection[] = [
   {
     id: "istruzioni-tecnica",
     eyebrow: "Tecnica",
-    title: "Compilare criteri Q/T/D",
-    body: "La tab `Tecnica` raccoglie criteri quantitativi, tabellari e discrezionali. I valori vengono usati per soglia Q/T, riparametrazione e punteggio tecnico del lotto.",
+    title: "Compilare criteri tecnici",
+    body: "La tab `Tecnica` raccoglie criteri quantitativi, tabellari e discrezionali. I valori vengono usati per soglia di sbarramento, riparametrazione e punteggio tecnico del lotto.",
     bullets: [
       "`Quantitativo`: inserisci il valore richiesto o, quando presente, numeratore e denominatore operativo.",
       "`Tabellare`: attiva il requisito solo se lo scenario lo prevede.",
@@ -102,13 +102,13 @@ const sections: InstructionSection[] = [
   },
   {
     id: "istruzioni-soglia",
-    eyebrow: "Soglia Q/T",
+    eyebrow: "Soglia di sbarramento",
     title: "Controllare ammissibilità tecnica",
-    body: "La soglia Q/T determina se un'offerta passa alla fase successiva. Cambiarla serve a testare le diverse letture documentali già evidenziate nel simulatore.",
+    body: "La soglia di sbarramento determina se un'offerta passa alla fase successiva. Cambiarla serve a testare le diverse letture documentali già evidenziate nel simulatore.",
     bullets: [
       "`37 pt - Disciplinare`: lettura base del disciplinare.",
       "`38 pt - Allegato 13`: scenario coerente con l'indicazione dell'allegato tecnico.",
-      "`43,4 pt - 70% dei Q/T`: stress test più selettivo.",
+      "`43,4 pt - 70% dei criteri automatici`: stress test più selettivo.",
       "Un'offerta sotto soglia non contribuisce alla valutazione economica.",
       "Se un lotto risulta non assegnato, valuta se il problema è tecnico, economico o di partecipazione.",
     ],
@@ -183,7 +183,7 @@ const sections: InstructionSection[] = [
     bullets: [
       "Controlla il vincitore simulato per ciascun lotto.",
       "Guarda i punteggi per lotto e il dettaglio tecnico, soprattutto nei casi vicini.",
-      "Se ci sono lotti non assegnati, torna a partecipazioni, soglia Q/T e combinatorie.",
+      "Se ci sono lotti non assegnati, torna a partecipazioni, soglia di sbarramento e combinatorie.",
       "Seleziona uno scenario salvato per confrontare delta di punteggio e assegnazioni.",
     ],
     checks: ["Scenario salvato prima del confronto", "Lotti non assegnati spiegati", "Warning letti"],

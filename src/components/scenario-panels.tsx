@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  CheckCircle2,
   CopyPlus,
   Download,
   FileJson,
@@ -143,7 +144,7 @@ type StrategicSummaryProps = {
   selectedBidderName?: string;
   selectedLotLabel: string;
   result: SimulationResult;
-  selectedLotQt?: number;
+  selectedLotAdmitted?: boolean;
   activeSectionLabel: string;
   onOpenTechnical: () => void;
   onOpenEconomic: () => void;
@@ -155,7 +156,7 @@ export function StrategicSummary({
   selectedBidderName,
   selectedLotLabel,
   result,
-  selectedLotQt,
+  selectedLotAdmitted,
   activeSectionLabel,
   onOpenTechnical,
   onOpenEconomic,
@@ -205,10 +206,17 @@ export function StrategicSummary({
         ))}
       </div>
       <div className="strategic-footer">
-        <span>
-          Focus: {selectedBidderName ?? "n/d"} su {selectedLotLabel}, sezione {activeSectionLabel}
-          {typeof selectedLotQt === "number" ? `, Q/T ${formatPoints(selectedLotQt)}` : ""}
-        </span>
+        <span>Focus: {selectedBidderName ?? "n/d"} su {selectedLotLabel}, sezione {activeSectionLabel}</span>
+        {typeof selectedLotAdmitted === "boolean" ? (
+          <span
+            className={`status-badge threshold-status summary-threshold-status ${selectedLotAdmitted ? "ok" : "fail"}`}
+            aria-label={`Soglia di sbarramento ${selectedLotAdmitted ? "superata" : "non superata"}`}
+            title={`Soglia di sbarramento ${selectedLotAdmitted ? "superata" : "non superata"}`}
+          >
+            {selectedLotAdmitted ? <CheckCircle2 size={14} /> : <X size={14} />}
+            Soglia di sbarramento
+          </span>
+        ) : null}
         {result.warnings[0] ? (
           <span className="summary-warning">
             <AlertTriangle size={14} />

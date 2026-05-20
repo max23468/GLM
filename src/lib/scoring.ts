@@ -377,7 +377,7 @@ const computeTechnicalRawScores = (bidders: Bidder[], settings: Settings): Recor
       const score = result[bidder.id][lot.id];
       score.admitted = score.participates && score.qtRaw >= settings.threshold;
       if (score.participates && !score.admitted) {
-        score.warnings.push(`Sotto soglia Q/T: ${formatPoints(score.qtRaw)} < ${formatPoints(settings.threshold)}.`);
+        score.warnings.push(`Sotto soglia di sbarramento: ${formatPoints(score.qtRaw)} < ${formatPoints(settings.threshold)}.`);
       }
     }
 
@@ -452,7 +452,7 @@ const computeComboScores = (
             warnings.push("L'offerta combinatoria richiede offerte singole su entrambi i lotti.");
           }
           if (combo.enabled && (!firstScore.admitted || !secondScore.admitted)) {
-            warnings.push("Almeno uno dei due lotti non supera la soglia tecnica Q/T.");
+            warnings.push("Almeno uno dei due lotti non supera la soglia di sbarramento.");
           }
           if (combo.enabled && comboHasOverlaps(bidder, pair.id)) {
             warnings.push("Coppia sovrapposta ad altra offerta combinatoria dello stesso concorrente.");
@@ -811,7 +811,7 @@ const buildSuggestions = (
       suggestions.push({
         bidderId: bidder.id,
         lotId: lot.id,
-        title: `${lot.shortLabel} - supera la soglia Q/T`,
+        title: `${lot.shortLabel} - supera la soglia di sbarramento`,
         body: `Mancano ${formatPoints(score.threshold - score.qtRaw)} punti prima della riparametrazione. Dai priorità ai tabellari certi e ai quantitativi con gap maggiore.`,
         priority: 100 + (score.threshold - score.qtRaw),
         effort: "medio",

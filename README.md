@@ -2,7 +2,7 @@
 
 Simulatore operativo per ragionare su scenari di aggiudicazione della gara TPL 2026 sui lotti extraurbani 1-4.
 
-L'app non produce offerte ufficiali: aiuta a confrontare operatori, lotti singoli, offerte combinatorie, soglie tecniche, ribassi e criticità documentali ricostruite dagli allegati di gara.
+L'app non produce offerte ufficiali: aiuta a confrontare operatori, lotti singoli, offerte combinatorie, soglie di sbarramento, ribassi e criticità documentali ricostruite dagli allegati di gara.
 
 ## Avvio rapido
 
@@ -26,7 +26,7 @@ npm run preview -- --port 4173
 - Gestisce più concorrenti e la partecipazione ai lotti singoli `L1`, `L2`, `L3`, `L4`.
 - Cambia lotto di lavoro dalla scheda centrale, senza aprire la gestione laterale.
 - Simula le combinatorie ammesse `L1+L2`, `L2+L3`, `L3+L4`, `L1+L4`.
-- Calcola punteggi tecnici Q/T/D, soglia Q/T, riparametrazione per ambito, punteggio economico e scenario vincente.
+- Calcola punteggi tecnici, soglia di sbarramento, riparametrazione per ambito, punteggio economico e scenario vincente.
 - Evidenzia warning su soglie, dipendenze, combinatorie non ammissibili, sorteggio e deroga al limite di due lotti.
 - Offre scenari base con profili simulati ispirati a fonti pubbliche e allegati locali, senza trasformarli in offerte reali.
 - Permette salvataggio locale, duplicazione, import/export JSON e confronto fra scenari.
@@ -42,7 +42,7 @@ Gli scenari precompilati sono basi di lavoro, non simulazioni certificate:
 
 - `Mercato realistico`: operatori noti del bacino, combinatorie plausibili e profili tecnici differenziati.
 - `Tecnologia e flotta`: maggiore peso a tecnologie di bordo, informazione dinamica e performance ambientali.
-- `Ribasso aggressivo`: stress test su soglia Q/T e convenienza economica.
+- `Ribasso aggressivo`: stress test su soglia di sbarramento e convenienza economica.
 - `Presidio locale`: focus sul lotto 4 e sulle leve territoriali.
 
 Le basi operative degli scenari derivano da documenti locali di gara e segnali pubblici web. Quando si aggiornano questi dati, va mantenuta esplicita la distinzione tra `Documento di gara`, `Fonte pubblica` e `Assunzione simulativa`.

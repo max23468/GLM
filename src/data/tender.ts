@@ -179,7 +179,7 @@ export const LOT_CONTEXT: Record<LotId, LotContext> = {
   L2: {
     lotId: "L2",
     territory: "Area extraurbana con base d'asta più elevata",
-    operatingHint: "La massa economica rende molto rilevanti ribasso medio, PEF e tenuta della soglia Q/T.",
+    operatingHint: "La massa economica rende molto rilevanti ribasso medio, PEF e tenuta della soglia di sbarramento.",
     source: "Agenzia TPL Milano, Monza Brianza, Lodi e Pavia",
     sourceUrl: "https://www.agenziatpl.it/agenzia/amministrazione-trasparente/19-bandi-di-gara-e-contratti/287-bando-di-gara-per-l-affidamento-di-servizi-di-tpl",
   },
@@ -478,16 +478,16 @@ export const THRESHOLD_OPTIONS = [
   },
   {
     id: "qt-70-43-4",
-    label: "43,4 pt - 70% dei Q/T",
+    label: "43,4 pt - 70% dei criteri automatici",
     value: 43.4,
-    source: "Calcolo su somma sub-criteri Q/T pari a 62",
+    source: "Calcolo sulla somma dei criteri quantitativi e tabellari pari a 62",
   },
 ] as const;
 
 export const DOCUMENT_WARNINGS = [
   {
     title: "Soglia di sbarramento non univoca",
-    body: "Il Disciplinare indica 37 punti, l'Allegato 13 indica 38 punti, mentre il 70% dei sub-criteri Q/T ricostruiti dalla tabella è 43,4 punti.",
+    body: "Il Disciplinare indica 37 punti, l'Allegato 13 indica 38 punti, mentre il 70% dei criteri quantitativi e tabellari ricostruiti dalla tabella è 43,4 punti.",
   },
   {
     title: "Massimi di alcuni sub-criteri non allineati al testo formula",

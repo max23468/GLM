@@ -810,7 +810,7 @@ function App() {
       <header className="topbar">
         <div>
           <h1>Simulatore gara TPL lotti 1-4</h1>
-          <p>Console operativa per confrontare lotti singoli, combinatorie, soglie tecniche, ribassi e criticità documentali.</p>
+          <p>Console operativa per confrontare lotti singoli, combinatorie, soglie di sbarramento, ribassi e criticità documentali.</p>
         </div>
         <div className="topbar-actions">
           <div className="theme-control" aria-label="Tema interfaccia">
@@ -1016,7 +1016,7 @@ function App() {
             <div className="section-title">
               <SlidersHorizontal size={18} />
               Parametri
-              <HelpTooltip>Qui scegli la soglia Q/T e l'eventuale deroga: cambia questi parametri quando vuoi testare una lettura più o meno selettiva.</HelpTooltip>
+              <HelpTooltip>Qui scegli la soglia di sbarramento e l'eventuale deroga: cambia questi parametri quando vuoi testare una lettura più o meno selettiva.</HelpTooltip>
             </div>
             <div className="active-scenario">
               <span>Scenario attivo</span>
@@ -1029,7 +1029,7 @@ function App() {
             </div>
             <label className="field">
               <span>
-                Soglia Q/T
+                Soglia di sbarramento
                 <HelpTooltip>Un'offerta sotto soglia non passa alla valutazione economica. Le tre opzioni corrispondono alle letture già richiamate nelle istruzioni.</HelpTooltip>
               </span>
               <select
@@ -1051,7 +1051,7 @@ function App() {
               />
               <span>Applica deroga al limite di due lotti se necessaria per evitare lotti non assegnati</span>
             </label>
-            <div className="hint">Soglia attiva: scenario disciplinare se resta a 37 pt. Q/T max ricostruito: {formatPoints(maxQtPoints())} punti. Le incongruenze sono nel pannello criticità.</div>
+            <div className="hint">Soglia attiva: scenario disciplinare se resta a 37 pt. Le letture alternative più selettive restano nel menu. Le incongruenze sono nel pannello criticità.</div>
           </section>
         </aside>
 
@@ -1063,7 +1063,7 @@ function App() {
                 selectedBidderName={selectedBidder.name}
                 selectedLotLabel={selectedLotLabel}
                 result={result}
-                selectedLotQt={selectedLotScore?.qtRaw}
+                selectedLotAdmitted={selectedLotScore?.admitted}
                 activeSectionLabel={activeTabLabel}
                 onOpenTechnical={() => setActiveTab("tecnica")}
                 onOpenEconomic={() => setActiveTab("economica")}
@@ -1080,9 +1080,13 @@ function App() {
                     <p>Vista operativa per compilare valori, ribassi, combinatorie e leggere subito l'impatto sul punteggio.</p>
                   </div>
                   {selectedLotScore && (
-                    <div className={`status-badge ${selectedLotScore.admitted ? "ok" : "warn"}`}>
-                      {selectedLotScore.admitted ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
-                      Q/T {formatPoints(selectedLotScore.qtRaw)}
+                    <div
+                      className={`status-badge threshold-status ${selectedLotScore.admitted ? "ok" : "fail"}`}
+                      aria-label={`Soglia di sbarramento ${selectedLotScore.admitted ? "superata" : "non superata"}`}
+                      title={`Soglia di sbarramento ${selectedLotScore.admitted ? "superata" : "non superata"}`}
+                    >
+                      {selectedLotScore.admitted ? <CheckCircle2 size={16} /> : <X size={16} />}
+                      Soglia di sbarramento
                     </div>
                   )}
                 </div>
@@ -2659,7 +2663,7 @@ function ResultsWorkbench({ result, selectedLotId, bidders }: { result: Simulati
             </tbody>
             <tfoot>
               <tr>
-                <th>Totale Q/T grezzo</th>
+                <th>Punteggio soglia di sbarramento</th>
                 <td>{formatPoints(qtMax)}</td>
                 {scoreBidders.map((bidder) => {
                   const lotScore = result.lotScores[bidder.id]?.[selectedLotId];

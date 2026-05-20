@@ -226,7 +226,7 @@ Quando tocchi `src/lib/scoring.ts` o `src/data/tender.ts`:
 1. Cerca il comportamento esistente con `rg`.
 2. Leggi i test vicini.
 3. Aggiungi o aggiorna test per:
-   - soglia Q/T;
+   - soglia di sbarramento;
    - riparametrazione;
    - combinatorie;
    - limite di due lotti;

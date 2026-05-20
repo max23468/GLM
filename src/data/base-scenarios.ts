@@ -566,7 +566,7 @@ export const BASE_SCENARIOS: BaseScenario[] = [
     title: "Ribasso aggressivo",
     body: "Scenario economico con maggiore spinta sui ribassi e qualche compromesso tecnico.",
     basis: [
-      "Ribassi più alti per stressare soglia Q/T, riparametrazione e convenienza delle combinatorie.",
+      "Ribassi più alti per stressare soglia di sbarramento, riparametrazione e convenienza delle combinatorie.",
       "Arriva: benchmark su scala nazionale e piano di rinnovo flotta, senza trasformarlo in offerta tecnica reale.",
       "Le metriche operative restano ancorate alle basi documentali dei singoli lotti.",
     ],

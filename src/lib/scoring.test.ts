@@ -149,7 +149,7 @@ describe("TPL tender scoring", () => {
     expect(withDerogation.warnings.some((warning) => warning.includes("Deroga al limite di due lotti applicata"))).toBe(true);
   });
 
-  it("applies the configured Q/T threshold before economic ranking", () => {
+  it("applies the configured threshold before economic ranking", () => {
     const bidder = createBidder("a", "A");
     bidder.lots.L1.enabled = true;
     bidder.lots.L1.phaseDiscounts = [10, 10, 10];
@@ -158,7 +158,7 @@ describe("TPL tender scoring", () => {
 
     expect(result.lotScores[bidder.id].L1.admitted).toBe(false);
     expect(result.lotScores[bidder.id].L1.singleEconomic).toBe(0);
-    expect(result.warnings.some((warning) => warning.includes("Sotto soglia Q/T"))).toBe(true);
+    expect(result.warnings.some((warning) => warning.includes("Sotto soglia di sbarramento"))).toBe(true);
   });
 
   it("includes admissible combinatory discounts in rMax for both lots", () => {

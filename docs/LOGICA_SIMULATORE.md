@@ -4,7 +4,7 @@ Questa nota descrive come è organizzata la simulazione di `Simulatore gara TPL 
 
 ## Perimetro
 
-Il simulatore modella scenari di aggiudicazione per i lotti `L1`-`L4` della gara TPL 2026. La finalità è esplorativa e operativa: confrontare combinazioni di offerenti, offerte singole, offerte combinatorie, soglie tecniche e ribassi.
+Il simulatore modella scenari di aggiudicazione per i lotti `L1`-`L4` della gara TPL 2026. La finalità è esplorativa e operativa: confrontare combinazioni di offerenti, offerte singole, offerte combinatorie, soglie di sbarramento e ribassi.
 
 Non va usato come fonte ufficiale autonoma. Ogni dato deve restare riconducibile a una delle tre categorie già presenti in `src/data/tender.ts`:
 
@@ -14,7 +14,7 @@ Non va usato come fonte ufficiale autonoma. Ogni dato deve restare riconducibile
 
 ## Dove vive la logica
 
-- `src/data/tender.ts`: definisce lotti, coppie combinatorie, ambiti A-G, sub-criteri, soglie Q/T, fonti pubbliche e warning documentali.
+- `src/data/tender.ts`: definisce lotti, coppie combinatorie, ambiti A-G, sub-criteri, soglie di sbarramento, fonti pubbliche e warning documentali.
 - `src/data/base-scenarios.ts`: definisce scenari base, profili simulati, baseline operative e assunzioni numeriche non ufficiali.
 - `src/lib/scoring.ts`: calcola punteggi tecnici/economici, ammissibilità combinatorie, ranking lotti e scenario migliore.
 - `src/lib/optimization.ts`: genera piani di miglioramento da un'offerta iniziale, con leve tecniche e riallocazioni verso ribasso.
@@ -27,13 +27,13 @@ Non va usato come fonte ufficiale autonoma. Ogni dato deve restare riconducibile
 ## Flusso di calcolo
 
 1. Ogni concorrente ha offerte per lotti singoli e combinatorie.
-2. Per ogni lotto attivo il simulatore calcola i sub-score dei criteri Q/T/D.
-3. I criteri Q e T concorrono alla soglia Q/T configurata.
+2. Per ogni lotto attivo il simulatore calcola i sub-score dei criteri tecnici.
+3. I criteri quantitativi e tabellari concorrono alla soglia di sbarramento configurata.
 4. Solo le offerte ammesse superano la fase tecnica e ricevono riparametrazione per ambito.
 5. Il punteggio economico deriva dai ribassi di fase pesati sulle basi d'asta.
 6. Le combinatorie sono ammissibili solo se:
    - entrambi i lotti singoli sono attivi;
-   - entrambi superano la soglia tecnica;
+   - entrambi superano la soglia di sbarramento;
    - la coppia non si sovrappone a un'altra coppia non ammessa;
    - il set di coppie rispetta le combinazioni compatibili;
    - inserimento nelle buste e PEF sono coerenti;
@@ -79,8 +79,8 @@ Gli obiettivi disponibili sono:
 
 Le modalità considerate sono:
 
-- `Tecnica + ribasso`: confronta leve tecniche Q/T e riallocazioni verso maggiore ribasso economico;
-- `Solo tecnica`: usa solo leve tecniche Q/T e ignora il ribasso.
+- `Tecnica + ribasso`: confronta leve tecniche automatiche e riallocazioni verso maggiore ribasso economico;
+- `Solo tecnica`: usa solo leve tecniche automatiche e ignora il ribasso.
 
 Il costo complessivo stimato del piano resta una lettura gestionale delle mosse consigliate. Per le riallocazioni, il simulatore mostra quante risorse vengono liberate dalla rinuncia tecnica e quanta parte finanzia il maggiore ribasso. Non ci sono step o massimi di ribasso da configurare: il limite operativo è dato dal valore liberato dalla rinuncia tecnica e dal fatto che i ribassi di fase non possono superare il 100%.
 

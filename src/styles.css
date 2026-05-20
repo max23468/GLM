@@ -1325,6 +1325,21 @@ input[type="checkbox"] {
   color: var(--warning-text);
 }
 
+.status-badge.fail {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.threshold-status {
+  white-space: nowrap;
+}
+
+.summary-threshold-status {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  font-size: 0.78rem;
+}
+
 .empty-state {
   border: 1px dashed var(--border-strong);
   border-radius: 8px;
