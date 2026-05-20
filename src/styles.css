@@ -481,11 +481,6 @@ button {
   grid-column: 1 / -1;
 }
 
-.left-rail .comparison-grid,
-.left-rail .comparison-lots {
-  grid-template-columns: 1fr;
-}
-
 .insight-panel {
   display: flex;
   flex-direction: column;

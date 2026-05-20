@@ -138,6 +138,12 @@ const optimizationModeOptions: { value: OptimizationConfig["mode"]; label: strin
   { value: "technical-only", label: "Solo tecnica" },
 ];
 
+const suggestionEffortRank: Record<Suggestion["effort"], number> = {
+  basso: 0,
+  medio: 1,
+  alto: 2,
+};
+
 const criterionKindLabel: Record<Criterion["kind"], string> = {
   Q: "Quantitativo",
   T: "Tabellare",
@@ -520,6 +526,18 @@ function App() {
     });
     return (direct.length ? direct : result.suggestions).slice(0, 3);
   }, [result.suggestions, selectedBidder, selectedLotId, selectedPairId]);
+
+  const rankedSuggestions = useMemo(
+    () =>
+      result.suggestions
+        .map((suggestion, index) => ({ suggestion, index }))
+        .sort((left, right) => {
+          const effortDelta = suggestionEffortRank[left.suggestion.effort] - suggestionEffortRank[right.suggestion.effort];
+          return effortDelta || left.index - right.index;
+        })
+        .map(({ suggestion }) => suggestion),
+    [result.suggestions],
+  );
 
   const updateBidder = (bidderId: string, updater: (bidder: Bidder) => Bidder) => {
     setBidders((current) => current.map((bidder) => (bidder.id === bidderId ? updater(structuredClone(bidder)) : bidder)));
@@ -1017,15 +1035,6 @@ function App() {
               </button>
             </section>
           )}
-
-          <ScenarioComparison
-            savedScenarios={savedScenarios}
-            compareScenarioId={compareScenarioId}
-            compareScenario={compareScenario}
-            compareResult={compareResult}
-            currentResult={result}
-            onCompareScenarioChange={setCompareScenarioId}
-          />
         </aside>
 
         <main className="workspace">
@@ -1256,7 +1265,7 @@ function App() {
               </button>
             </div>
             <div className="panel-scroll suggestion-list">
-              {result.suggestions.map((suggestion) => (
+              {rankedSuggestions.map((suggestion) => (
                 <article key={`${suggestion.title}-${suggestion.body}`} className="suggestion">
                   <div>
                     <strong>{suggestion.title}</strong>
@@ -1299,6 +1308,17 @@ function App() {
               ))}
             </div>
           </section>
+
+          <div className="wide-panel">
+            <ScenarioComparison
+              savedScenarios={savedScenarios}
+              compareScenarioId={compareScenarioId}
+              compareScenario={compareScenario}
+              compareResult={compareResult}
+              currentResult={result}
+              onCompareScenarioChange={setCompareScenarioId}
+            />
+          </div>
 
           <div className="wide-panel">
             <ReleasePanel />
