@@ -29,8 +29,8 @@ type InstructionSection = {
 };
 
 const quickSteps = [
-  "Apri `Gestisci workspace` nella barra laterale.",
-  "Scegli scenario base e concorrente; cambia lotto dalla barra `Lotto di lavoro`.",
+  "Scegli scenario base, concorrente e partecipazioni dalla barra laterale.",
+  "Cambia lotto dalla barra `Lotto di lavoro`.",
   "Compila la parte tecnica e verifica la soglia Q/T.",
   "Compila ribassi e controlli economici.",
   "Usa Ottimizzazione per confrontare investimenti tecnici, rinunce tecniche e ribasso.",
@@ -55,12 +55,13 @@ const sections: InstructionSection[] = [
     id: "istruzioni-scenario",
     eyebrow: "Scenario",
     title: "Scegliere, rinominare e salvare lo scenario",
-    body: "La colonna sinistra governa lo stato di lavoro. Apri `Gestisci workspace` per scegliere lo scenario base, rinominare la simulazione, salvare una fotografia in libreria e importare o esportare JSON. Il pulsante `Indietro` chiude tutta la gestione workspace.",
+    body: "La colonna sinistra governa lo stato di lavoro: da lì scegli lo scenario base, rinomini la simulazione, salvi una fotografia in libreria e importi o esporti JSON.",
     bullets: [
       "Scegli `Mercato realistico` per partire da un assetto equilibrato.",
       "Usa `Tecnologia e flotta` quando vuoi stressare dotazioni, monitoraggio e informazione all'utenza.",
       "Usa `Ribasso aggressivo` per capire quanto pesa la leva economica.",
       "Usa `Presidio locale` quando vuoi valutare continuità operativa e radicamento territoriale.",
+      "Elimina dalla lista gli scenari base che non vuoi vedere e ripristinali quando ti servono.",
       "Usa i bottoni rapidi: `+` crea, il dischetto salva, la copia duplica e `X` elimina.",
       "Rinomina sempre lo scenario prima di salvarlo, così il confronto resta leggibile.",
     ],
@@ -72,7 +73,7 @@ const sections: InstructionSection[] = [
     title: "Gestire concorrenti, lotti e partecipazioni",
     body: "Ogni concorrente può partecipare a lotti singoli e combinatorie. Aggiunta, rinomina, eliminazione e opzioni di partecipazione si gestiscono solo nella barra laterale.",
     bullets: [
-      "Apri `Gestisci workspace` e seleziona un concorrente dalla lista prima di compilare tecnica o economica.",
+      "Seleziona un concorrente dalla lista laterale prima di compilare tecnica o economica.",
       "Cambia il lotto di lavoro dalla barra compatta sopra le tab operative.",
       "Aggiungi un nuovo concorrente con il pulsante `+`.",
       "Rinomina il concorrente dal campo laterale `Nome concorrente`.",

@@ -127,7 +127,22 @@ const verifyOptimization = async (page, suffix, theme) => {
     throw new Error(`${suffix}: cella base prevista inattesa ${JSON.stringify(ratioBase)}`);
   }
 
-  await page.getByRole("button", { name: "Gestisci workspace" }).click();
+  const oldWorkspaceEntry = await page.getByRole("button", { name: "Gestisci workspace" }).count();
+  if (oldWorkspaceEntry !== 0) throw new Error(`${suffix}: il vecchio passaggio Gestisci workspace è ancora visibile`);
+
+  const deleteBaseButton = page.getByRole("button", { name: "Elimina scenario base Mercato realistico" });
+  if ((await deleteBaseButton.count()) !== 1) throw new Error(`${suffix}: eliminazione scenario base non disponibile`);
+  await deleteBaseButton.click();
+  const hiddenBaseScenarios = await page.evaluate(() => JSON.parse(localStorage.getItem("tpl-lotti-1-4-hidden-base-scenarios") || "[]"));
+  if (!Array.isArray(hiddenBaseScenarios) || !hiddenBaseScenarios.includes("market")) {
+    throw new Error(`${suffix}: scenario base eliminato non salvato ${JSON.stringify(hiddenBaseScenarios)}`);
+  }
+  await page.getByRole("button", { name: "Ripristina scenari base" }).click();
+  const restoredBaseScenarios = await page.evaluate(() => JSON.parse(localStorage.getItem("tpl-lotti-1-4-hidden-base-scenarios") || "[]"));
+  if (!Array.isArray(restoredBaseScenarios) || restoredBaseScenarios.length !== 0) {
+    throw new Error(`${suffix}: ripristino scenari base non riuscito ${JSON.stringify(restoredBaseScenarios)}`);
+  }
+
   await page.getByRole("button", { name: "Salva scenario in libreria" }).click();
   const saved = await page.evaluate(() => {
     const scenarios = JSON.parse(localStorage.getItem("tpl-lotti-1-4-scenarios") || "[]");

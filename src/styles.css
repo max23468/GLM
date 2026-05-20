@@ -772,6 +772,24 @@ input[type="checkbox"] {
   gap: 8px;
 }
 
+.base-card-row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.base-card-row .base-card {
+  flex: 1;
+  min-width: 0;
+}
+
+.base-card-row .icon-button {
+  align-self: stretch;
+  height: auto;
+  min-height: 34px;
+  flex: 0 0 28px;
+}
+
 .base-card {
   display: flex;
   flex-direction: column;
@@ -873,41 +891,6 @@ input[type="checkbox"] {
 .icon-button:disabled {
   cursor: not-allowed;
   opacity: 0.42;
-}
-
-.workspace-entry-panel,
-.workspace-management-head {
-  display: grid;
-  gap: 12px;
-}
-
-.workspace-summary-grid {
-  display: grid;
-  gap: 8px;
-}
-
-.workspace-summary-grid > div {
-  display: grid;
-  gap: 2px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  background: var(--control-bg);
-  padding: 9px;
-}
-
-.workspace-summary-grid span {
-  color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 760;
-  text-transform: uppercase;
-}
-
-.workspace-summary-grid strong {
-  min-width: 0;
-  overflow-wrap: anywhere;
-  color: var(--strong-text);
-  font-size: 0.84rem;
-  line-height: 1.25;
 }
 
 .offeror-list {

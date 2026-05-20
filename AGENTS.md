@@ -249,6 +249,7 @@ Le chiavi attive sono:
 - `tpl-lotti-1-4-theme`
 - `tpl-lotti-1-4-workspace`
 - `tpl-lotti-1-4-scenarios`
+- `tpl-lotti-1-4-hidden-base-scenarios`
 
 Le chiavi `tpl-simulator-*` sono legacy e vanno mantenute leggibili in fallback. Se cambi la forma degli snapshot JSON, aggiorna normalizzazione/import in `src/lib/scenario-persistence.ts` e mantieni compatibilità ragionevole con export precedenti.
 

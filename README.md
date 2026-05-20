@@ -22,7 +22,7 @@ npm run preview -- --port 4173
 
 ## Cosa fa
 
-- Gestisce scenari, concorrenti e partecipazioni dalla barra laterale `Workspace`, con modalità `Gestisci workspace` e rientro unico tramite `Indietro`.
+- Gestisce scenari, concorrenti, partecipazioni e parametri direttamente dalla barra laterale, senza passaggi intermedi.
 - Gestisce più concorrenti e la partecipazione ai lotti singoli `L1`, `L2`, `L3`, `L4`.
 - Cambia lotto di lavoro dalla scheda centrale, senza aprire la gestione laterale.
 - Simula le combinatorie ammesse `L1+L2`, `L2+L3`, `L3+L4`, `L1+L4`.
@@ -196,6 +196,6 @@ Eseguire il deploy solo quando richiesto esplicitamente. Quando la richiesta è 
 
 ## Storage e compatibilità
 
-Le chiavi attive di `localStorage` sono `tpl-lotti-1-4-theme`, `tpl-lotti-1-4-workspace` e `tpl-lotti-1-4-scenarios`.
+Le chiavi attive di `localStorage` sono `tpl-lotti-1-4-theme`, `tpl-lotti-1-4-workspace`, `tpl-lotti-1-4-scenarios` e `tpl-lotti-1-4-hidden-base-scenarios`.
 
 Gli export correnti usano `schemaVersion: 7` e includono anche la configurazione della tab `Ottimizzazione`, senza tetti finanziari esterni, step economici o massimi di ribasso. Gli scenari salvati con le vecchie chiavi `tpl-simulator-*` o senza configurazione di ottimizzazione restano leggibili: la normalizzazione in `src/lib/scenario-persistence.ts` migra i campi legacy, inclusi `demoScenarioId`, snapshot incompleti, vecchi `stepUnits`, vecchi parametri economici e input mancanti.

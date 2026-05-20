@@ -1,6 +1,5 @@
 import {
   AlertTriangle,
-  ArrowLeft,
   BarChart3,
   BookOpen,
   CheckCircle2,
@@ -157,6 +156,19 @@ const getStoredTheme = (): ThemePreference => {
     return stored === "light" || stored === "dark" || stored === "auto" ? stored : "auto";
   } catch {
     return "auto";
+  }
+};
+
+const getStoredHiddenBaseScenarios = (): BaseScenarioId[] => {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEYS.hiddenBaseScenarios) ?? "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((value): value is BaseScenarioId =>
+      typeof value === "string" && BASE_SCENARIOS.some((scenario) => scenario.id === value),
+    );
+  } catch {
+    return [];
   }
 };
 
@@ -373,9 +385,9 @@ function App() {
   const [scenarioName, setScenarioName] = useState(initialWorkspace?.scenarioName ?? initialBaseScenario.title);
   const [savedScenarios, setSavedScenarios] = useState<SavedScenarioSnapshot[]>(readStoredSavedScenarios);
   const [activeSavedScenarioId, setActiveSavedScenarioId] = useState<string | undefined>(initialWorkspace?.activeSavedScenarioId);
+  const [hiddenBaseScenarioIds, setHiddenBaseScenarioIds] = useState<BaseScenarioId[]>(getStoredHiddenBaseScenarios);
   const [compareScenarioId, setCompareScenarioId] = useState("");
   const [scenarioNotice, setScenarioNotice] = useState("");
-  const [isWorkspaceManagementOpen, setWorkspaceManagementOpen] = useState(false);
   const [isSuggestionsPanelExpanded, setSuggestionsPanelExpanded] = useState(false);
   const [isWarningsPanelExpanded, setWarningsPanelExpanded] = useState(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>(getStoredTheme);
@@ -427,10 +439,18 @@ function App() {
     window.localStorage.setItem(STORAGE_KEYS.scenarios, JSON.stringify(savedScenarios));
   }, [savedScenarios]);
 
+  useEffect(() => {
+    window.localStorage.setItem(STORAGE_KEYS.hiddenBaseScenarios, JSON.stringify(hiddenBaseScenarioIds));
+  }, [hiddenBaseScenarioIds]);
+
   const selectedBidder = bidders.find((bidder) => bidder.id === selectedBidderId) ?? bidders[0];
   const selectedLot = LOTS.find((lot) => lot.id === selectedLotId) ?? LOTS[0];
   const selectedLotContext = LOT_CONTEXT[selectedLotId];
   const selectedBaseScenario = BASE_SCENARIOS.find((scenario) => scenario.id === baseScenarioId) ?? BASE_SCENARIOS[0];
+  const visibleBaseScenarios = useMemo(
+    () => BASE_SCENARIOS.filter((scenario) => !hiddenBaseScenarioIds.includes(scenario.id)),
+    [hiddenBaseScenarioIds],
+  );
   const result = useMemo(() => simulate(bidders, settings, selectedBidder?.id ?? ""), [bidders, settings, selectedBidder?.id]);
   const optimizationResult = useMemo(
     () => optimizeOffer(bidders, settings, selectedBidder?.id ?? "", selectedLotId, optimizationConfig),
@@ -439,7 +459,6 @@ function App() {
   const selectedLotScore = selectedBidder ? result.lotScores[selectedBidder.id][selectedLotId] : undefined;
   const selectedComboScore = selectedBidder ? result.comboScores[selectedBidder.id][selectedPairId] : undefined;
   const selectedLotLabel = selectedLot.label;
-  const selectedPairLabel = PAIRS.find((pair) => pair.id === selectedPairId)?.label ?? selectedPairId;
   const activeTabLabel = workspaceTabs.find((tab) => tab.value === activeTab)?.label ?? "Tecnica";
   const workspaceTitle =
     activeTab === "risultati" ? `Risultati - ${selectedLotLabel}` :
@@ -553,6 +572,20 @@ function App() {
     setSelectedBidderId(scenario.defaultBidderId);
     setSelectedLotId(scenario.defaultLotId);
     setSelectedPairId(scenario.defaultPairId);
+  };
+
+  const deleteBaseScenario = (scenario: BaseScenario) => {
+    setHiddenBaseScenarioIds((current) => (current.includes(scenario.id) ? current : [...current, scenario.id]));
+    setScenarioNotice(
+      scenario.id === baseScenarioId
+        ? `Scenario base eliminato dalla lista: ${scenario.title}. Lo scenario corrente resta in lavoro.`
+        : `Scenario base eliminato dalla lista: ${scenario.title}.`,
+    );
+  };
+
+  const restoreBaseScenarios = () => {
+    setHiddenBaseScenarioIds([]);
+    setScenarioNotice("Scenari base ripristinati nella barra laterale.");
   };
 
   const updateLotOffer = (lotId: LotId, updater: (offer: LotOffer) => LotOffer) => {
@@ -803,238 +836,210 @@ function App() {
       </header>
 
       <div className="layout">
-        <aside className={`left-rail ${isWorkspaceManagementOpen ? "manager-open" : "manager-closed"}`}>
-          {isWorkspaceManagementOpen ? (
-            <>
-              <section className="panel workspace-management-head">
-                <button className="action-button subtle" onClick={() => setWorkspaceManagementOpen(false)}>
-                  <ArrowLeft size={16} />
-                  Indietro
-                </button>
-                <div className="hint">Gestione scenario, concorrenti, partecipazioni e opzioni del workspace.</div>
-              </section>
+        <aside className="left-rail">
+          <ScenarioTools
+            scenarioName={scenarioName}
+            savedScenarios={savedScenarios}
+            activeSavedScenarioId={activeSavedScenarioId}
+            scenarioNotice={scenarioNotice}
+            onScenarioNameChange={renameCurrentScenario}
+            onNew={createNewScenario}
+            onSave={saveCurrentScenario}
+            onDuplicate={duplicateCurrentScenario}
+            onDelete={() => deleteSavedScenario()}
+            onDeleteSaved={deleteSavedScenario}
+            onExport={exportCurrentScenario}
+            onImportFile={importScenarioFile}
+            onLoadSaved={loadSavedScenario}
+            onResetBaseScenario={resetCurrentBaseScenario}
+          />
 
-              <ScenarioTools
-                scenarioName={scenarioName}
-                savedScenarios={savedScenarios}
-                activeSavedScenarioId={activeSavedScenarioId}
-                scenarioNotice={scenarioNotice}
-                onScenarioNameChange={renameCurrentScenario}
-                onNew={createNewScenario}
-                onSave={saveCurrentScenario}
-                onDuplicate={duplicateCurrentScenario}
-                onDelete={() => deleteSavedScenario()}
-                onDeleteSaved={deleteSavedScenario}
-                onExport={exportCurrentScenario}
-                onImportFile={importScenarioFile}
-                onLoadSaved={loadSavedScenario}
-                onResetBaseScenario={resetCurrentBaseScenario}
-              />
-
-              <section className="panel base-panel">
-                <div className="section-title">
-                  <ClipboardList size={18} />
-                  Scenari base
-                  <HelpTooltip>Parti da uno scenario precompilato solo come base di lavoro: non rappresenta un'offerta ufficiale.</HelpTooltip>
-                </div>
-                <div className="base-list">
-                  {BASE_SCENARIOS.map((scenario) => (
-                    <button
-                      key={scenario.id}
-                      className={`base-card ${scenario.id === baseScenarioId ? "active" : ""}`}
-                      onClick={() => loadBaseScenario(scenario)}
-                    >
-                      <strong>{scenario.title}</strong>
-                      <span>{scenario.body}</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="hint">Profili simulati da fonti pubbliche e modelli locali: servono per confrontare scenari, non rappresentano offerte ufficiali.</div>
-              </section>
-
-              <section className="panel">
-                <div className="section-title">
-                  <SlidersHorizontal size={18} />
-                  Parametri
-                  <HelpTooltip>Qui scegli la soglia Q/T e l'eventuale deroga: cambia prima questi parametri se vuoi testare una lettura più o meno selettiva.</HelpTooltip>
-                </div>
-                <div className="active-scenario">
-                  <span>Scenario attivo</span>
-                  <strong>{selectedBaseScenario.title}</strong>
-                  <ul className="scenario-basis" aria-label="Base scenario">
-                    {selectedBaseScenario.basis.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-                <label className="field">
-                  <span>
-                    Soglia Q/T
-                    <HelpTooltip>Un'offerta sotto soglia non passa alla valutazione economica. Le tre opzioni corrispondono alle letture già richiamate nelle istruzioni.</HelpTooltip>
-                  </span>
-                  <select
-                    value={settings.threshold}
-                    onChange={(event) => setSettings((current) => ({ ...current, threshold: Number(event.target.value) }))}
+          <section className="panel base-panel">
+            <div className="section-title">
+              <ClipboardList size={18} />
+              Scenari base
+              <HelpTooltip>Parti da uno scenario precompilato solo come base di lavoro: non rappresenta un'offerta ufficiale.</HelpTooltip>
+            </div>
+            <div className="base-list">
+              {visibleBaseScenarios.map((scenario) => (
+                <div key={scenario.id} className="base-card-row">
+                  <button
+                    className={`base-card ${scenario.id === baseScenarioId ? "active" : ""}`}
+                    onClick={() => loadBaseScenario(scenario)}
                   >
-                    {THRESHOLD_OPTIONS.map((option) => (
-                      <option key={option.id} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="toggle-row">
-                  <input
-                    type="checkbox"
-                    checked={settings.applyAwardLimitDerogation}
-                    onChange={(event) => setSettings((current) => ({ ...current, applyAwardLimitDerogation: event.target.checked }))}
-                  />
-                  <span>Applica deroga al limite di due lotti se necessaria per evitare lotti non assegnati</span>
-                </label>
-                <div className="hint">Soglia attiva: scenario disciplinare se resta a 37 pt. Q/T max ricostruito: {formatPoints(maxQtPoints())} punti. Le incongruenze sono nel pannello criticità.</div>
-              </section>
-
-              <section className="panel">
-                <div className="section-title between">
-                  <span>
-                    <Route size={18} />
-                    Concorrenti
-                    <HelpTooltip>Da qui aggiungi, rinomini, selezioni o elimini i concorrenti. La compilazione centrale lavora sempre sul concorrente attivo.</HelpTooltip>
-                  </span>
-                  <button className="icon-button primary" onClick={addBidder} aria-label="Aggiungi concorrente" title="Aggiungi concorrente">
-                    <Plus size={17} />
+                    <strong>{scenario.title}</strong>
+                    <span>{scenario.body}</span>
+                  </button>
+                  <button
+                    className="icon-button mini danger"
+                    onClick={() => deleteBaseScenario(scenario)}
+                    aria-label={`Elimina scenario base ${scenario.title}`}
+                    title="Elimina scenario base"
+                  >
+                    <X size={14} />
                   </button>
                 </div>
-                {selectedBidder && (
-                  <div className="sidebar-admin-block">
-                    <label className="field compact">
-                      <span>
-                        Nome concorrente
-                        <HelpTooltip>Il nome serve a rendere leggibili classifica, confronto ed export. Non incide sui punteggi.</HelpTooltip>
-                      </span>
+              ))}
+              {!visibleBaseScenarios.length && <div className="empty-sidebar-note">Tutti gli scenari base sono stati eliminati dalla lista.</div>}
+            </div>
+            {hiddenBaseScenarioIds.length > 0 && (
+              <button className="action-button compact" onClick={restoreBaseScenarios}>
+                Ripristina scenari base
+              </button>
+            )}
+            <div className="hint">Profili simulati da fonti pubbliche e modelli locali: servono per confrontare scenari, non rappresentano offerte ufficiali.</div>
+          </section>
+
+          <section className="panel">
+            <div className="section-title between">
+              <span>
+                <Route size={18} />
+                Concorrenti
+                <HelpTooltip>Da qui aggiungi, rinomini, selezioni o elimini i concorrenti. La compilazione centrale lavora sempre sul concorrente attivo.</HelpTooltip>
+              </span>
+              <button className="icon-button primary" onClick={addBidder} aria-label="Aggiungi concorrente" title="Aggiungi concorrente">
+                <Plus size={17} />
+              </button>
+            </div>
+            {selectedBidder && (
+              <div className="sidebar-admin-block">
+                <label className="field compact">
+                  <span>
+                    Nome concorrente
+                    <HelpTooltip>Il nome serve a rendere leggibili classifica, confronto ed export. Non incide sui punteggi.</HelpTooltip>
+                  </span>
+                  <input
+                    value={selectedBidder.name}
+                    onChange={(event) =>
+                      updateBidder(selectedBidder.id, (bidder) => {
+                        bidder.name = event.target.value;
+                        return bidder;
+                      })
+                    }
+                  />
+                </label>
+              </div>
+            )}
+            <div className="offeror-list">
+              {bidders.map((bidder) => {
+                const activeLots = LOTS.filter((lot) => bidder.lots[lot.id].enabled).length;
+                const isSelected = bidder.id === selectedBidder?.id;
+                return (
+                  <div key={bidder.id} className={`sidebar-row-actions ${isSelected ? "selected" : ""}`}>
+                    <button className="offeror-row" onClick={() => setSelectedBidderId(bidder.id)}>
+                      <span>{bidder.name}</span>
+                      <small>
+                        {activeLots} {activeLots === 1 ? "lotto" : "lotti"}
+                      </small>
+                    </button>
+                    <button
+                      className="icon-button mini danger"
+                      disabled={bidders.length <= 1}
+                      onClick={() => removeBidder(bidder.id)}
+                      aria-label={`Elimina concorrente ${bidder.name}`}
+                      title="Elimina concorrente"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {selectedBidder && (
+            <section className="panel">
+              <div className="section-title">
+                <BarChart3 size={18} />
+                Partecipazione
+                <HelpTooltip>Attiva lotti e combinatorie del concorrente selezionato. Queste opzioni si gestiscono solo dalla barra laterale.</HelpTooltip>
+              </div>
+              <div className="sidebar-participation-grid" aria-label={`Partecipazione ${selectedBidder.name}`}>
+                {LOTS.map((lot) => {
+                  const lotScore = result.lotScores[selectedBidder.id][lot.id];
+                  return (
+                    <label key={lot.id} className={selectedBidder.lots[lot.id].enabled ? lotScore.admitted ? "ok" : "warn" : ""}>
+                      <span>{lot.shortLabel}</span>
                       <input
-                        value={selectedBidder.name}
+                        type="checkbox"
+                        checked={selectedBidder.lots[lot.id].enabled}
                         onChange={(event) =>
-                          updateBidder(selectedBidder.id, (bidder) => {
-                            bidder.name = event.target.value;
-                            return bidder;
+                          updateBidder(selectedBidder.id, (draft) => {
+                            draft.lots[lot.id].enabled = event.target.checked;
+                            return draft;
                           })
                         }
                       />
                     </label>
-                  </div>
-                )}
-                <div className="offeror-list">
-                  {bidders.map((bidder) => {
-                    const activeLots = LOTS.filter((lot) => bidder.lots[lot.id].enabled).length;
-                    const isSelected = bidder.id === selectedBidder?.id;
-                    return (
-                      <div key={bidder.id} className={`sidebar-row-actions ${isSelected ? "selected" : ""}`}>
-                        <button className="offeror-row" onClick={() => setSelectedBidderId(bidder.id)}>
-                          <span>{bidder.name}</span>
-                          <small>
-                            {activeLots} {activeLots === 1 ? "lotto" : "lotti"}
-                          </small>
-                        </button>
-                        <button
-                          className="icon-button mini danger"
-                          disabled={bidders.length <= 1}
-                          onClick={() => removeBidder(bidder.id)}
-                          aria-label={`Elimina concorrente ${bidder.name}`}
-                          title="Elimina concorrente"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-
-              {selectedBidder && (
-                <section className="panel">
-                  <div className="section-title">
-                    <BarChart3 size={18} />
-                    Partecipazione
-                    <HelpTooltip>Attiva lotti e combinatorie del concorrente selezionato. Queste opzioni si gestiscono solo dalla barra laterale.</HelpTooltip>
-                  </div>
-                  <div className="sidebar-participation-grid" aria-label={`Partecipazione ${selectedBidder.name}`}>
-                    {LOTS.map((lot) => {
-                      const lotScore = result.lotScores[selectedBidder.id][lot.id];
-                      return (
-                        <label key={lot.id} className={selectedBidder.lots[lot.id].enabled ? lotScore.admitted ? "ok" : "warn" : ""}>
-                          <span>{lot.shortLabel}</span>
-                          <input
-                            type="checkbox"
-                            checked={selectedBidder.lots[lot.id].enabled}
-                            onChange={(event) =>
-                              updateBidder(selectedBidder.id, (draft) => {
-                                draft.lots[lot.id].enabled = event.target.checked;
-                                return draft;
-                              })
-                            }
-                          />
-                        </label>
-                      );
-                    })}
-                  </div>
-                  <div className="section-title compact">Combinatorie presentate</div>
-                  <div className="sidebar-participation-grid two" aria-label={`Combinatorie ${selectedBidder.name}`}>
-                    {PAIRS.map((pair) => {
-                      const comboScore = result.comboScores[selectedBidder.id][pair.id];
-                      return (
-                        <label key={pair.id} className={selectedBidder.combos[pair.id].enabled ? comboScore.admissible ? "ok" : "warn" : ""}>
-                          <span>{pair.label.replace("Lotti ", "")}</span>
-                          <input
-                            type="checkbox"
-                            checked={selectedBidder.combos[pair.id].enabled}
-                            onChange={(event) =>
-                              updateBidder(selectedBidder.id, (draft) => {
-                                draft.combos[pair.id].enabled = event.target.checked;
-                                return draft;
-                              })
-                            }
-                          />
-                        </label>
-                      );
-                    })}
-                  </div>
-                  <div className="hint">Per una combinatoria servono anche i due lotti singoli collegati.</div>
-                </section>
-              )}
-
-            </>
-          ) : (
-            <section className="panel workspace-entry-panel">
-              <div className="section-title">
-                <SlidersHorizontal size={18} />
-                Workspace
-                <HelpTooltip>Apri la gestione laterale per aggiungere, rinominare o eliminare scenari e concorrenti, oltre a modificare lotti e opzioni.</HelpTooltip>
+                  );
+                })}
               </div>
-              <div className="workspace-summary-grid">
-                <div>
-                  <span>Scenario</span>
-                  <strong>{scenarioName}</strong>
-                </div>
-                <div>
-                  <span>Concorrente</span>
-                  <strong>{selectedBidder?.name ?? "n/d"}</strong>
-                </div>
-                <div>
-                  <span>Lotto</span>
-                  <strong>{selectedLotId}</strong>
-                </div>
-                <div>
-                  <span>Combinatoria</span>
-                  <strong>{selectedPairLabel.replace("Lotti ", "")}</strong>
-                </div>
+              <div className="section-title compact">Combinatorie presentate</div>
+              <div className="sidebar-participation-grid two" aria-label={`Combinatorie ${selectedBidder.name}`}>
+                {PAIRS.map((pair) => {
+                  const comboScore = result.comboScores[selectedBidder.id][pair.id];
+                  return (
+                    <label key={pair.id} className={selectedBidder.combos[pair.id].enabled ? comboScore.admissible ? "ok" : "warn" : ""}>
+                      <span>{pair.label.replace("Lotti ", "")}</span>
+                      <input
+                        type="checkbox"
+                        checked={selectedBidder.combos[pair.id].enabled}
+                        onChange={(event) =>
+                          updateBidder(selectedBidder.id, (draft) => {
+                            draft.combos[pair.id].enabled = event.target.checked;
+                            return draft;
+                          })
+                        }
+                      />
+                    </label>
+                  );
+                })}
               </div>
-              <button className="action-button primary" onClick={() => setWorkspaceManagementOpen(true)}>
-                <SlidersHorizontal size={16} />
-                Gestisci workspace
-              </button>
+              <div className="hint">Per una combinatoria servono anche i due lotti singoli collegati.</div>
             </section>
           )}
+
+          <section className="panel">
+            <div className="section-title">
+              <SlidersHorizontal size={18} />
+              Parametri
+              <HelpTooltip>Qui scegli la soglia Q/T e l'eventuale deroga: cambia questi parametri quando vuoi testare una lettura più o meno selettiva.</HelpTooltip>
+            </div>
+            <div className="active-scenario">
+              <span>Scenario attivo</span>
+              <strong>{selectedBaseScenario.title}</strong>
+              <ul className="scenario-basis" aria-label="Base scenario">
+                {selectedBaseScenario.basis.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+            <label className="field">
+              <span>
+                Soglia Q/T
+                <HelpTooltip>Un'offerta sotto soglia non passa alla valutazione economica. Le tre opzioni corrispondono alle letture già richiamate nelle istruzioni.</HelpTooltip>
+              </span>
+              <select
+                value={settings.threshold}
+                onChange={(event) => setSettings((current) => ({ ...current, threshold: Number(event.target.value) }))}
+              >
+                {THRESHOLD_OPTIONS.map((option) => (
+                  <option key={option.id} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="toggle-row">
+              <input
+                type="checkbox"
+                checked={settings.applyAwardLimitDerogation}
+                onChange={(event) => setSettings((current) => ({ ...current, applyAwardLimitDerogation: event.target.checked }))}
+              />
+              <span>Applica deroga al limite di due lotti se necessaria per evitare lotti non assegnati</span>
+            </label>
+            <div className="hint">Soglia attiva: scenario disciplinare se resta a 37 pt. Q/T max ricostruito: {formatPoints(maxQtPoints())} punti. Le incongruenze sono nel pannello criticità.</div>
+          </section>
         </aside>
 
         <main className="workspace">

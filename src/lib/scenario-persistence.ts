@@ -17,6 +17,7 @@ export const STORAGE_KEYS = {
   theme: "tpl-lotti-1-4-theme",
   workspace: "tpl-lotti-1-4-workspace",
   scenarios: "tpl-lotti-1-4-scenarios",
+  hiddenBaseScenarios: "tpl-lotti-1-4-hidden-base-scenarios",
 } as const;
 
 export const LEGACY_STORAGE_KEYS = {
