@@ -5,6 +5,15 @@ import { chromium } from "playwright";
 const localPort = process.env.SMOKE_PORT ?? "4173";
 const externalUrl = process.env.SMOKE_URL;
 const baseUrl = externalUrl ?? `http://127.0.0.1:${localPort}`;
+const accessClientId = process.env.SMOKE_ACCESS_CLIENT_ID ?? process.env.CF_ACCESS_CLIENT_ID;
+const accessClientSecret = process.env.SMOKE_ACCESS_CLIENT_SECRET ?? process.env.CF_ACCESS_CLIENT_SECRET;
+const accessHeaders =
+  accessClientId && accessClientSecret
+    ? {
+        "CF-Access-Client-Id": accessClientId,
+        "CF-Access-Client-Secret": accessClientSecret,
+      }
+    : undefined;
 const forbiddenTexts = [
   "Leva economica",
   "Step %",
@@ -23,7 +32,7 @@ const waitForServer = async (url, timeoutMs = 20000) => {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, { headers: accessHeaders });
       if (response.ok) return;
     } catch {
       // Server not ready yet.
@@ -173,7 +182,7 @@ const main = async () => {
       { suffix: "mobile-dark", viewport: { width: 390, height: 844 }, theme: "dark" },
     ];
     for (const check of checks) {
-      const page = await browser.newPage({ viewport: check.viewport });
+      const page = await browser.newPage({ extraHTTPHeaders: accessHeaders, viewport: check.viewport });
       const messages = [];
       page.on("console", (msg) => {
         if (["error", "warning"].includes(msg.type())) messages.push(`${msg.type()}: ${msg.text()}`);

@@ -72,7 +72,7 @@ Usa queste fonti prima di intervenire sulle aree corrispondenti:
 - UI principale, report, confronto e istruzioni: `src/App.tsx`, `src/components/scenario-panels.tsx`, `src/components/instructions-page.tsx`;
 - versioning e changelog frontend: `CHANGELOG.md`, `src/lib/version.ts`, `src/lib/changelog.ts`, `src/components/release-panel.tsx`, `docs/guides/versioning-e-release.md`;
 - layout, token e responsive: `src/styles.css`;
-- deploy Cloudflare: `wrangler.toml`, `package.json` e script npm collegati;
+- deploy Cloudflare: `wrangler.toml`, `package.json`, `scripts/deploy-cloudflare.mjs`, `public/_headers`, `public/_redirects`, `public/_routes.json`, `functions/api/version.js`, `.github/workflows/ci.yml` e `docs/guides/cloudflare-pages.md`;
 - documenti ufficiali: `docs/milano-lotti-extraurbani-om/`.
 
 Per prodotti, API, fonti pubbliche, prezzi, policy, provider o dati variabili, verifica fonti aggiornate e preferisci fonti ufficiali. Se un fetch fallisce, prova una via alternativa prima di fermarti.
@@ -96,10 +96,11 @@ npm run dev -- --port 4173
 npm test
 npm run build
 npm run preview -- --port 4173
+npm run deploy:preview -- --branch nome-branch
 npm run deploy:cloudflare
 ```
 
-`npm run deploy:cloudflare` pubblica su Cloudflare Pages progetto `gare-lotti-milanesi`. Usalo solo se l'utente chiede esplicitamente deploy/pubblicazione.
+`npm run deploy:preview` pubblica una preview Cloudflare Pages e non modifica produzione. `npm run deploy:cloudflare` pubblica su Cloudflare Pages progetto `gare-lotti-milanesi`, solo da `main`, con smoke post-deploy. Usalo solo se l'utente chiede esplicitamente deploy/pubblicazione.
 
 ## Struttura da conoscere
 
@@ -111,12 +112,15 @@ npm run deploy:cloudflare
 - `src/lib/scenario-persistence.ts`: normalizzazione workspace, migrazione storage e import/export JSON.
 - `src/lib/version.ts`: versione applicativa e data build mostrate nel frontend.
 - `src/lib/changelog.ts`: parser del changelog bundlato a build time.
+- `src/lib/cloudflare-web-analytics.ts`: caricamento opzionale del beacon Cloudflare Web Analytics.
 - `src/lib/*.test.ts`: test Vitest del motore di scoring e della persistenza.
+- `functions/api/version.js`: endpoint Pages Function per stato runtime del deploy.
 - `src/App.tsx`: UI principale, persistenza locale, import/export, analisi puntuale criterio e ottimizzazione.
 - `src/components/release-panel.tsx`: scheda `Versione e changelog`.
 - `src/components/scenario-panels.tsx`: pannelli scenario, confronto, report.
 - `src/styles.css`: token CSS e layout responsive.
 - `CHANGELOG.md`: storico versionato in formato Keep a Changelog.
+- `docs/guides/cloudflare-pages.md`: runbook deploy Cloudflare, preview, Access, Web Analytics, WAF/cache e rollback.
 - `docs/guides/versioning-e-release.md`: procedura SemVer e rilascio.
 - `docs/milano-lotti-extraurbani-om/`: allegati gara, da trattare come fonti e non come file da riscrivere.
 - `wrangler.toml`: configurazione Cloudflare Pages.
@@ -133,8 +137,8 @@ npm run deploy:cloudflare
 | Persistenza/import/export | `src/lib/scenario-persistence.ts`, `src/App.tsx`, test persistence | Test persistence/import, `npm test`, `npm run build` |
 | UI o microcopy | `src/App.tsx`, `src/components/**`, `src/styles.css` | `npm run build`; browser mirato se layout/flusso può cambiare |
 | Versioning/changelog frontend | `CHANGELOG.md`, `src/lib/version.ts`, `src/lib/changelog.ts`, `src/components/release-panel.tsx`, `scripts/release.mjs`, `package.json`, `package-lock.json` | `npm test`, `npm run build`, browser mirato se cambia la scheda |
-| Routing/istruzioni pubbliche | `src/components/instructions-page.tsx`, `public/_redirects`, routing Vite/Cloudflare | `npm run build`, preview e verifica rotta |
-| Deploy/build config | `package.json`, `wrangler.toml`, config Vite | `npm run build`, controllo config e deploy solo se richiesto |
+| Routing/istruzioni pubbliche | `src/components/instructions-page.tsx`, `public/_redirects`, `public/_headers`, `public/_routes.json`, routing Vite/Cloudflare | `npm run build`, preview e verifica rotta |
+| Deploy/build config | `package.json`, `wrangler.toml`, `.github/workflows/ci.yml`, `scripts/deploy-cloudflare.mjs`, `functions/api/version.js`, config Vite | `npm run build`, controllo config e deploy solo se richiesto |
 
 ## Regole sui dati di gara
 
@@ -327,4 +331,4 @@ Prima di pubblicare:
 npm run deploy:cloudflare
 ```
 
-Al termine verifica la produzione in modo proporzionato, di norma su `https://gare-lotti-milanesi.pages.dev`: caricamento app sempre dopo un deploy, scenario base principale per modifiche runtime, salvataggio/confronto/report solo se coinvolti, tema chiaro/scuro solo per modifiche UI pertinenti. Comunica URL/risultato del deploy se il comando lo fornisce, commit o PR/merge rilevanti, controlli eseguiti, verifiche saltate intenzionalmente e rischi residui.
+Il comando blocca worktree sporchi o branch diversi da `main`, compila, pubblica `dist`, esegue `npm run smoke` sulla produzione e stampa branch Pages, commit e URL di verifica. Al termine verifica la produzione in modo proporzionato, di norma su `https://gare-lotti-milanesi.pages.dev` e `/api/version`: caricamento app sempre dopo un deploy, scenario base principale per modifiche runtime, salvataggio/confronto/report solo se coinvolti, tema chiaro/scuro solo per modifiche UI pertinenti. Comunica URL/risultato del deploy se il comando lo fornisce, commit o PR/merge rilevanti, controlli eseguiti, verifiche saltate intenzionalmente e rischi residui.

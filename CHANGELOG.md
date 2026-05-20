@@ -6,6 +6,10 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+### Non versionato
+
+- Rafforzata l'integrazione Cloudflare Pages con deploy preview/produzione, smoke post-deploy, endpoint runtime, header, Web Analytics opzionale e runbook operativo.
+
 ## [0.2.3] — 2026-05-20
 
 ### Correzioni

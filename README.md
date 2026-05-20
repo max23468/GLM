@@ -60,13 +60,19 @@ src/lib/scoring.ts                     Motore di scoring e selezione scenario
 src/lib/tradeoff.ts                    Logica interna di analisi puntuale criterio e costo tecnico
 src/lib/version.ts                     Versione applicativa e data build mostrate nel frontend
 src/lib/changelog.ts                   Parser del changelog bundlato a build time
+src/lib/cloudflare-web-analytics.ts    Iniezione opzionale del beacon Cloudflare Web Analytics
 src/lib/*.test.ts                      Test Vitest su scoring e persistenza
+functions/api/version.js               Pages Function per stato runtime del deploy
 src/components/instructions-page.tsx   Pagina web navigabile con istruzioni di compilazione
 src/components/release-panel.tsx       Scheda Versione e changelog
 src/styles.css                         Design system locale e layout responsive
-public/_redirects                      Fallback Cloudflare Pages per URL /istruzioni
-.github/workflows/ci.yml               CI GitHub Actions con validazione dati, test e build
+public/_headers                        Header Cloudflare Pages per sicurezza e cache asset
+public/_redirects                      Redirect canonico Cloudflare Pages per URL /istruzioni
+public/_routes.json                    Invocazione Pages Functions limitata a /api/*
+.github/workflows/ci.yml               CI/CD GitHub Actions con validazione, preview e produzione
+scripts/deploy-cloudflare.mjs          Deploy preview/produzione con guard, report e smoke post-deploy
 CHANGELOG.md                           Storico versionato in formato Keep a Changelog
+docs/guides/cloudflare-pages.md        Runbook Cloudflare Pages, preview, Access, Web Analytics e rollback
 docs/guides/versioning-e-release.md    Procedura SemVer e rilascio
 docs/LOGICA_SIMULATORE.md              Logica e assunzioni operative del simulatore
 docs/milano-lotti-extraurbani-om/      Allegati di gara versionati con Git LFS
@@ -85,6 +91,8 @@ npm run validate:data
 npm run validate:demo
 npm run smoke
 npm run prepublish:check
+npm run deploy:preview -- --branch nome-branch
+npm run deploy:cloudflare
 npm run release -- --dry-run
 npm run release
 npm run preview -- --port 4173
@@ -97,6 +105,8 @@ npm run preview -- --port 4173
 Il repository espone controlli automatici e un changelog locale bundlato nel sito:
 
 - CI GitHub Actions su push, pull request e avvio manuale, con `npm run validate:data`, `npm test` e `npm run build`;
+- deploy preview Cloudflare Pages su pull request interne, con smoke sull'URL pubblicato quando i secret Cloudflare sono configurati;
+- deploy produzione Cloudflare Pages su push a `main`, con smoke post-deploy su `https://gare-lotti-milanesi.pages.dev`;
 - validatori Vitest per coerenza di lotti, criteri, soglie, fonti, warning e scenari demo;
 - pannello `Versione e changelog` con versione locale, data build e note lette da `CHANGELOG.md` a build time, senza link o rimandi a repository esterni nel frontend.
 
@@ -173,7 +183,17 @@ L'URL pubblico resta `https://gare-lotti-milanesi.pages.dev`: il project name Cl
 npm run deploy:cloudflare
 ```
 
-Il comando compila l'app con Vite e pubblica la cartella `dist` sul branch `main`.
+Il comando compila l'app con Vite, blocca pubblicazioni da worktree sporco o branch non `main`, pubblica la cartella `dist` sul branch `main`, esegue lo smoke sulla produzione e stampa branch Pages, commit e URL di verifica.
+
+Per una preview Cloudflare:
+
+```bash
+npm run deploy:preview -- --branch nome-branch
+```
+
+La preview usa un branch Pages separato, esegue lo smoke sull'URL preview e non modifica produzione.
+
+L'endpoint `https://gare-lotti-milanesi.pages.dev/api/version` espone lo stato runtime del deploy. Il routing SPA usa il fallback predefinito di Cloudflare Pages, senza un rewrite `/* /index.html 200`, per evitare loop con la normalizzazione `index.html`. I dettagli operativi completi, inclusi GitHub secrets, Access sulle preview, Web Analytics, header, Cache Rules, WAF/rate limiting e rollback, sono in [`docs/guides/cloudflare-pages.md`](docs/guides/cloudflare-pages.md).
 
 Eseguire il deploy solo quando richiesto esplicitamente. Quando la richiesta è `pubblica`, `rilascia`, `deploya` o equivalente, il flusso atteso è una pubblicazione completa ma proporzionata al tipo di diff:
 
