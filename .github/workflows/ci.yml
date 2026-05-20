@@ -62,6 +62,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
       - name: Deploy preview e smoke
         if: ${{ env.CLOUDFLARE_ACCOUNT_ID != '' && env.CLOUDFLARE_API_TOKEN != '' }}
         run: npm run deploy:preview -- --branch "$GITHUB_HEAD_REF"
@@ -92,6 +95,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
 
       - name: Deploy produzione e smoke
         if: ${{ env.CLOUDFLARE_ACCOUNT_ID != '' && env.CLOUDFLARE_API_TOKEN != '' }}
