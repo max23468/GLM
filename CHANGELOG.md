@@ -10,6 +10,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 - Rafforzata l'integrazione Cloudflare Pages con deploy preview/produzione, smoke post-deploy, endpoint runtime, header, Web Analytics opzionale e runbook operativo.
 
+## [0.2.5] — 2026-05-20
+
+### Correzioni
+
+- **Riepilogo scenario**: il box alto mantiene solo l'azione `Risultati`, evitando scorciatoie duplicate verso `Tecnica` ed `Economica`.
+
 ## [0.2.4] — 2026-05-20
 
 ### Correzioni

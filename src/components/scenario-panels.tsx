@@ -146,8 +146,6 @@ type StrategicSummaryProps = {
   result: SimulationResult;
   selectedLotAdmitted?: boolean;
   activeSectionLabel: string;
-  onOpenTechnical: () => void;
-  onOpenEconomic: () => void;
   onOpenResults: () => void;
 };
 
@@ -158,8 +156,6 @@ export function StrategicSummary({
   result,
   selectedLotAdmitted,
   activeSectionLabel,
-  onOpenTechnical,
-  onOpenEconomic,
   onOpenResults,
 }: StrategicSummaryProps) {
   const selected = result.selectedScenario;
@@ -184,12 +180,6 @@ export function StrategicSummary({
           </div>
         </div>
         <div className="summary-actions" aria-label="Azioni rapide">
-          <button className="action-button compact" onClick={onOpenTechnical}>
-            Tecnica
-          </button>
-          <button className="action-button compact" onClick={onOpenEconomic}>
-            Economica
-          </button>
           <button className="action-button compact primary" onClick={onOpenResults}>
             <Trophy size={16} />
             Risultati

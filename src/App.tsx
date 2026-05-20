@@ -1049,8 +1049,6 @@ function App() {
                 result={result}
                 selectedLotAdmitted={selectedLotScore?.admitted}
                 activeSectionLabel={activeTabLabel}
-                onOpenTechnical={() => setActiveTab("tecnica")}
-                onOpenEconomic={() => setActiveTab("economica")}
                 onOpenResults={() => setActiveTab("risultati")}
               />
 
