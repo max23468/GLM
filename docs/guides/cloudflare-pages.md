@@ -39,6 +39,8 @@ Il workflow `.github/workflows/ci.yml` mantiene tre livelli:
 - `deploy-preview`: su pull request interne, pubblica una preview Cloudflare e lancia lo smoke sull'URL preview;
 - `deploy-production`: su push a `main`, pubblica produzione e lancia lo smoke su `https://gare-lotti-milanesi.pages.dev`.
 
+I job di deploy cacheano il browser Playwright usato dallo smoke in `~/.cache/ms-playwright`, così i run successivi evitano il download completo di Chromium.
+
 Configura questi repository secrets in GitHub:
 
 - `CLOUDFLARE_ACCOUNT_ID`: account ID Cloudflare;
