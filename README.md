@@ -147,10 +147,13 @@ La versione applicativa è definita in `src/lib/version.ts` e sincronizzata con 
 
 Il changelog segue il formato Keep a Changelog con sezioni in italiano:
 
-- `### Novità` per capacità nuove e retrocompatibili;
-- `### Correzioni` per fix e miglioramenti visibili;
-- `### Sotto il cofano` per modifiche tecniche consegnate con il prodotto;
-- `### Non versionato` per note o documentazione senza impatto sul prodotto pubblicato.
+- `### Novità` per capacità nuove e retrocompatibili utili a chi usa il simulatore;
+- `### Correzioni` per fix, miglioramenti visibili, chiarezza dei warning o leggibilità operativa;
+- `### Non versionato` per note interne o documentazione senza impatto sul prodotto pubblicato.
+
+Le note mostrate nel sito devono restare orientate agli utenti finali: niente commit, PR, file interni, CI, test, release, deploy, dipendenze, script o regole agenti. Se una modifica tecnica migliora davvero l'esperienza d'uso, descrivi solo l'effetto pratico nel simulatore.
+
+Se una nuova versione non include punti interessanti per l'utente finale, non deve apparire nel changelog del sito. Le modifiche solo interne restano fuori dalle release pubbliche o, se serve tracciarle, sotto `### Non versionato`.
 
 Per preparare una release:
 

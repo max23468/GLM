@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { APP_VERSION } from "./version";
-import { compareVersions, parseChangelog, releasedChangelog } from "./changelog";
+import {
+  compareVersions,
+  hasEndUserChangelogContent,
+  isEndUserChangelogSection,
+  parseChangelog,
+  releasedChangelog,
+} from "./changelog";
 
 describe("changelog", () => {
   it("estrae versioni, date, introduzioni e sezioni", () => {
@@ -48,6 +54,31 @@ Release di versioning.
     expect(compareVersions("0.2.0", "0.1.9")).toBe(1);
     expect(compareVersions("1.0", "1.0.0")).toBe(0);
     expect(compareVersions("0.1.0", "0.2.0")).toBe(-1);
+  });
+
+  it("distingue le sezioni utili all'utente finale da quelle interne", () => {
+    expect(isEndUserChangelogSection("Novità")).toBe(true);
+    expect(isEndUserChangelogSection("Correzioni")).toBe(true);
+    expect(isEndUserChangelogSection("Sotto il cofano")).toBe(false);
+    expect(isEndUserChangelogSection("Release Cloudflare")).toBe(false);
+
+    const [internalOnly, publicEntry] = parseChangelog(`# Changelog
+
+## [0.3.0] — 2026-05-20
+
+### Sotto il cofano
+
+- Script di release.
+
+## [0.2.0] — 2026-05-20
+
+### Correzioni
+
+- **Sidebar**: testo più chiaro.
+`);
+
+    expect(hasEndUserChangelogContent(internalOnly)).toBe(false);
+    expect(hasEndUserChangelogContent(publicEntry)).toBe(true);
   });
 
   it("contiene una voce rilasciata per la versione corrente", () => {

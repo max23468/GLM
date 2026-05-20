@@ -11,21 +11,13 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 ### Correzioni
 
 - **Sidebar workspace**: la barra laterale mostra subito le azioni operative senza passare da `Gestisci workspace`, sposta `Parametri` in fondo e rende gli scenari base eliminabili/ripristinabili con righe coerenti con il resto della sidebar.
-
-### Sotto il cofano
-
-- **Procedura changelog**: rafforzate le istruzioni di rilascio per ricordare che le modifiche visibili vanno chiuse in una release prima del deploy, altrimenti non compaiono nel pannello frontend.
+- **Changelog**: il pannello mostra solo note utili all'uso del simulatore e omette le versioni composte soltanto da cambiamenti interni.
 
 ## [0.2.0] — 2026-05-20
 
 ### Novità
 
 - **Versione e changelog**: la scheda nel simulatore mostra direttamente versione corrente, data build e note delle release, senza rimandi tecnici esterni.
-- **Versioning SemVer**: aggiunto un comando di rilascio locale per chiudere il blocco non rilasciato e preparare la versione successiva.
-
-### Sotto il cofano
-
-- **Release Cloudflare**: documentata la procedura che separa preparazione della versione e pubblicazione su Cloudflare Pages.
 
 ## [0.1.0] — 2026-05-20
 
@@ -36,7 +28,3 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 - **Scenari base**: profili simulati, fonti e warning documentali separati tra documento di gara, fonte pubblica e assunzione simulativa.
 - **Import/export e report**: salvataggio locale, duplicazione, import/export JSON, confronto tra scenari e report stampabile.
 - **Ottimizzazione**: analisi puntuale dei criteri e piano consigliato per riallocare investimenti tecnici verso ribasso quando sostenibile.
-
-### Sotto il cofano
-
-- **Cloudflare Pages**: configurazione di build e deploy per il progetto `gare-lotti-milanesi`.

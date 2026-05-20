@@ -186,10 +186,13 @@ La versione applicativa è in `src/lib/version.ts` e va mantenuta sincronizzata 
 
 Il changelog segue `CHANGELOG.md` con sezioni in italiano:
 
-- `### Novità`: capacità nuove e retrocompatibili;
-- `### Correzioni`: fix e miglioramenti visibili;
-- `### Sotto il cofano`: modifiche tecniche o operative consegnate con il prodotto;
-- `### Non versionato`: note senza impatto su prodotto pubblicato, supporto o comportamento operativo.
+- `### Novità`: capacità nuove e retrocompatibili, descritte dal punto di vista di chi usa il simulatore;
+- `### Correzioni`: fix, miglioramenti visibili, chiarezza dei warning o leggibilità operativa;
+- `### Non versionato`: note interne senza impatto sul prodotto pubblicato, supporto o comportamento operativo.
+
+Il changelog è mostrato nel frontend: non includere voci rivolte a chi sviluppa il tool, come commit, PR, file interni, CI, test, release, deploy, dipendenze, script o regole agenti. Se una modifica tecnica ha un effetto reale per l'utente, descrivi solo l'effetto pratico nel simulatore.
+
+Non creare una nuova versione visibile nel frontend se il blocco non contiene punti interessanti per l'utente finale. In quel caso lascia la modifica fuori dalle release pubbliche o, se serve traccia interna, usa `### Non versionato` senza eseguire una release SemVer.
 
 Per preparare una nuova versione, aggiungi le voci sotto `## [Non rilasciato]` ed esegui:
 
@@ -201,7 +204,7 @@ Il comando aggiorna `CHANGELOG.md`, `src/lib/version.ts`, `package.json` e `pack
 
 La scheda `Versione e changelog` nel frontend legge `CHANGELOG.md` a build time e mostra solo versioni rilasciate. Non introdurre link, rimandi o informazioni su repository esterni nella scheda frontend.
 
-Regola operativa per gli agenti: ogni modifica visibile del simulatore che viene pubblicata deve avere una voce in `CHANGELOG.md` e, prima del deploy, deve essere chiusa in una release con `npm run release`. Una voce lasciata sotto `## [Non rilasciato]` non compare nella scheda frontend, quindi non basta quando l'utente chiede che il changelog sia aggiornato nel prodotto pubblicato.
+Regola operativa per gli agenti: ogni modifica visibile e interessante per l'utente finale deve avere una voce in `CHANGELOG.md` dentro una release mostrata nel frontend. Prepara una nuova versione con `npm run release` solo quando ci sono contenuti end-user sufficienti per giustificarla. Una voce lasciata sotto `## [Non rilasciato]` non compare nella scheda frontend; una voce solo interna non deve generare una release pubblica.
 
 ## Errori comuni da evitare
 

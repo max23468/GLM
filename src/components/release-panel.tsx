@@ -1,14 +1,18 @@
-import { CalendarDays, GitBranch, Settings2, ShieldCheck, Sparkles, Wrench, type LucideIcon } from "lucide-react";
-import { changelog, releasedChangelog, type ChangelogEntry, type ChangelogSection } from "../lib/changelog";
+import { CalendarDays, GitBranch, ShieldCheck, Sparkles, Wrench, type LucideIcon } from "lucide-react";
+import {
+  isEndUserChangelogSection,
+  releasedChangelog,
+  type ChangelogEntry,
+  type ChangelogSection,
+} from "../lib/changelog";
 import { APP_VERSION, BUILD_DATE } from "../lib/version";
 import { HelpTooltip } from "./help-tooltip";
 
-type ReleaseCategory = "highlight" | "fix" | "internal";
+type ReleaseCategory = "highlight" | "fix";
 
 const CATEGORY_META: Record<ReleaseCategory, { icon: LucideIcon; label: string }> = {
   highlight: { icon: Sparkles, label: "Novità" },
   fix: { icon: Wrench, label: "Correzioni" },
-  internal: { icon: Settings2, label: "Sotto il cofano" },
 };
 
 function formatDate(date: string | null): string | null {
@@ -18,10 +22,11 @@ function formatDate(date: string | null): string | null {
   return parsed.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" });
 }
 
-function categorizeSection(title: string): ReleaseCategory {
+function categorizeSection(title: string): ReleaseCategory | null {
+  if (!isEndUserChangelogSection(title)) return null;
+
   const normalized = title.toLocaleLowerCase("it-IT");
   if (/novit|aggiun/.test(normalized)) return "highlight";
-  if (/cofano|intern|tecnic|build|deploy|refactor|process/.test(normalized)) return "internal";
   if (/sicurez/.test(normalized)) return "fix";
   return "fix";
 }
@@ -29,10 +34,11 @@ function categorizeSection(title: string): ReleaseCategory {
 function groupSections(sections: ChangelogSection[]): Record<ReleaseCategory, ChangelogSection[]> {
   return sections.reduce<Record<ReleaseCategory, ChangelogSection[]>>(
     (groups, section) => {
-      groups[categorizeSection(section.title)].push(section);
+      const category = categorizeSection(section.title);
+      if (category) groups[category].push(section);
       return groups;
     },
-    { highlight: [], fix: [], internal: [] },
+    { highlight: [], fix: [] },
   );
 }
 
@@ -80,7 +86,7 @@ function ReleaseEntry({ entry, compact = false }: { entry: ChangelogEntry; compa
       </div>
       {entry.intro && <p className="release-intro">{entry.intro}</p>}
       <div className="release-sections">
-        {(["highlight", "fix", "internal"] as const).map((category) => {
+        {(["highlight", "fix"] as const).map((category) => {
           const sections = groups[category];
           if (sections.length === 0) return null;
           const Icon = sectionIcon(category, sections);
@@ -108,7 +114,7 @@ function ReleaseEntry({ entry, compact = false }: { entry: ChangelogEntry; compa
 }
 
 export function ReleasePanel() {
-  const entries = releasedChangelog.length > 0 ? releasedChangelog : changelog;
+  const entries = releasedChangelog;
   const activeRelease = currentRelease(entries);
   const previousReleases = activeRelease
     ? entries.filter((entry) => entry.version !== activeRelease.version).slice(0, 3)

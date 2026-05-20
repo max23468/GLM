@@ -14,6 +14,35 @@ export type ChangelogEntry = {
   sections: ChangelogSection[];
 };
 
+function normalizeSectionTitle(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLocaleLowerCase("it-IT");
+}
+
+export function isEndUserChangelogSection(title: string): boolean {
+  const normalized = normalizeSectionTitle(title);
+
+  if (
+    /cofano|intern|tecnic|build|deploy|refactor|process|svilupp|\bci\b|test|release|script|dipenden|repository|\brepo\b|commit|\bpr\b/.test(
+      normalized,
+    )
+  ) {
+    return false;
+  }
+
+  return /novit|aggiun|correz|risol|sicurez|modific|miglior|rimos|breaking|accessibil|layout|warning|changelog/.test(
+    normalized,
+  );
+}
+
+export function hasEndUserChangelogContent(entry: ChangelogEntry): boolean {
+  return entry.sections.some(
+    (section) => isEndUserChangelogSection(section.title) && section.items.length > 0,
+  );
+}
+
 export function parseChangelog(raw: string): ChangelogEntry[] {
   const entries: ChangelogEntry[] = [];
   const headerRegex = /^##\s+\[([^\]]+)\](?:\s+[—–-]\s+(\d{4}-\d{2}-\d{2}))?/gm;
@@ -62,7 +91,7 @@ export function parseChangelog(raw: string): ChangelogEntry[] {
 export const changelog: ChangelogEntry[] = parseChangelog(changelogRaw);
 
 export const releasedChangelog: ChangelogEntry[] = changelog.filter(
-  (entry) => !entry.unreleased && !entry.nonVersioned,
+  (entry) => !entry.unreleased && !entry.nonVersioned && hasEndUserChangelogContent(entry),
 );
 
 export function compareVersions(a: string, b: string): number {
