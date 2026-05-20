@@ -95,6 +95,8 @@ npm install
 npm run dev -- --port 4173
 npm test
 npm run build
+npm run benchmark:optimization
+npm run deploy:doctor
 npm run preview -- --port 4173
 npm run deploy:preview -- --branch nome-branch
 npm run deploy:cloudflare
@@ -110,7 +112,7 @@ npm run deploy:cloudflare
 - `src/lib/optimization.ts`: motore di ottimizzazione punteggio, leve tecniche e riallocazioni verso ribasso.
 - `src/lib/tradeoff.ts`: logica interna dell'analisi puntuale criterio e costo stimato.
 - `src/lib/scenario-persistence.ts`: normalizzazione workspace, migrazione storage e import/export JSON.
-- `src/lib/version.ts`: versione applicativa e data build mostrate nel frontend.
+- `src/lib/version.ts`: versione iniettata da `package.json` e data build mostrate nel frontend.
 - `src/lib/changelog.ts`: parser del changelog bundlato a build time.
 - `src/lib/cloudflare-web-analytics.ts`: caricamento opzionale del beacon Cloudflare Web Analytics.
 - `src/lib/*.test.ts`: test Vitest del motore di scoring e della persistenza.
@@ -133,12 +135,12 @@ npm run deploy:cloudflare
 | Dati o fonti di gara | `src/data/tender.ts`, allegati/fonte citata, `docs/LOGICA_SIMULATORE.md` | Test mirati, `npm test`, `npm run build` |
 | Scenari base | `src/data/base-scenarios.ts`, `src/data/tender.ts` | Test demo/scoring pertinenti, `npm test`, `npm run build` |
 | Scoring/combinatorie | `src/lib/scoring.ts`, `src/lib/*.test.ts` | Test mirati, `npm test`, `npm run build` |
-| Ottimizzazione/tradeoff | `src/lib/optimization.ts`, `src/lib/tradeoff.ts`, `src/lib/optimization.test.ts` | Test ottimizzazione, `npm test`, `npm run build` |
+| Ottimizzazione/tradeoff | `src/lib/optimization.ts`, `src/lib/tradeoff.ts`, `src/lib/optimization.test.ts`, `src/lib/optimization.benchmark.ts` | Test ottimizzazione, benchmark se cambia costo computazionale, `npm test`, `npm run build` |
 | Persistenza/import/export | `src/lib/scenario-persistence.ts`, `src/App.tsx`, test persistence | Test persistence/import, `npm test`, `npm run build` |
 | UI o microcopy | `src/App.tsx`, `src/components/**`, `src/styles.css` | `npm run build`; browser mirato se layout/flusso può cambiare |
 | Versioning/changelog frontend | `CHANGELOG.md`, `src/lib/version.ts`, `src/lib/changelog.ts`, `src/components/release-panel.tsx`, `scripts/release.mjs`, `package.json`, `package-lock.json` | `npm test`, `npm run build`, browser mirato se cambia la scheda |
 | Routing/istruzioni pubbliche | `src/components/instructions-page.tsx`, `public/_redirects`, `public/_headers`, `public/_routes.json`, routing Vite/Cloudflare | `npm run build`, preview e verifica rotta |
-| Deploy/build config | `package.json`, `wrangler.toml`, `.github/workflows/ci.yml`, `scripts/deploy-cloudflare.mjs`, `functions/api/version.js`, config Vite | `npm run build`, controllo config e deploy solo se richiesto |
+| Deploy/build config | `package.json`, `wrangler.toml`, `.github/workflows/ci.yml`, `scripts/deploy-cloudflare.mjs`, `scripts/deploy-doctor.mjs`, `functions/api/version.js`, config Vite | `npm run build`, `npm run deploy:doctor`, controllo config e deploy solo se richiesto |
 
 ## Regole sui dati di gara
 
@@ -186,7 +188,7 @@ La cartella `docs/milano-lotti-extraurbani-om/` contiene file binari e documenti
 
 ## Versioning e changelog
 
-La versione applicativa è in `src/lib/version.ts` e va mantenuta sincronizzata con `package.json` e `package-lock.json`.
+La versione applicativa è in `package.json` e viene iniettata da Vite nel frontend; `src/lib/version.ts` mantiene la data build. `package-lock.json` va mantenuto sincronizzato.
 
 Il changelog segue `CHANGELOG.md` con sezioni in italiano:
 
@@ -204,7 +206,7 @@ Per preparare una nuova versione, aggiungi le voci sotto `## [Non rilasciato]` e
 npm run release
 ```
 
-Il comando aggiorna `CHANGELOG.md`, `src/lib/version.ts`, `package.json` e `package-lock.json`; non esegue deploy. La procedura completa è in `docs/guides/versioning-e-release.md`.
+Il comando aggiorna `CHANGELOG.md`, `package.json`, `package-lock.json` e la data build in `src/lib/version.ts`; non esegue deploy. La procedura completa è in `docs/guides/versioning-e-release.md`.
 
 La scheda `Versione e changelog` nel frontend legge `CHANGELOG.md` a build time e mostra solo versioni rilasciate. Non introdurre link, rimandi o informazioni su repository esterni nella scheda frontend.
 
@@ -317,7 +319,7 @@ Prima di pubblicare:
 1. Verifica `git status --short`.
 2. Rileggi il diff e assicurati che siano presenti solo modifiche intenzionali.
 3. Se ci sono modifiche di codice o documentazione da portare in produzione, committale in modo esplicito e assicurati che il codice da pubblicare sia su `main` o sia stato mergeato secondo il flusso GitHub della repo. Non pubblicare codice non committato o una branch feature usando il flag `--branch main`.
-4. Per ogni modifica visibile nel simulatore, controlla `CHANGELOG.md`: la voce deve stare in una versione rilasciata e `src/lib/version.ts`, `package.json` e `package-lock.json` devono essere sincronizzati dal comando `npm run release`.
+4. Per ogni modifica visibile nel simulatore, controlla `CHANGELOG.md`: la voce deve stare in una versione rilasciata e `package.json`, `package-lock.json` e la data build in `src/lib/version.ts` devono essere sincronizzati dal comando `npm run release`.
 5. Classifica il diff e applica le verifiche proporzionate della sezione "Verifiche prima di chiudere":
    - documentazione pura: solo `git diff --check`;
    - microcopy/UI minima: build e controllo mirato solo se serve;

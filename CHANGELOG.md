@@ -6,6 +6,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [0.2.10] — 2026-05-20
+
+### Correzioni
+
+- **Import JSON**: quando un file viene aggiornato alla forma corrente, il simulatore indica quali parti sono state ricostruite invece di importare in silenzio.
+
 ## [0.2.9] — 2026-05-20
 
 ### Correzioni

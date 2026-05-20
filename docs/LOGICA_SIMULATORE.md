@@ -145,14 +145,14 @@ Usano basi ricavate dagli allegati locali e segnali pubblici per operatori reali
 
 Ogni scenario base genera anche una configurazione completa di ottimizzazione: modalità, scope di default, granularità interna, quantità massime, basi e costi unitari per tutti i lotti. La normalizzazione di workspace e JSON usa questi valori come fallback quando uno scenario salvato non contiene ancora i campi introdotti dall'ottimizzazione.
 
-I dati demo sono protetti da validator automatici: `npm run validate:demo` controlla che scenari base, tradeoff puntuali e catalogo leve tecniche restino completi e coerenti. `npm run validate:data` aggiunge controlli su lotti, criteri, soglie, fonti, warning documentali e scenari demo. `npm run smoke` verifica in browser i flussi principali della tab `Ottimizzazione`; `npm run prepublish:check` unisce controlli statici, validazione dati, test, build e smoke prima della pubblicazione.
+I dati demo sono protetti da validator automatici: `npm run validate:demo` controlla che scenari base, tradeoff puntuali e catalogo leve tecniche restino completi e coerenti. `npm run validate:data` aggiunge controlli su lotti, criteri, soglie, fonti, warning documentali e scenari demo. `npm run smoke` verifica in browser ottimizzazione, salvataggio, import/export, confronto, istruzioni e pannello versione. `npm run benchmark:optimization` misura il costo dell'ottimizzazione sui profili base senza entrare nel test ordinario. `npm run prepublish:check` unisce controlli statici, validazione dati, test, build e smoke prima della pubblicazione.
 
 ## CI e changelog locale
 
 La CI e il changelog restano leggeri e coerenti con il perimetro statico dell'app:
 
 - `.github/workflows/ci.yml` esegue validazione dati, test Vitest e build su push, pull request e avvio manuale;
-- il pannello `Versione e changelog` mostra `src/lib/version.ts` come versione locale, data build e note lette da `CHANGELOG.md` a build time, senza link o rimandi a repository esterni nel frontend.
+- il pannello `Versione e changelog` mostra la versione letta da `package.json`, la data build da `src/lib/version.ts` e note lette da `CHANGELOG.md` a build time, senza link o rimandi a repository esterni nel frontend.
 
 Il pannello non usa API esterne dal browser: il changelog che l'utente legge è già incluso nella build.
 

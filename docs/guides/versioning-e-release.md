@@ -6,7 +6,7 @@ Questa guida descrive come preparare una nuova versione del **Simulatore gara TP
 
 In GLM ci sono due azioni diverse:
 
-1. **Preparare una release**: chiudere il blocco `## [Non rilasciato]` del changelog, aggiornare `src/lib/version.ts`, `package.json` e `package-lock.json`.
+1. **Preparare una release**: chiudere il blocco `## [Non rilasciato]` del changelog, aggiornare `package.json`, `package-lock.json` e la data build in `src/lib/version.ts`.
 2. **Pubblicare**: portare la modifica su `main` e, solo quando richiesto esplicitamente, distribuire `dist` su Cloudflare Pages progetto `gare-lotti-milanesi`.
 
 Documentazione interna, regole agenti, note operative e piani non esposti nel simulatore possono essere pubblicati nel repo senza bump SemVer. In quel caso usa `### Non versionato` nel changelog solo se serve tenere traccia del lavoro: queste note non devono comparire nel changelog pubblico del simulatore.
@@ -79,8 +79,11 @@ Il comando:
 - legge `CHANGELOG.md`;
 - inferisce il bump da `Novità`, `Correzioni`, `Sotto il cofano`, `Rimosso` o `Breaking`;
 - riconosce `Non versionato` come categoria senza release;
-- aggiorna `CHANGELOG.md`, `src/lib/version.ts`, `package.json` e `package-lock.json`;
+- usa `package.json` come fonte della versione applicativa;
+- aggiorna `CHANGELOG.md`, `package.json`, `package-lock.json` e la data build in `src/lib/version.ts`;
 - usa la data italiana corrente nel formato `YYYY-MM-DD`.
+
+In modalità `--dry-run`, se il blocco `## [Non rilasciato]` è vuoto il comando termina senza errore e segnala che non c'è nulla da rilasciare.
 
 `Sotto il cofano` resta riconosciuto dallo script per compatibilità, ma non usarlo nel changelog pubblico ordinario: le note pubblicate nel frontend devono parlare a chi usa il simulatore.
 

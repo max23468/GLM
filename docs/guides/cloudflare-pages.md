@@ -15,12 +15,15 @@ Non usare Vercel per questa repository.
 
 ```bash
 npm run deploy:preview -- --branch nome-branch
+npm run deploy:doctor
 npm run deploy:cloudflare
 ```
 
 `npm run deploy:preview` compila l'app, pubblica `dist` su Cloudflare Pages come preview e poi esegue `npm run smoke` contro l'URL pubblicato.
 
 `npm run deploy:cloudflare` compila l'app, pubblica `dist` su `main`, esegue lo smoke contro `https://gare-lotti-milanesi.pages.dev` e stampa un riepilogo con branch Pages, commit e URL rilevati.
+
+`npm run deploy:doctor` non pubblica nulla: verifica Wrangler locale, credenziali Cloudflare tramite variabili o login Wrangler e completezza dell'eventuale service token Access senza stampare valori sensibili.
 
 Lo script blocca il deploy se:
 
@@ -33,11 +36,12 @@ Usa `--skip-smoke` solo quando devi isolare un problema di deploy e dichiara il 
 
 ## GitHub Actions
 
-Il workflow `.github/workflows/ci.yml` mantiene tre livelli:
+Il workflow `.github/workflows/ci.yml` mantiene due livelli automatici:
 
 - `verify`: `npm run validate:data`, `npm test`, `npm run build`;
-- `deploy-preview`: su pull request interne, pubblica una preview Cloudflare e lancia lo smoke sull'URL preview;
-- `deploy-production`: su push a `main`, pubblica produzione e lancia lo smoke su `https://gare-lotti-milanesi.pages.dev`.
+- `deploy-preview`: su pull request interne, esegue `npm run deploy:doctor`, pubblica una preview Cloudflare e lancia lo smoke sull'URL preview quando i secret necessari sono configurati.
+
+La produzione non parte più automaticamente da push a `main`: resta un'azione esplicita tramite `npm run deploy:cloudflare`, dopo review del diff e check proporzionati.
 
 I job di deploy cacheano il browser Playwright usato dallo smoke in `~/.cache/ms-playwright`, così i run successivi evitano il download completo di Chromium.
 
@@ -49,7 +53,7 @@ Configura questi repository secrets in GitHub:
 - `CF_ACCESS_CLIENT_ID`: opzionale, service token per smoke CI su preview protette da Access;
 - `CF_ACCESS_CLIENT_SECRET`: opzionale, secret del service token Access.
 
-Se i secret Cloudflare principali non sono presenti, i job di deploy non pubblicano e mostrano una notice nel log.
+Se i secret Cloudflare principali non sono presenti, il job preview non pubblica e mostra una notice nel log.
 
 ## Preview protette con Cloudflare Access
 
@@ -140,7 +144,8 @@ Prima di pubblicare:
 
 1. `git status --short`;
 2. controlla che il diff sia intenzionale;
-3. `npm run prepublish:check` o controlli proporzionati al diff;
-4. `npm run deploy:cloudflare`;
-5. verifica `/api/version`;
+3. `npm run deploy:doctor`;
+4. `npm run prepublish:check` o controlli proporzionati al diff;
+5. `npm run deploy:cloudflare`;
+6. verifica `/api/version`;
 6. se qualcosa non torna, rollback dal dashboard e poi diagnosi sul commit.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CRITERIA, LOTS, PAIRS } from "../data/tender";
-import { normalizeScenarioSnapshot, normalizeStoredWorkspace } from "./scenario-persistence";
+import { normalizeScenarioSnapshot, normalizeScenarioSnapshotWithReport, normalizeStoredWorkspace } from "./scenario-persistence";
 
 describe("scenario persistence normalization", () => {
   it("repairs partial imported bidders before simulation uses them", () => {
@@ -112,5 +112,25 @@ describe("scenario persistence normalization", () => {
     expect(snapshot?.optimization.levers.L2?.["C.1.2"]).toBeDefined();
     expect(snapshot?.optimization.levers.L2?.["C.1.2"].unitCost).toBeGreaterThan(0);
     expect(snapshot?.optimization.levers.L1?.["B.5.1"].enabled).toBe(false);
+  });
+
+  it("segnala le riparazioni applicate durante l'import JSON", () => {
+    const report = normalizeScenarioSnapshotWithReport({
+      schemaVersion: 2,
+      demoScenarioId: "market",
+      bidders: [{ id: "a", lots: { L1: { enabled: true } } }],
+      settings: { threshold: 999, applyAwardLimitDerogation: "yes" },
+      selectedBidderId: "missing",
+      selectedLotId: "bad",
+      selectedPairId: "bad",
+    });
+
+    expect(report.snapshot).toBeDefined();
+    expect(report.messages).toContain("Schema aggiornato alla versione corrente.");
+    expect(report.messages).toContain("Campo legacy demoScenarioId migrato a baseScenarioId.");
+    expect(report.messages).toContain("Offerte incomplete riparate con lotti, combinatorie e campi mancanti.");
+    expect(report.messages).toContain("Configurazione Ottimizzazione assente o non valida: usati i valori dello scenario base.");
+    expect(report.messages).toContain("Parametri scenario non validi riallineati ai valori supportati.");
+    expect(report.messages).toContain("Focus di lavoro non valido riallineato a concorrente, lotto e combinatoria disponibili.");
   });
 });

@@ -1,5 +1,6 @@
 /**
  * Versione corrente del Simulatore gara TPL lotti 1-4.
+ * La versione viene iniettata da Vite leggendo package.json; questo file mantiene la data build.
  *
  * Convenzione SemVer adattata al simulatore:
  * - MAJOR: cambia in modo non retrocompatibile scoring, persistenza, import/export
@@ -16,5 +17,5 @@
  *
  * Vedi `docs/guides/versioning-e-release.md` per la procedura completa.
  */
-export const APP_VERSION = "0.2.9";
+export const APP_VERSION = __APP_VERSION__;
 export const BUILD_DATE = "2026-05-20";

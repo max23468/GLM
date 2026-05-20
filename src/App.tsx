@@ -10,7 +10,6 @@ import {
   Monitor,
   Moon,
   Sparkles,
-  Plus,
   Route,
   SlidersHorizontal,
   Sun,
@@ -31,7 +30,6 @@ import {
   LOT_CONTEXT,
   LOTS,
   PAIRS,
-  THRESHOLD_OPTIONS,
   type Criterion,
   type LotId,
   type PairId,
@@ -63,16 +61,16 @@ import {
 } from "./lib/scoring";
 import {
   ScenarioComparison,
-  ScenarioTools,
   StrategicSummary,
 } from "./components/scenario-panels";
 import { InstructionsPage } from "./components/instructions-page";
 import { HelpTooltip } from "./components/help-tooltip";
 import { ReleasePanel } from "./components/release-panel";
+import { WorkspaceSidebar } from "./components/workspace-sidebar";
 import {
   LEGACY_STORAGE_KEYS,
   STORAGE_KEYS,
-  normalizeScenarioSnapshot,
+  normalizeScenarioSnapshotWithReport,
   readStoredSavedScenarios,
   readStoredWorkspace,
   type SavedScenarioSnapshot,
@@ -385,8 +383,6 @@ function App() {
   const [hiddenBaseScenarioIds, setHiddenBaseScenarioIds] = useState<BaseScenarioId[]>(getStoredHiddenBaseScenarios);
   const [compareScenarioId, setCompareScenarioId] = useState("");
   const [scenarioNotice, setScenarioNotice] = useState("");
-  const [isBaseScenariosExpanded, setBaseScenariosExpanded] = useState(false);
-  const [isBaseScenarioManagementOpen, setBaseScenarioManagementOpen] = useState(false);
   const [isSuggestionsPanelExpanded, setSuggestionsPanelExpanded] = useState(false);
   const [isWarningsPanelExpanded, setWarningsPanelExpanded] = useState(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>(getStoredTheme);
@@ -568,8 +564,6 @@ function App() {
 
   const restoreBaseScenarios = () => {
     setHiddenBaseScenarioIds([]);
-    setBaseScenariosExpanded(true);
-    setBaseScenarioManagementOpen(false);
     setScenarioNotice("Scenari base ripristinati nella barra laterale.");
   };
 
@@ -701,15 +695,15 @@ function App() {
   const importScenarioFile = async (file: File) => {
     try {
       const parsed = JSON.parse(await file.text());
-      const snapshot = normalizeScenarioSnapshot(parsed);
+      const { snapshot, messages } = normalizeScenarioSnapshotWithReport(parsed);
       if (!snapshot) {
-        setScenarioNotice("File JSON non riconosciuto.");
+        setScenarioNotice(messages[0] ?? "File JSON non riconosciuto.");
         return;
       }
       const imported = { ...snapshot, id: snapshot.id || `scenario-${Date.now()}`, savedAt: new Date().toISOString() };
       setSavedScenarios((current) => [imported, ...current.filter((scenario) => scenario.id !== imported.id)]);
       applyScenarioSnapshot(imported);
-      setScenarioNotice(`Importato: ${imported.name}`);
+      setScenarioNotice(messages.length ? `Importato: ${imported.name}. ${messages.join(" ")}` : `Importato: ${imported.name}`);
     } catch {
       setScenarioNotice("Import non riuscito: controlla il file JSON.");
     }
@@ -821,244 +815,58 @@ function App() {
       </header>
 
       <div className="layout">
-        <aside className="left-rail">
-          <ScenarioTools
-            scenarioName={scenarioName}
-            savedScenarios={savedScenarios}
-            activeSavedScenarioId={activeSavedScenarioId}
-            scenarioNotice={scenarioNotice}
-            onScenarioNameChange={renameCurrentScenario}
-            onNew={createNewScenario}
-            onSave={saveCurrentScenario}
-            onDuplicate={duplicateCurrentScenario}
-            onDelete={() => deleteSavedScenario()}
-            onDeleteSaved={deleteSavedScenario}
-            onExport={exportCurrentScenario}
-            onImportFile={importScenarioFile}
-            onLoadSaved={loadSavedScenario}
-            onResetBaseScenario={resetCurrentBaseScenario}
-          />
-
-          <section className="panel base-panel">
-            <div className="section-title between">
-              <span>
-                <ClipboardList size={18} />
-                Scenari base
-                <HelpTooltip>Parti da uno scenario precompilato solo come base di lavoro: non rappresenta un'offerta ufficiale.</HelpTooltip>
-              </span>
-              <span className="section-actions">
-                <button
-                  className="action-button compact"
-                  type="button"
-                  onClick={() => setBaseScenariosExpanded((expanded) => !expanded)}
-                  aria-expanded={isBaseScenariosExpanded}
-                >
-                  {isBaseScenariosExpanded ? "Chiudi" : "Cambia"}
-                </button>
-                {isBaseScenariosExpanded && (
-                  <button
-                    className="action-button compact"
-                    type="button"
-                    onClick={() => setBaseScenarioManagementOpen((open) => !open)}
-                    aria-pressed={isBaseScenarioManagementOpen}
-                  >
-                    {isBaseScenarioManagementOpen ? "Fine" : "Gestisci"}
-                  </button>
-                )}
-              </span>
-            </div>
-            <div className="active-scenario base-scenario-summary">
-              <span>Scenario attivo</span>
-              <strong>{selectedBaseScenario.title}</strong>
-              <small>{selectedBaseScenario.body}</small>
-            </div>
-            {isBaseScenariosExpanded && (
-              <>
-                <div className="base-list">
-                  {visibleBaseScenarios.map((scenario) => (
-                    <div key={scenario.id} className={`sidebar-row-actions base-scenario-row ${scenario.id === baseScenarioId ? "selected" : ""}`}>
-                      <button
-                        className="saved-scenario-main base-scenario-main"
-                        onClick={() => loadBaseScenario(scenario)}
-                      >
-                        <span>{scenario.title}</span>
-                        <small>{scenario.body}</small>
-                      </button>
-                      {isBaseScenarioManagementOpen && (
-                        <button
-                          className="icon-button mini danger"
-                          onClick={() => deleteBaseScenario(scenario)}
-                          aria-label={`Elimina scenario base ${scenario.title}`}
-                          title="Elimina scenario base"
-                        >
-                          <X size={14} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  {!visibleBaseScenarios.length && <div className="empty-sidebar-note">Tutti gli scenari base sono stati eliminati dalla lista.</div>}
-                </div>
-                {hiddenBaseScenarioIds.length > 0 && (
-                  <button className="action-button compact" onClick={restoreBaseScenarios}>
-                    Ripristina scenari base
-                  </button>
-                )}
-                <div className="hint">Profili simulati da fonti pubbliche e modelli locali: servono per confrontare scenari, non rappresentano offerte ufficiali.</div>
-              </>
-            )}
-          </section>
-
-          <section className="panel">
-            <div className="section-title between">
-              <span>
-                <Route size={18} />
-                Concorrenti
-                <HelpTooltip>Da qui aggiungi, rinomini, selezioni o elimini i concorrenti. La compilazione centrale lavora sempre sul concorrente attivo.</HelpTooltip>
-              </span>
-              <button className="icon-button primary" onClick={addBidder} aria-label="Aggiungi concorrente" title="Aggiungi concorrente">
-                <Plus size={17} />
-              </button>
-            </div>
-            {selectedBidder && (
-              <div className="sidebar-admin-block">
-                <label className="field compact">
-                  <span>
-                    Nome concorrente
-                    <HelpTooltip>Il nome serve a rendere leggibili classifica, confronto ed export. Non incide sui punteggi.</HelpTooltip>
-                  </span>
-                  <input
-                    value={selectedBidder.name}
-                    onChange={(event) =>
-                      updateBidder(selectedBidder.id, (bidder) => {
-                        bidder.name = event.target.value;
-                        return bidder;
-                      })
-                    }
-                  />
-                </label>
-              </div>
-            )}
-            <div className="offeror-list">
-              {bidders.map((bidder) => {
-                const activeLots = LOTS.filter((lot) => bidder.lots[lot.id].enabled).length;
-                const isSelected = bidder.id === selectedBidder?.id;
-                return (
-                  <div key={bidder.id} className={`sidebar-row-actions ${isSelected ? "selected" : ""}`}>
-                    <button className="offeror-row" onClick={() => setSelectedBidderId(bidder.id)}>
-                      <span>{bidder.name}</span>
-                      <small>
-                        {activeLots} {activeLots === 1 ? "lotto" : "lotti"}
-                      </small>
-                    </button>
-                    <button
-                      className="icon-button mini danger"
-                      disabled={bidders.length <= 1}
-                      onClick={() => removeBidder(bidder.id)}
-                      aria-label={`Elimina concorrente ${bidder.name}`}
-                      title="Elimina concorrente"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          {selectedBidder && (
-            <section className="panel">
-              <div className="section-title">
-                <BarChart3 size={18} />
-                Partecipazione
-                <HelpTooltip>Attiva lotti e combinatorie del concorrente selezionato. Queste opzioni si gestiscono solo dalla barra laterale.</HelpTooltip>
-              </div>
-              <div className="sidebar-participation-grid" aria-label={`Partecipazione ${selectedBidder.name}`}>
-                {LOTS.map((lot) => {
-                  const lotScore = result.lotScores[selectedBidder.id][lot.id];
-                  return (
-                    <label key={lot.id} className={selectedBidder.lots[lot.id].enabled ? lotScore.admitted ? "ok" : "warn" : ""}>
-                      <span>{lot.shortLabel}</span>
-                      <input
-                        type="checkbox"
-                        checked={selectedBidder.lots[lot.id].enabled}
-                        onChange={(event) =>
-                          updateBidder(selectedBidder.id, (draft) => {
-                            draft.lots[lot.id].enabled = event.target.checked;
-                            return draft;
-                          })
-                        }
-                      />
-                    </label>
-                  );
-                })}
-              </div>
-              <div className="section-title compact">Combinatorie presentate</div>
-              <div className="sidebar-participation-grid two" aria-label={`Combinatorie ${selectedBidder.name}`}>
-                {PAIRS.map((pair) => {
-                  const comboScore = result.comboScores[selectedBidder.id][pair.id];
-                  return (
-                    <label key={pair.id} className={selectedBidder.combos[pair.id].enabled ? comboScore.admissible ? "ok" : "warn" : ""}>
-                      <span>{pair.label.replace("Lotti ", "")}</span>
-                      <input
-                        type="checkbox"
-                        checked={selectedBidder.combos[pair.id].enabled}
-                        onChange={(event) =>
-                          updateBidder(selectedBidder.id, (draft) => {
-                            draft.combos[pair.id].enabled = event.target.checked;
-                            return draft;
-                          })
-                        }
-                      />
-                    </label>
-                  );
-                })}
-              </div>
-              <div className="hint">Per una combinatoria servono anche i due lotti singoli collegati.</div>
-            </section>
-          )}
-
-          <section className="panel">
-            <div className="section-title">
-              <SlidersHorizontal size={18} />
-              Parametri
-              <HelpTooltip>Qui scegli la soglia di sbarramento e l'eventuale deroga: cambia questi parametri quando vuoi testare una lettura più o meno selettiva.</HelpTooltip>
-            </div>
-            <div className="active-scenario">
-              <span>Scenario attivo</span>
-              <strong>{selectedBaseScenario.title}</strong>
-              <ul className="scenario-basis" aria-label="Base scenario">
-                {selectedBaseScenario.basis.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-            <label className="field">
-              <span>
-                Soglia di sbarramento
-                <HelpTooltip>Un'offerta sotto soglia non passa alla valutazione economica. Le tre opzioni corrispondono alle letture già richiamate nelle istruzioni.</HelpTooltip>
-              </span>
-              <select
-                value={settings.threshold}
-                onChange={(event) => setSettings((current) => ({ ...current, threshold: Number(event.target.value) }))}
-              >
-                {THRESHOLD_OPTIONS.map((option) => (
-                  <option key={option.id} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="toggle-row">
-              <input
-                type="checkbox"
-                checked={settings.applyAwardLimitDerogation}
-                onChange={(event) => setSettings((current) => ({ ...current, applyAwardLimitDerogation: event.target.checked }))}
-              />
-              <span>Applica deroga al limite di due lotti se necessaria per evitare lotti non assegnati</span>
-            </label>
-            <div className="hint">Soglia attiva: scenario disciplinare se resta a 37 pt. Le letture alternative più selettive restano nel menu. Le incongruenze sono nel pannello criticità.</div>
-          </section>
-        </aside>
+        <WorkspaceSidebar
+          scenarioName={scenarioName}
+          savedScenarios={savedScenarios}
+          activeSavedScenarioId={activeSavedScenarioId}
+          scenarioNotice={scenarioNotice}
+          onScenarioNameChange={renameCurrentScenario}
+          onNew={createNewScenario}
+          onSave={saveCurrentScenario}
+          onDuplicate={duplicateCurrentScenario}
+          onDelete={() => deleteSavedScenario()}
+          onDeleteSaved={deleteSavedScenario}
+          onExport={exportCurrentScenario}
+          onImportFile={importScenarioFile}
+          onLoadSaved={loadSavedScenario}
+          onResetBaseScenario={resetCurrentBaseScenario}
+          selectedBaseScenario={selectedBaseScenario}
+          visibleBaseScenarios={visibleBaseScenarios}
+          hiddenBaseScenarioCount={hiddenBaseScenarioIds.length}
+          baseScenarioId={baseScenarioId}
+          onLoadBaseScenario={loadBaseScenario}
+          onDeleteBaseScenario={deleteBaseScenario}
+          onRestoreBaseScenarios={restoreBaseScenarios}
+          bidders={bidders}
+          selectedBidder={selectedBidder}
+          result={result}
+          settings={settings}
+          onAddBidder={addBidder}
+          onRemoveBidder={removeBidder}
+          onSelectBidder={setSelectedBidderId}
+          onSelectedBidderNameChange={(name) => {
+            if (!selectedBidder) return;
+            updateBidder(selectedBidder.id, (bidder) => {
+              bidder.name = name;
+              return bidder;
+            });
+          }}
+          onLotParticipationChange={(lotId, checked) => {
+            if (!selectedBidder) return;
+            updateBidder(selectedBidder.id, (draft) => {
+              draft.lots[lotId].enabled = checked;
+              return draft;
+            });
+          }}
+          onComboParticipationChange={(pairId, checked) => {
+            if (!selectedBidder) return;
+            updateBidder(selectedBidder.id, (draft) => {
+              draft.combos[pairId].enabled = checked;
+              return draft;
+            });
+          }}
+          onSettingsChange={(patch) => setSettings((current) => ({ ...current, ...patch }))}
+        />
 
         <main className="workspace">
           {selectedBidder && (

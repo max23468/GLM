@@ -1,4 +1,7 @@
 import { spawn } from "node:child_process";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import process from "node:process";
 import { chromium } from "playwright";
 
@@ -72,7 +75,64 @@ const clickWorkspaceTab = async (page, name) => {
   await tab.click();
 };
 
+const verifyPublicRoutes = async (page, suffix) => {
+  await page.goto(new URL("/istruzioni/", baseUrl).toString(), { waitUntil: "networkidle" });
+  const instructionsText = await page.locator("body").innerText();
+  if (!instructionsText.includes("Istruzioni di compilazione")) {
+    throw new Error(`${suffix}: rotta /istruzioni/ non caricata`);
+  }
+};
+
+const verifyImportExportAndComparison = async (page, suffix) => {
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Esporta scenario JSON" }).click();
+  const download = await downloadPromise;
+  if (!download.suggestedFilename().endsWith(".json")) {
+    throw new Error(`${suffix}: nome export JSON inatteso ${download.suggestedFilename()}`);
+  }
+
+  const tempDir = await mkdtemp(path.join(tmpdir(), "glm-smoke-"));
+  try {
+    const importName = `Smoke import ${suffix}`;
+    const importPath = path.join(tempDir, `${importName.replace(/\s+/g, "-").toLowerCase()}.json`);
+    const payload = await page.evaluate((name) => {
+      const savedScenarios = JSON.parse(localStorage.getItem("tpl-lotti-1-4-scenarios") || "[]");
+      const snapshot = structuredClone(savedScenarios[0]);
+      delete snapshot.baseScenarioId;
+      delete snapshot.optimization;
+      snapshot.id = `smoke-import-${Date.now()}`;
+      snapshot.name = name;
+      snapshot.schemaVersion = 6;
+      snapshot.demoScenarioId = "market";
+      snapshot.settings = { threshold: "soglia non valida", applyAwardLimitDerogation: "non valido" };
+      delete snapshot.bidders?.[0]?.lots?.L1?.quantityInputs;
+      return snapshot;
+    }, importName);
+
+    await writeFile(importPath, JSON.stringify(payload, null, 2));
+    await page.locator('input[type="file"]').setInputFiles(importPath);
+    await page.waitForFunction(
+      (name) => document.body.innerText.includes(`Importato: ${name}`),
+      importName,
+    );
+
+    const noticeText = await page.locator(".scenario-notice").innerText();
+    for (const expected of ["Schema aggiornato", "demoScenarioId", "Configurazione Ottimizzazione"]) {
+      if (!noticeText.includes(expected)) throw new Error(`${suffix}: import senza dettaglio riparazione ${expected}`);
+    }
+
+    await page.locator(".comparison-panel select").selectOption({ label: importName });
+    const comparisonText = await page.locator(".comparison-panel").innerText();
+    if (!comparisonText.includes(importName) || !comparisonText.includes("Delta per lotto")) {
+      throw new Error(`${suffix}: confronto scenari non aggiornato dopo import`);
+    }
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+};
+
 const verifyOptimization = async (page, suffix, theme) => {
+  await verifyPublicRoutes(page, suffix);
   await page.goto(baseUrl, { waitUntil: "networkidle" });
   await page.evaluate((themeValue) => {
     localStorage.clear();
@@ -84,6 +144,11 @@ const verifyOptimization = async (page, suffix, theme) => {
     if ((await page.locator("button.workspace-tab").filter({ hasText: tab }).count()) !== 1) {
       throw new Error(`${suffix}: tab ${tab} non trovata`);
     }
+  }
+
+  const releasePanelText = await page.locator(".release-panel").innerText();
+  if (!releasePanelText.includes("Versione e changelog") || !releasePanelText.includes("Versione app")) {
+    throw new Error(`${suffix}: pannello versione non disponibile`);
   }
 
   await clickWorkspaceTab(page, "Ottimizzazione");
@@ -171,6 +236,8 @@ const verifyOptimization = async (page, suffix, theme) => {
   if (saved.count < 1 || saved.version !== 7 || saved.hasEconomic || saved.hasStepUnits || !saved.hasGranularityUnits) {
     throw new Error(`${suffix}: snapshot inatteso ${JSON.stringify(saved)}`);
   }
+
+  await verifyImportExportAndComparison(page, suffix);
 
   const activeTheme = await page.evaluate(() => document.documentElement.dataset.theme);
   if (activeTheme !== theme) throw new Error(`${suffix}: tema atteso ${theme}, trovato ${activeTheme}`);

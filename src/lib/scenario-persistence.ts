@@ -63,6 +63,11 @@ type LegacyWorkspaceLike = Partial<StoredWorkspace> & {
   baseScenarioId?: unknown;
 };
 
+export type ScenarioImportReport = {
+  snapshot?: SavedScenarioSnapshot;
+  messages: string[];
+};
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
 
@@ -292,6 +297,57 @@ export const normalizeScenarioSnapshot = (value: unknown): SavedScenarioSnapshot
     selectedLotId: isLotId(candidate.selectedLotId) ? candidate.selectedLotId : fallbackScenario.defaultLotId,
     selectedPairId: isPairId(candidate.selectedPairId) ? candidate.selectedPairId : fallbackScenario.defaultPairId,
   };
+};
+
+const hasIncompleteBidderShape = (value: unknown) => {
+  if (!Array.isArray(value)) return true;
+  return value.some((item) => {
+    if (!isRecord(item)) return true;
+    const lots = isRecord(item.lots) ? item.lots : {};
+    const combos = isRecord(item.combos) ? item.combos : {};
+    return (
+      LOTS.some((lot) => !isRecord(lots[lot.id])) ||
+      PAIRS.some((pair) => !isRecord(combos[pair.id]))
+    );
+  });
+};
+
+export const normalizeScenarioSnapshotWithReport = (value: unknown): ScenarioImportReport => {
+  if (!isRecord(value)) {
+    return {
+      snapshot: undefined,
+      messages: ["Il JSON non contiene un oggetto scenario riconoscibile."],
+    };
+  }
+
+  const candidate = value as LegacyScenarioLike;
+  const snapshot = normalizeScenarioSnapshot(value);
+  if (!snapshot) {
+    return {
+      snapshot: undefined,
+      messages: ["Il JSON non contiene uno scenario importabile."],
+    };
+  }
+
+  const messages: string[] = [];
+  if (candidate.schemaVersion !== 7) messages.push("Schema aggiornato alla versione corrente.");
+  if (!candidate.baseScenarioId && candidate.demoScenarioId) messages.push("Campo legacy demoScenarioId migrato a baseScenarioId.");
+  if (!Array.isArray(candidate.bidders) || candidate.bidders.length === 0) {
+    messages.push("Concorrenti mancanti: usata la base dello scenario selezionato.");
+  } else if (hasIncompleteBidderShape(candidate.bidders)) {
+    messages.push("Offerte incomplete riparate con lotti, combinatorie e campi mancanti.");
+  }
+  if (!isRecord(candidate.optimization)) messages.push("Configurazione Ottimizzazione assente o non valida: usati i valori dello scenario base.");
+  if (!isRecord(candidate.settings)) {
+    messages.push("Parametri scenario assenti o non validi: usati i valori predefiniti.");
+  } else if (snapshot.settings.threshold !== candidate.settings.threshold || snapshot.settings.applyAwardLimitDerogation !== candidate.settings.applyAwardLimitDerogation) {
+    messages.push("Parametri scenario non validi riallineati ai valori supportati.");
+  }
+  if (snapshot.selectedBidderId !== candidate.selectedBidderId || snapshot.selectedLotId !== candidate.selectedLotId || snapshot.selectedPairId !== candidate.selectedPairId) {
+    messages.push("Focus di lavoro non valido riallineato a concorrente, lotto e combinatoria disponibili.");
+  }
+
+  return { snapshot, messages };
 };
 
 export const normalizeStoredWorkspace = (value: unknown): StoredWorkspace | undefined => {

@@ -50,7 +50,8 @@ Le basi operative degli scenari derivano da documenti locali di gara e segnali p
 ## Mappa del repository
 
 ```text
-src/App.tsx                            UI principale, gestione workspace laterale, stato, import/export, analisi puntuale criterio e ottimizzazione
+src/App.tsx                            UI principale, stato, import/export, analisi puntuale criterio e ottimizzazione
+src/components/workspace-sidebar.tsx   Gestione laterale di workspace, scenari, operatori e impostazioni
 src/components/scenario-panels.tsx     Pannelli scenario, confronto e riepilogo
 src/data/base-scenarios.ts             Scenari base, profili simulati e baseline operative
 src/data/tender.ts                     Lotti, coppie, criteri, soglie, fonti e criticità documentali
@@ -58,10 +59,11 @@ src/lib/optimization.ts                Motore di ottimizzazione punteggio, leve 
 src/lib/scenario-persistence.ts        Normalizzazione snapshot, migrazione storage e import JSON
 src/lib/scoring.ts                     Motore di scoring e selezione scenario
 src/lib/tradeoff.ts                    Logica interna di analisi puntuale criterio e costo tecnico
-src/lib/version.ts                     Versione applicativa e data build mostrate nel frontend
+src/lib/version.ts                     Versione iniettata da package.json e data build mostrata nel frontend
 src/lib/changelog.ts                   Parser del changelog bundlato a build time
 src/lib/cloudflare-web-analytics.ts    Iniezione opzionale del beacon Cloudflare Web Analytics
 src/lib/*.test.ts                      Test Vitest su scoring e persistenza
+src/lib/*.benchmark.ts                 Benchmark mirati attivati solo dal comando dedicato
 functions/api/version.js               Pages Function per stato runtime del deploy
 src/components/instructions-page.tsx   Pagina web navigabile con istruzioni di compilazione
 src/components/release-panel.tsx       Scheda Versione e changelog
@@ -69,8 +71,9 @@ src/styles.css                         Design system locale e layout responsive
 public/_headers                        Header Cloudflare Pages per sicurezza e cache asset
 public/_redirects                      Redirect canonico Cloudflare Pages per URL /istruzioni
 public/_routes.json                    Invocazione Pages Functions limitata a /api/*
-.github/workflows/ci.yml               CI/CD GitHub Actions con validazione, preview e produzione
+.github/workflows/ci.yml               CI GitHub Actions con validazione, build e preview PR
 scripts/deploy-cloudflare.mjs          Deploy preview/produzione con guard, report e smoke post-deploy
+scripts/deploy-doctor.mjs              Diagnosi locale di prerequisiti e credenziali Cloudflare
 CHANGELOG.md                           Storico versionato in formato Keep a Changelog
 docs/guides/cloudflare-pages.md        Runbook Cloudflare Pages, preview, Access, Web Analytics e rollback
 docs/guides/versioning-e-release.md    Procedura SemVer e rilascio
@@ -91,6 +94,8 @@ npm run validate:data
 npm run validate:demo
 npm run smoke
 npm run prepublish:check
+npm run benchmark:optimization
+npm run deploy:doctor
 npm run deploy:preview -- --branch nome-branch
 npm run deploy:cloudflare
 npm run release -- --dry-run
@@ -98,7 +103,7 @@ npm run release
 npm run preview -- --port 4173
 ```
 
-`npm test` esegue i test Vitest su scoring, persistenza e dati demo. `npm run validate:data` concentra i controlli automatici su dati gara e scenari demo. `npm run build` esegue TypeScript e build Vite. `npm run smoke` avvia una preview locale e verifica con Playwright i flussi principali della tab `Ottimizzazione`; `npm run prepublish:check` raggruppa i controlli prima della pubblicazione. `npm run release` prepara una nuova versione locale aggiornando `CHANGELOG.md`, `src/lib/version.ts`, `package.json` e `package-lock.json`, ma non esegue il deploy.
+`npm test` esegue i test Vitest su scoring, persistenza e dati demo. `npm run validate:data` concentra i controlli automatici su dati gara e scenari demo. `npm run build` esegue TypeScript e build Vite. `npm run smoke` avvia una preview locale e verifica con Playwright ottimizzazione, salvataggio, import/export, confronto, istruzioni e pannello versione. `npm run benchmark:optimization` misura il costo dell'ottimizzazione sui profili base senza entrare nel test ordinario. `npm run deploy:doctor` controlla prerequisiti locali, variabili Cloudflare o login Wrangler senza stampare segreti. `npm run prepublish:check` raggruppa i controlli prima della pubblicazione. `npm run release` prepara una nuova versione locale aggiornando `CHANGELOG.md`, data build in `src/lib/version.ts`, `package.json` e `package-lock.json`, ma non esegue il deploy.
 
 ## CI e changelog locale
 
@@ -106,7 +111,7 @@ Il repository espone controlli automatici e un changelog locale bundlato nel sit
 
 - CI GitHub Actions su push, pull request e avvio manuale, con `npm run validate:data`, `npm test` e `npm run build`;
 - deploy preview Cloudflare Pages su pull request interne, con smoke sull'URL pubblicato quando i secret Cloudflare sono configurati;
-- deploy produzione Cloudflare Pages su push a `main`, con smoke post-deploy su `https://gare-lotti-milanesi.pages.dev`;
+- deploy produzione solo manuale con `npm run deploy:cloudflare`, quando richiesto esplicitamente;
 - validatori Vitest per coerenza di lotti, criteri, soglie, fonti, warning e scenari demo;
 - pannello `Versione e changelog` con versione locale, data build e note lette da `CHANGELOG.md` a build time, senza link o rimandi a repository esterni nel frontend.
 
@@ -153,7 +158,7 @@ Prima di cambiare UI o testi:
 
 ## Versioning
 
-La versione applicativa è definita in `src/lib/version.ts` e sincronizzata con `package.json` e `package-lock.json` dal comando di release.
+La versione applicativa è definita in `package.json` e iniettata da Vite nel frontend; `src/lib/version.ts` conserva la data build. Il comando di release sincronizza `CHANGELOG.md`, data build, `package.json` e `package-lock.json`.
 
 Il changelog segue il formato Keep a Changelog con sezioni in italiano:
 

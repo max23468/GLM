@@ -127,7 +127,7 @@ export function ReleasePanel() {
         <GitBranch size={18} />
         Versione e changelog
         <HelpTooltip>
-          Versione e note sono incluse nella build da src/lib/version.ts e CHANGELOG.md.
+          Versione, data build e note sono incluse nella build da package.json, src/lib/version.ts e CHANGELOG.md.
         </HelpTooltip>
       </div>
 

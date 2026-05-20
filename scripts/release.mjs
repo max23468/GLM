@@ -119,16 +119,16 @@ function todayInRome() {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
-function readCurrentVersion(source) {
-  const versionMatch = source.match(/export const APP_VERSION = "([^"]+)";/);
-  const dateMatch = source.match(/export const BUILD_DATE = "([^"]+)";/);
+function readCurrentVersion(packageJsonSource, versionSource) {
+  const pkg = readPackageFile(packageJsonSource, "package.json");
+  const dateMatch = versionSource.match(/export const BUILD_DATE = "([^"]+)";/);
 
-  if (!versionMatch) fail("APP_VERSION non trovato in src/lib/version.ts.");
+  if (typeof pkg.version !== "string") fail("version non trovato in package.json.");
   if (!dateMatch) fail("BUILD_DATE non trovato in src/lib/version.ts.");
 
   return {
     buildDate: dateMatch[1],
-    version: versionMatch[1],
+    version: pkg.version,
   };
 }
 
@@ -169,7 +169,7 @@ function normalize(value) {
     .toLowerCase();
 }
 
-function extractUnreleased(changelog) {
+function extractUnreleased(changelog, { allowEmpty = false } = {}) {
   const headerRegex = /^## \[Non rilasciato\]\s*$/m;
   const headerMatch = changelog.match(headerRegex);
 
@@ -188,7 +188,7 @@ function extractUnreleased(changelog) {
   const rawBody = afterHeader.slice(0, nextHeaderIndex);
   const body = rawBody.trim();
 
-  if (!body) {
+  if (!body && !allowEmpty) {
     fail("Il blocco [Non rilasciato] è vuoto. Aggiungi almeno una voce prima di rilasciare.");
   }
 
@@ -337,12 +337,7 @@ function updateChangelog(changelog, release) {
 }
 
 function updateVersionFile(source, release) {
-  return source
-    .replace(
-      /export const APP_VERSION = "[^"]+";/,
-      `export const APP_VERSION = "${release.version}";`,
-    )
-    .replace(/export const BUILD_DATE = "[^"]+";/, `export const BUILD_DATE = "${release.date}";`);
+  return source.replace(/export const BUILD_DATE = "[^"]+";/, `export const BUILD_DATE = "${release.date}";`);
 }
 
 function readPackageFile(source, label) {
@@ -368,18 +363,13 @@ function updatePackageLock(source, release) {
   return `${JSON.stringify(lock, null, 2)}\n`;
 }
 
-function assertPackageVersions(current, packageJsonSource, packageLockSource) {
-  const pkg = readPackageFile(packageJsonSource, "package.json");
+function assertPackageVersions(current, packageLockSource) {
   const lock = readPackageFile(packageLockSource, "package-lock.json");
   const rootLockVersion = lock.packages?.[""]?.version;
 
-  if (pkg.version !== current.version) {
-    fail(`package.json è a ${pkg.version}, ma APP_VERSION è ${current.version}. Allinea prima di rilasciare.`);
-  }
-
   if (lock.version !== current.version || rootLockVersion !== current.version) {
     fail(
-      `package-lock.json è a ${lock.version}/${rootLockVersion}, ma APP_VERSION è ${current.version}. Allinea prima di rilasciare.`,
+      `package-lock.json è a ${lock.version}/${rootLockVersion}, ma package.json è ${current.version}. Allinea prima di rilasciare.`,
     );
   }
 }
@@ -411,10 +401,15 @@ const changelog = readFileSync(changelogPath, "utf8");
 const versionFile = readFileSync(versionPath, "utf8");
 const packageJson = readFileSync(packagePath, "utf8");
 const packageLock = readFileSync(packageLockPath, "utf8");
-const current = readCurrentVersion(versionFile);
-assertPackageVersions(current, packageJson, packageLock);
+const current = readCurrentVersion(packageJson, versionFile);
+assertPackageVersions(current, packageLock);
 
-const unreleased = extractUnreleased(changelog);
+const unreleased = extractUnreleased(changelog, { allowEmpty: options.dryRun });
+if (!unreleased.body) {
+  console.log("Nessuna voce da rilasciare: il blocco [Non rilasciato] è vuoto.");
+  console.log("Prossimo passo: aggiungi una voce sotto Novità, Correzioni o Non versionato prima di preparare una release.");
+  process.exit(0);
+}
 validateSections(unreleased.body);
 const bump = options.bump ?? (options.version ? null : inferBump(unreleased.body));
 const nextVersion = options.version ?? bumpVersion(current.version, bump);
@@ -474,7 +469,7 @@ if (options.dryRun) {
   console.log(`Analisi blocco [Non rilasciato]: ${analyzeUnreleased(unreleased.body)}`);
   console.log("File che verrebbero aggiornati:");
   console.log("- CHANGELOG.md");
-  console.log("- src/lib/version.ts");
+  console.log("- src/lib/version.ts (data build)");
   console.log("- package.json");
   console.log("- package-lock.json");
   process.exit(0);
@@ -486,4 +481,4 @@ writeFileSync(packagePath, nextPackageJson);
 writeFileSync(packageLockPath, nextPackageLock);
 
 console.log(`Release Simulatore gara TPL lotti 1-4 ${nextVersion} preparata (${releaseDate}, ${strategy}).`);
-console.log("Aggiornati CHANGELOG.md, src/lib/version.ts, package.json e package-lock.json.");
+console.log("Aggiornati CHANGELOG.md, src/lib/version.ts (data build), package.json e package-lock.json.");
