@@ -6,6 +6,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [0.2.11] — 2026-05-20
+
+### Correzioni
+
+- **Offerta tecnica**: aggiunti bottoni rapidi per selezionare i sotto-criteri dell'ambito attivo, con codice, titolo e punteggio visibili prima dell'editor.
+
 ## [0.2.10] — 2026-05-20
 
 ### Correzioni

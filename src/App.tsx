@@ -1212,6 +1212,27 @@ function TechnicalWorkbench({
             {totalCriteria} criteri
           </span>
         </div>
+        <div className="criterion-jump-list" aria-label={`Sotto criteri ${selectedAmbit.id}`}>
+          {parentSections.flatMap((parent) =>
+            parent.criteria.map((criterion) => {
+              const subScore = lotScore.subScores[criterion.id];
+              return (
+                <button
+                  key={criterion.id}
+                  type="button"
+                  className={criterion.id === selectedCriterion.id ? "active" : ""}
+                  onClick={() => onCriterionSelect(criterion.id)}
+                  title={criterion.label}
+                  aria-pressed={criterion.id === selectedCriterion.id}
+                >
+                  <strong>{criterion.id}</strong>
+                  <span>{criterion.label}</span>
+                  <small>{formatPoints(subScore?.rawScore ?? 0)} / {formatPoints(criterion.maxPoints)} pt</small>
+                </button>
+              );
+            }),
+          )}
+        </div>
       </div>
 
       <CriterionInspector
