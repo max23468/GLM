@@ -280,8 +280,8 @@ Esegui `npm run smoke` solo quando il diff tocca o rischia di rompere flussi cop
 
 ## Risposte finali e prossimi passi
 
-- Ogni volta che termini un'attività, includi nelle conclusioni i prossimi passi consigliati quando c'è un seguito operativo reale.
-- I prossimi passi devono essere concreti, ordinati e proporzionati al lavoro appena concluso.
+- Ogni volta che termini un'attività, considera sempre i prossimi passi nelle conclusioni, come nel flusso operativo di Pratix.
+- Se c'è un seguito operativo reale, indica i prossimi passi consigliati: devono essere concreti, ordinati e proporzionati al lavoro appena concluso.
 - Se ci sono alternative sensate, presentale in modo facile da scegliere, indicando l'effetto pratico di ciascuna.
 - Se uno o più test/check falliscono, indica comando fallito, sintomo principale, impatto pratico e prossimo passo consigliato.
 - Se non resta un prossimo passo utile, dichiaralo esplicitamente invece di forzare una lista artificiale.
