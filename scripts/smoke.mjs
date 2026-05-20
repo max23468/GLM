@@ -127,9 +127,7 @@ const verifyOptimization = async (page, suffix, theme) => {
     throw new Error(`${suffix}: cella base prevista inattesa ${JSON.stringify(ratioBase)}`);
   }
 
-  const oldWorkspaceEntry = await page.getByRole("button", { name: "Gestisci workspace" }).count();
-  if (oldWorkspaceEntry !== 0) throw new Error(`${suffix}: il vecchio passaggio Gestisci workspace è ancora visibile`);
-
+  await page.getByRole("button", { name: "Gestisci workspace" }).click();
   await page.getByRole("button", { name: "Salva scenario in libreria" }).click();
   const saved = await page.evaluate(() => {
     const scenarios = JSON.parse(localStorage.getItem("tpl-lotti-1-4-scenarios") || "[]");

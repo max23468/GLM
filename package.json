@@ -12,7 +12,7 @@
     "prepublish:check": "git diff --check && npm run validate:data && npm test && npm run build && npm run smoke",
     "smoke": "node scripts/smoke.mjs",
     "test": "vitest run",
-    "validate:data": "vitest run src/data/tender.validation.test.ts src/data/demo-data.validation.test.ts src/data/scenario-library.test.ts",
+    "validate:data": "vitest run src/data/tender.validation.test.ts src/data/demo-data.validation.test.ts",
     "validate:demo": "vitest run src/data/demo-data.validation.test.ts"
   },
   "dependencies": {

@@ -22,16 +22,17 @@ npm run preview -- --port 4173
 
 ## Cosa fa
 
-- Gestisce scenari, concorrenti, lotti e partecipazioni direttamente dalla barra laterale, senza passaggi intermedi.
+- Gestisce scenari, concorrenti e partecipazioni dalla barra laterale `Workspace`, con modalità `Gestisci workspace` e rientro unico tramite `Indietro`.
 - Gestisce più concorrenti e la partecipazione ai lotti singoli `L1`, `L2`, `L3`, `L4`.
+- Cambia lotto di lavoro dalla scheda centrale, senza aprire la gestione laterale.
 - Simula le combinatorie ammesse `L1+L2`, `L2+L3`, `L3+L4`, `L1+L4`.
 - Calcola punteggi tecnici Q/T/D, soglia Q/T, riparametrazione per ambito, punteggio economico e scenario vincente.
 - Evidenzia warning su soglie, dipendenze, combinatorie non ammissibili, sorteggio e deroga al limite di due lotti.
 - Offre scenari base con profili simulati ispirati a fonti pubbliche e allegati locali, senza trasformarli in offerte reali.
 - Permette salvataggio locale, duplicazione, import/export JSON e confronto fra scenari.
-- Importa snapshot JSON versionati nel repository dalla libreria GitHub dell'app.
 - Mostra l'analisi puntuale criterio per sub-criterio, con costo stimato e impatto su punteggio/ribasso.
 - Usa l'ottimizzazione per partire da un'offerta iniziale, massimizzare il punteggio con leve tecniche e riallocare automaticamente tecnica verso ribasso.
+- Genera un report stampabile o salvabile in PDF dal browser.
 - Mostra versione locale e note build senza chiamare API GitHub dal browser.
 - Espone una pagina web di istruzioni raggiungibile dal pulsante `Istruzioni` nella testata e dall'URL `/istruzioni/`.
 - Supporta tema chiaro/scuro/automatico e layout responsive.
@@ -51,9 +52,8 @@ Le basi operative degli scenari derivano da documenti locali di gara e segnali p
 
 ```text
 src/App.tsx                            UI principale, gestione workspace laterale, stato, import/export, analisi puntuale criterio e ottimizzazione
-src/components/scenario-panels.tsx     Pannelli scenario, confronto e riepilogo
+src/components/scenario-panels.tsx     Pannelli scenario, confronto, riepilogo e report
 src/data/base-scenarios.ts             Scenari base, profili simulati e baseline operative
-src/data/scenario-library.ts           Manifest degli snapshot JSON importabili dalla libreria GitHub
 src/data/tender.ts                     Lotti, coppie, criteri, soglie, fonti e criticità documentali
 src/lib/optimization.ts                Motore di ottimizzazione punteggio, leve tecniche e riallocazioni verso ribasso
 src/lib/scenario-persistence.ts        Normalizzazione snapshot, migrazione storage e import JSON
@@ -63,7 +63,6 @@ src/lib/*.test.ts                      Test Vitest su scoring e persistenza
 src/components/instructions-page.tsx   Pagina web navigabile con istruzioni di compilazione
 src/styles.css                         Design system locale e layout responsive
 public/_redirects                      Fallback Cloudflare Pages per URL /istruzioni
-public/scenarios/*.json                Snapshot scenario versionati, serviti e importabili dall'app
 .github/workflows/ci.yml               CI GitHub Actions con validazione dati, test e build
 docs/LOGICA_SIMULATORE.md              Logica e assunzioni operative del simulatore
 docs/milano-lotti-extraurbani-om/      Allegati di gara versionati con Git LFS
@@ -85,18 +84,15 @@ npm run prepublish:check
 npm run preview -- --port 4173
 ```
 
-`npm test` esegue i test Vitest su scoring, persistenza e dati demo. `npm run validate:data` concentra i controlli automatici su dati gara, scenari demo e snapshot JSON della libreria GitHub. `npm run build` esegue TypeScript e build Vite. `npm run smoke` avvia una preview locale e verifica con Playwright i flussi principali della tab `Ottimizzazione`; `npm run prepublish:check` raggruppa i controlli prima della pubblicazione.
+`npm test` esegue i test Vitest su scoring, persistenza e dati demo. `npm run validate:data` concentra i controlli automatici su dati gara e scenari demo. `npm run build` esegue TypeScript e build Vite. `npm run smoke` avvia una preview locale e verifica con Playwright i flussi principali della tab `Ottimizzazione`; `npm run prepublish:check` raggruppa i controlli prima della pubblicazione.
 
 ## Integrazione GitHub
 
 Il repository espone una prima integrazione leggera con GitHub:
 
 - CI GitHub Actions su push, pull request e avvio manuale, con `npm run validate:data`, `npm test` e `npm run build`;
-- snapshot scenario versionati in `public/scenarios/*.json`, importabili dal pannello `Libreria GitHub`;
-- validatori Vitest per coerenza di lotti, criteri, soglie, fonti, warning e libreria scenari;
+- validatori Vitest per coerenza di lotti, criteri, soglie, fonti, warning e scenari demo;
 - pannello `Versione e changelog` con versione locale e note sintetiche della build, senza chiamate API pubbliche o link cliccabili verso il repository privato dal browser.
-
-Gli snapshot GitHub sono basi di lavoro versionate: quando vengono importati, entrano nella libreria locale del browser e restano modificabili come qualsiasi altro scenario.
 
 ## Fonti e allegati
 
