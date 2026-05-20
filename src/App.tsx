@@ -103,7 +103,6 @@ const euroPerKmFormatter = new Intl.NumberFormat("it-IT", {
 });
 type ThemePreference = "auto" | "light" | "dark";
 type WorkspaceTab = "tecnica" | "economica" | "ottimizza" | "combinatorie" | "risultati";
-type CriterionFilter = "all" | "work" | "warn" | "open";
 type AppView = "simulatore" | "istruzioni";
 
 const themeOptions: { value: ThemePreference; label: string; icon: LucideIcon }[] = [
@@ -118,13 +117,6 @@ const workspaceTabs: { value: WorkspaceTab; label: string; icon: LucideIcon }[] 
   { value: "ottimizza", label: "Ottimizzazione", icon: Sparkles },
   { value: "combinatorie", label: "Combinatorie", icon: Route },
   { value: "risultati", label: "Risultati", icon: Trophy },
-];
-
-const criterionFilterOptions: { value: CriterionFilter; label: string }[] = [
-  { value: "all", label: "Tutti" },
-  { value: "work", label: "Da lavorare" },
-  { value: "warn", label: "Verifica" },
-  { value: "open", label: "Scoperti" },
 ];
 
 const optimizationScopeOptions: { value: OptimizationConfig["scope"]; label: string }[] = [
@@ -373,13 +365,6 @@ const criterionStatus = (criterion: Criterion, score: number, note?: string) => 
   return { label: "Parziale", tone: "mid" };
 };
 
-const matchesCriterionFilter = (criterion: Criterion, score: number, note: string | undefined, filter: CriterionFilter) => {
-  if (filter === "all") return true;
-  if (filter === "warn") return Boolean(note);
-  if (filter === "open") return score <= 0 && criterion.maxPoints > 0;
-  return Boolean(note) || (criterion.maxPoints > 0 && score < criterion.maxPoints * 0.9);
-};
-
 function App() {
   const [initialWorkspace] = useState(() => readStoredWorkspace());
   const initialBaseScenario = getBaseScenario(initialWorkspace?.baseScenarioId);
@@ -390,7 +375,6 @@ function App() {
   const [selectedLotId, setSelectedLotId] = useState<LotId>(initialWorkspace?.selectedLotId ?? initialBaseScenario.defaultLotId);
   const [selectedPairId, setSelectedPairId] = useState<PairId>(initialWorkspace?.selectedPairId ?? initialBaseScenario.defaultPairId);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("tecnica");
-  const [criterionFilter, setCriterionFilter] = useState<CriterionFilter>("all");
   const [selectedAmbitId, setSelectedAmbitId] = useState(AMBITS[0].id);
   const [selectedCriterionId, setSelectedCriterionId] = useState(CRITERIA[0].id);
   const [settings, setSettings] = useState<Settings>(initialWorkspace?.settings ?? DEFAULT_SETTINGS);
@@ -1153,10 +1137,8 @@ function App() {
                         lotScore={selectedLotScore}
                         selectedAmbitId={selectedAmbit.id}
                         selectedCriterion={selectedCriterion}
-                        criterionFilter={criterionFilter}
                         onAmbitSelect={setSelectedAmbitId}
                         onCriterionSelect={setSelectedCriterionId}
-                        onCriterionFilterChange={setCriterionFilter}
                         onCriterionChange={(criterion, value) =>
                           updateLotOffer(selectedLotId, (offer) => {
                             if (criterion.kind === "Q") offer.qValues[criterion.id] = Number(value);
@@ -1419,10 +1401,8 @@ function TechnicalWorkbench({
   lotScore,
   selectedAmbitId,
   selectedCriterion,
-  criterionFilter,
   onAmbitSelect,
   onCriterionSelect,
-  onCriterionFilterChange,
   onCriterionChange,
   onQuantityInputChange,
   tradeoff,
@@ -1435,10 +1415,8 @@ function TechnicalWorkbench({
   lotScore: LotScore;
   selectedAmbitId: string;
   selectedCriterion: Criterion;
-  criterionFilter: CriterionFilter;
   onAmbitSelect: (ambitId: string) => void;
   onCriterionSelect: (criterionId: string) => void;
-  onCriterionFilterChange: (filter: CriterionFilter) => void;
   onCriterionChange: (criterion: Criterion, value: number | boolean) => void;
   onQuantityInputChange: (criterion: Criterion, patch: Partial<QuantityInputValue>) => void;
   tradeoff: TradeoffPlan;
@@ -1449,17 +1427,7 @@ function TechnicalWorkbench({
   const selectedSubScore = lotScore.subScores[selectedCriterion.id];
   const selectedAmbit = AMBITS.find((ambit) => ambit.id === selectedAmbitId) ?? AMBITS[0];
   const parentSections = criteriaByParent(selectedAmbit);
-  const filteredParentSections = parentSections
-    .map((parent) => ({
-      ...parent,
-      criteria: parent.criteria.filter((criterion) => {
-        const subScore = lotScore.subScores[criterion.id];
-        return matchesCriterionFilter(criterion, subScore?.rawScore ?? 0, subScore?.note, criterionFilter);
-      }),
-    }))
-    .filter((parent) => parent.criteria.length > 0);
   const totalCriteria = parentSections.reduce((sum, parent) => sum + parent.criteria.length, 0);
-  const filteredCriteria = filteredParentSections.reduce((sum, parent) => sum + parent.criteria.length, 0);
 
   return (
     <div className="technical-workbench">
@@ -1481,23 +1449,10 @@ function TechnicalWorkbench({
         <div>
           <strong>
             Criteri {selectedAmbit.id}
-            <HelpTooltip>Usa i filtri per ridurre la lista: "Da lavorare" mostra criteri con margine o avvisi, "Scoperti" quelli ancora senza punti.</HelpTooltip>
           </strong>
           <span>
-            {filteredCriteria} di {totalCriteria} visibili
+            {totalCriteria} criteri
           </span>
-        </div>
-        <div className="filter-pills" role="group" aria-label="Filtro criteri">
-          {criterionFilterOptions.map((option) => (
-            <button
-              key={option.value}
-              className={criterionFilter === option.value ? "active" : ""}
-              onClick={() => onCriterionFilterChange(option.value)}
-              type="button"
-            >
-              {option.label}
-            </button>
-          ))}
         </div>
       </div>
 
@@ -1522,7 +1477,7 @@ function TechnicalWorkbench({
           <span>Punti</span>
           <span>Stato</span>
         </div>
-        {filteredParentSections.map((parent) => {
+        {parentSections.map((parent) => {
           const parentScore = parent.criteria.reduce((sum, criterion) => sum + (lotScore.subScores[criterion.id]?.rawScore ?? 0), 0);
           const parentMax = parent.criteria.reduce((sum, criterion) => sum + criterion.maxPoints, 0);
           return (
@@ -1552,7 +1507,6 @@ function TechnicalWorkbench({
             </div>
           );
         })}
-        {!filteredParentSections.length && <div className="empty-state compact">Nessun criterio corrisponde al filtro selezionato.</div>}
       </div>
     </div>
   );
