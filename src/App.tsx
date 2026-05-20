@@ -2491,6 +2491,8 @@ function ResultsWorkbench({ result, selectedLotId, bidders }: { result: Simulati
   const scoreColumnCount = scoreBidders.length + 2;
   const qtMax = maxQtPoints();
   const technicalMax = AMBITS.reduce((sum, ambit) => sum + ambit.maxPoints, 0);
+  const economicMax = 30;
+  const totalMax = technicalMax + economicMax;
   const lotSummaries = buildScenarioLotSummaries(result.selectedScenario?.assignments ?? []);
   const assignedLotCount = lotSummaries.filter(({ score }) => typeof score === "number").length;
 
@@ -2583,10 +2585,20 @@ function ResultsWorkbench({ result, selectedLotId, bidders }: { result: Simulati
                   return (
                     <Fragment key={ambit.id}>
                       <tr className="subcriteria-ambit-row">
-                        <th colSpan={scoreColumnCount}>
+                        <th>
                           <span>{ambit.id}</span>
                           <strong>{ambit.label}</strong>
                         </th>
+                        <td>{formatPoints(ambit.maxPoints)}</td>
+                        {scoreBidders.map((bidder) => {
+                          const lotScore = result.lotScores[bidder.id]?.[selectedLotId];
+                          return (
+                            <td key={bidder.id}>
+                              <strong>{formatPoints(lotScore?.riparamByAmbit[ambit.id] ?? 0)}</strong>
+                              <small>grezzo {formatPoints(lotScore?.rawByAmbit[ambit.id] ?? 0)}</small>
+                            </td>
+                          );
+                        })}
                       </tr>
                       {ambitCriteria.map((criterion) => (
                         <tr key={criterion.id}>
@@ -2626,6 +2638,27 @@ function ResultsWorkbench({ result, selectedLotId, bidders }: { result: Simulati
                   {scoreBidders.map((bidder) => {
                     const lotScore = result.lotScores[bidder.id]?.[selectedLotId];
                     return <td key={bidder.id}>{formatPoints(lotScore?.technical ?? 0)}</td>;
+                  })}
+                </tr>
+                <tr>
+                  <th>Offerta economica</th>
+                  <td>{formatPoints(economicMax)}</td>
+                  {scoreBidders.map((bidder) => {
+                    const lotScore = result.lotScores[bidder.id]?.[selectedLotId];
+                    return (
+                      <td key={bidder.id}>
+                        <strong>{formatPoints(lotScore?.singleEconomic ?? 0)}</strong>
+                        <small>R medio {formatPercent(lotScore?.singleRibasso ?? 0)}</small>
+                      </td>
+                    );
+                  })}
+                </tr>
+                <tr>
+                  <th>Totale offerta singola</th>
+                  <td>{formatPoints(totalMax)}</td>
+                  {scoreBidders.map((bidder) => {
+                    const lotScore = result.lotScores[bidder.id]?.[selectedLotId];
+                    return <td key={bidder.id}>{formatPoints(lotScore?.singleTotal ?? 0)}</td>;
                   })}
                 </tr>
               </tfoot>

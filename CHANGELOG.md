@@ -6,6 +6,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [0.2.7] — 2026-05-20
+
+### Correzioni
+
+- **Punteggi sotto criterio**: la tabella include subtotali per ambito, offerta economica e totale offerta, con colonne più compatte su desktop.
+
 ## [0.2.6] — 2026-05-20
 
 ### Correzioni

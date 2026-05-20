@@ -2702,8 +2702,8 @@ input[type="checkbox"] {
 }
 
 .subcriteria-score-table {
-  width: 100%;
-  min-width: max(980px, calc(310px + var(--score-column-count, 7) * 132px));
+  width: max-content;
+  min-width: max(760px, calc(250px + var(--score-column-count, 7) * 108px));
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
 }
@@ -2711,7 +2711,7 @@ input[type="checkbox"] {
 .subcriteria-score-table th,
 .subcriteria-score-table td {
   border-bottom: 1px solid var(--border);
-  padding: 8px 9px;
+  padding: 7px 8px;
   text-align: right;
   vertical-align: top;
 }
@@ -2731,9 +2731,9 @@ input[type="checkbox"] {
   position: sticky;
   left: 0;
   z-index: 2;
-  width: 310px;
-  min-width: 310px;
-  max-width: 310px;
+  width: 250px;
+  min-width: 250px;
+  max-width: 250px;
   text-align: left;
 }
 
@@ -2787,13 +2787,11 @@ input[type="checkbox"] {
   font-size: 0.86rem;
 }
 
-.subcriteria-score-table .subcriteria-ambit-row th {
-  position: static;
-  width: auto;
-  min-width: 0;
-  max-width: none;
+.subcriteria-score-table .subcriteria-ambit-row th,
+.subcriteria-score-table .subcriteria-ambit-row td {
   background: var(--parent-head-bg);
   color: var(--section-title);
+  font-weight: 850;
 }
 
 .subcriteria-score-table .subcriteria-ambit-row th span,
