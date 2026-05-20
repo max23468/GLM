@@ -139,7 +139,10 @@ const verifyOptimization = async (page, suffix, theme) => {
   const oldWorkspaceEntry = await page.getByRole("button", { name: "Gestisci workspace" }).count();
   if (oldWorkspaceEntry !== 0) throw new Error(`${suffix}: il vecchio passaggio Gestisci workspace è ancora visibile`);
 
+  await page.getByRole("button", { name: "Cambia" }).click();
   const deleteBaseButton = page.getByRole("button", { name: "Elimina scenario base Mercato realistico" });
+  if ((await deleteBaseButton.count()) !== 0) throw new Error(`${suffix}: eliminazione scenario base visibile senza Gestisci`);
+  await page.getByRole("button", { name: "Gestisci" }).click();
   if ((await deleteBaseButton.count()) !== 1) throw new Error(`${suffix}: eliminazione scenario base non disponibile`);
   await deleteBaseButton.click();
   const hiddenBaseScenarios = await page.evaluate(() => JSON.parse(localStorage.getItem("tpl-lotti-1-4-hidden-base-scenarios") || "[]"));

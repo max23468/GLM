@@ -1,6 +1,5 @@
 import {
   AlertTriangle,
-  CheckCircle2,
   CopyPlus,
   Download,
   FileJson,
@@ -197,14 +196,14 @@ export function StrategicSummary({
       </div>
       <div className="strategic-footer">
         <span>Focus: {selectedBidderName ?? "n/d"} su {selectedLotLabel}, sezione {activeSectionLabel}</span>
-        {typeof selectedLotAdmitted === "boolean" ? (
+        {selectedLotAdmitted === false ? (
           <span
-            className={`status-badge threshold-status summary-threshold-status ${selectedLotAdmitted ? "ok" : "fail"}`}
-            aria-label={`Soglia di sbarramento ${selectedLotAdmitted ? "superata" : "non superata"}`}
-            title={`Soglia di sbarramento ${selectedLotAdmitted ? "superata" : "non superata"}`}
+            className="status-badge threshold-status summary-threshold-status fail"
+            aria-label="Soglia di sbarramento non superata"
+            title="Soglia di sbarramento non superata"
           >
-            {selectedLotAdmitted ? <CheckCircle2 size={14} /> : <X size={14} />}
-            Soglia di sbarramento
+            <X size={14} />
+            Soglia non superata
           </span>
         ) : null}
         {result.warnings[0] ? (

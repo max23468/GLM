@@ -385,6 +385,8 @@ function App() {
   const [hiddenBaseScenarioIds, setHiddenBaseScenarioIds] = useState<BaseScenarioId[]>(getStoredHiddenBaseScenarios);
   const [compareScenarioId, setCompareScenarioId] = useState("");
   const [scenarioNotice, setScenarioNotice] = useState("");
+  const [isBaseScenariosExpanded, setBaseScenariosExpanded] = useState(false);
+  const [isBaseScenarioManagementOpen, setBaseScenarioManagementOpen] = useState(false);
   const [isSuggestionsPanelExpanded, setSuggestionsPanelExpanded] = useState(false);
   const [isWarningsPanelExpanded, setWarningsPanelExpanded] = useState(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>(getStoredTheme);
@@ -519,40 +521,24 @@ function App() {
     };
   };
 
-  const focusWarnings = useMemo(() => {
-    const warnings: string[] = [];
-    if (selectedLotScore?.warnings.length) {
-      warnings.push(...selectedLotScore.warnings.map((warning) => `${selectedBidder?.name ?? "Concorrente"} ${selectedLotId}: ${warning}`));
-    }
-    if (activeTab === "combinatorie" && selectedComboScore?.warnings.length) {
-      warnings.push(...selectedComboScore.warnings.map((warning) => `${selectedBidder?.name ?? "Concorrente"} ${selectedPairId}: ${warning}`));
-    }
-    if (selectedBidder) {
-      warnings.push(...result.warnings.filter((warning) => warning.includes(selectedBidder.name) || warning.includes(selectedLotId)).slice(0, 3));
-    }
-    return [...new Set(warnings)].slice(0, 5);
-  }, [activeTab, result.warnings, selectedBidder, selectedComboScore, selectedLotId, selectedLotScore, selectedPairId]);
-
-  const focusSuggestions = useMemo(() => {
-    const direct = result.suggestions.filter((suggestion) => {
-      if (!selectedBidder || suggestion.bidderId !== selectedBidder.id) return false;
-      if (suggestion.lotId && suggestion.lotId !== selectedLotId) return false;
-      if (suggestion.pairId && suggestion.pairId !== selectedPairId) return false;
-      return true;
-    });
-    return (direct.length ? direct : result.suggestions).slice(0, 3);
-  }, [result.suggestions, selectedBidder, selectedLotId, selectedPairId]);
-
   const rankedSuggestions = useMemo(
     () =>
       result.suggestions
-        .map((suggestion, index) => ({ suggestion, index }))
+        .map((suggestion, index) => {
+          const isDirect =
+            Boolean(selectedBidder) &&
+            suggestion.bidderId === selectedBidder?.id &&
+            (!suggestion.lotId || suggestion.lotId === selectedLotId) &&
+            (!suggestion.pairId || suggestion.pairId === selectedPairId);
+          return { suggestion, index, isDirect };
+        })
         .sort((left, right) => {
+          if (left.isDirect !== right.isDirect) return left.isDirect ? -1 : 1;
           const effortDelta = suggestionEffortRank[left.suggestion.effort] - suggestionEffortRank[right.suggestion.effort];
           return effortDelta || left.index - right.index;
         })
         .map(({ suggestion }) => suggestion),
-    [result.suggestions],
+    [result.suggestions, selectedBidder, selectedLotId, selectedPairId],
   );
 
   const updateBidder = (bidderId: string, updater: (bidder: Bidder) => Bidder) => {
@@ -582,6 +568,8 @@ function App() {
 
   const restoreBaseScenarios = () => {
     setHiddenBaseScenarioIds([]);
+    setBaseScenariosExpanded(true);
+    setBaseScenarioManagementOpen(false);
     setScenarioNotice("Scenari base ripristinati nella barra laterale.");
   };
 
@@ -852,39 +840,72 @@ function App() {
           />
 
           <section className="panel base-panel">
-            <div className="section-title">
-              <ClipboardList size={18} />
-              Scenari base
-              <HelpTooltip>Parti da uno scenario precompilato solo come base di lavoro: non rappresenta un'offerta ufficiale.</HelpTooltip>
+            <div className="section-title between">
+              <span>
+                <ClipboardList size={18} />
+                Scenari base
+                <HelpTooltip>Parti da uno scenario precompilato solo come base di lavoro: non rappresenta un'offerta ufficiale.</HelpTooltip>
+              </span>
+              <span className="section-actions">
+                <button
+                  className="action-button compact"
+                  type="button"
+                  onClick={() => setBaseScenariosExpanded((expanded) => !expanded)}
+                  aria-expanded={isBaseScenariosExpanded}
+                >
+                  {isBaseScenariosExpanded ? "Chiudi" : "Cambia"}
+                </button>
+                {isBaseScenariosExpanded && (
+                  <button
+                    className="action-button compact"
+                    type="button"
+                    onClick={() => setBaseScenarioManagementOpen((open) => !open)}
+                    aria-pressed={isBaseScenarioManagementOpen}
+                  >
+                    {isBaseScenarioManagementOpen ? "Fine" : "Gestisci"}
+                  </button>
+                )}
+              </span>
             </div>
-            <div className="base-list">
-              {visibleBaseScenarios.map((scenario) => (
-                <div key={scenario.id} className={`sidebar-row-actions base-scenario-row ${scenario.id === baseScenarioId ? "selected" : ""}`}>
-                  <button
-                    className="saved-scenario-main base-scenario-main"
-                    onClick={() => loadBaseScenario(scenario)}
-                  >
-                    <span>{scenario.title}</span>
-                    <small>{scenario.body}</small>
-                  </button>
-                  <button
-                    className="icon-button mini danger"
-                    onClick={() => deleteBaseScenario(scenario)}
-                    aria-label={`Elimina scenario base ${scenario.title}`}
-                    title="Elimina scenario base"
-                  >
-                    <X size={14} />
-                  </button>
+            <div className="active-scenario base-scenario-summary">
+              <span>Scenario attivo</span>
+              <strong>{selectedBaseScenario.title}</strong>
+              <small>{selectedBaseScenario.body}</small>
+            </div>
+            {isBaseScenariosExpanded && (
+              <>
+                <div className="base-list">
+                  {visibleBaseScenarios.map((scenario) => (
+                    <div key={scenario.id} className={`sidebar-row-actions base-scenario-row ${scenario.id === baseScenarioId ? "selected" : ""}`}>
+                      <button
+                        className="saved-scenario-main base-scenario-main"
+                        onClick={() => loadBaseScenario(scenario)}
+                      >
+                        <span>{scenario.title}</span>
+                        <small>{scenario.body}</small>
+                      </button>
+                      {isBaseScenarioManagementOpen && (
+                        <button
+                          className="icon-button mini danger"
+                          onClick={() => deleteBaseScenario(scenario)}
+                          aria-label={`Elimina scenario base ${scenario.title}`}
+                          title="Elimina scenario base"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {!visibleBaseScenarios.length && <div className="empty-sidebar-note">Tutti gli scenari base sono stati eliminati dalla lista.</div>}
                 </div>
-              ))}
-              {!visibleBaseScenarios.length && <div className="empty-sidebar-note">Tutti gli scenari base sono stati eliminati dalla lista.</div>}
-            </div>
-            {hiddenBaseScenarioIds.length > 0 && (
-              <button className="action-button compact" onClick={restoreBaseScenarios}>
-                Ripristina scenari base
-              </button>
+                {hiddenBaseScenarioIds.length > 0 && (
+                  <button className="action-button compact" onClick={restoreBaseScenarios}>
+                    Ripristina scenari base
+                  </button>
+                )}
+                <div className="hint">Profili simulati da fonti pubbliche e modelli locali: servono per confrontare scenari, non rappresentano offerte ufficiali.</div>
+              </>
             )}
-            <div className="hint">Profili simulati da fonti pubbliche e modelli locali: servono per confrontare scenari, non rappresentano offerte ufficiali.</div>
           </section>
 
           <section className="panel">
@@ -1098,13 +1119,6 @@ function App() {
                     ))}
                   </div>
                 </div>
-
-                <ContextualActionPanel
-                  warnings={focusWarnings}
-                  suggestions={focusSuggestions}
-                  selectedBidderName={selectedBidder.name}
-                  selectedLotLabel={selectedLotLabel}
-                />
 
                 <div className="workspace-tabs" role="tablist" aria-label="Sezioni offerta">
                   {workspaceTabs.map((tab) => {
@@ -1328,68 +1342,6 @@ function App() {
         </aside>
       </div>
     </div>
-  );
-}
-
-function ContextualActionPanel({
-  warnings,
-  suggestions,
-  selectedBidderName,
-  selectedLotLabel,
-}: {
-  warnings: string[];
-  suggestions: Suggestion[];
-  selectedBidderName: string;
-  selectedLotLabel: string;
-}) {
-  return (
-    <section className={`contextual-panel ${warnings.length ? "has-warnings" : "clear"}`} aria-label="Azioni e avvisi sul focus corrente">
-      <div className="contextual-head">
-        <div>
-          <span>Focus operativo</span>
-          <strong>
-            {selectedBidderName} su {selectedLotLabel}
-          </strong>
-        </div>
-        <div className={`status-badge ${warnings.length ? "warn" : "ok"}`}>
-          {warnings.length ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
-          {warnings.length ? `${warnings.length} verifiche` : "nessun blocco"}
-        </div>
-      </div>
-      <div className="contextual-grid">
-        <div className="contextual-column">
-          <span className="contextual-label">Avvisi contestuali</span>
-          {warnings.length ? (
-            <div className="inline-warning-list">
-              {warnings.map((warning) => (
-                <div key={warning} className="inline-warning-item">
-                  {warning}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="inline-ok">Nessun warning prioritario sul focus corrente.</div>
-          )}
-        </div>
-        <div className="contextual-column">
-          <span className="contextual-label">Prossime leve</span>
-          {suggestions.length ? (
-            <div className="inline-suggestion-list">
-              {suggestions.map((suggestion) => (
-                <article key={`${suggestion.title}-${suggestion.body}`} className="inline-suggestion">
-                  <strong>{suggestion.title}</strong>
-                  <span>
-                    {formatPoints(suggestion.impact)} pt, sforzo {suggestion.effort}
-                  </span>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="inline-ok">Nessun suggerimento calcolato per lo scenario corrente.</div>
-          )}
-        </div>
-      </div>
-    </section>
   );
 }
 
