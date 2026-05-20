@@ -862,13 +862,13 @@ function App() {
             </div>
             <div className="base-list">
               {visibleBaseScenarios.map((scenario) => (
-                <div key={scenario.id} className="base-card-row">
+                <div key={scenario.id} className={`sidebar-row-actions base-scenario-row ${scenario.id === baseScenarioId ? "selected" : ""}`}>
                   <button
-                    className={`base-card ${scenario.id === baseScenarioId ? "active" : ""}`}
+                    className="saved-scenario-main base-scenario-main"
                     onClick={() => loadBaseScenario(scenario)}
                   >
-                    <strong>{scenario.title}</strong>
-                    <span>{scenario.body}</span>
+                    <span>{scenario.title}</span>
+                    <small>{scenario.body}</small>
                   </button>
                   <button
                     className="icon-button mini danger"

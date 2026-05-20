@@ -93,6 +93,8 @@ npm run release -- --date 2026-05-20
 
 La scheda `Versione e changelog` legge `CHANGELOG.md` a build time e mostra solo le versioni rilasciate. Le sezioni `Non rilasciato` e `Non versionato` restano fuori dalla scheda.
 
+Prima di pubblicare una modifica visibile del simulatore, controlla sempre che la voce sia già stata chiusa in una versione rilasciata con `npm run release`. Lasciare la descrizione sotto `## [Non rilasciato]` è utile durante il lavoro, ma non aggiorna il changelog mostrato nel frontend.
+
 Scrivi le voci dal punto di vista di chi usa il simulatore:
 
 - niente riferimenti a commit, PR o file interni;

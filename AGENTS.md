@@ -201,6 +201,8 @@ Il comando aggiorna `CHANGELOG.md`, `src/lib/version.ts`, `package.json` e `pack
 
 La scheda `Versione e changelog` nel frontend legge `CHANGELOG.md` a build time e mostra solo versioni rilasciate. Non introdurre link, rimandi o informazioni su repository esterni nella scheda frontend.
 
+Regola operativa per gli agenti: ogni modifica visibile del simulatore che viene pubblicata deve avere una voce in `CHANGELOG.md` e, prima del deploy, deve essere chiusa in una release con `npm run release`. Una voce lasciata sotto `## [Non rilasciato]` non compare nella scheda frontend, quindi non basta quando l'utente chiede che il changelog sia aggiornato nel prodotto pubblicato.
+
 ## Errori comuni da evitare
 
 - Non proporre o configurare Vercel: GLM usa Cloudflare Pages progetto `gare-lotti-milanesi`.
@@ -308,14 +310,15 @@ Prima di pubblicare:
 1. Verifica `git status --short`.
 2. Rileggi il diff e assicurati che siano presenti solo modifiche intenzionali.
 3. Se ci sono modifiche di codice o documentazione da portare in produzione, committale in modo esplicito e assicurati che il codice da pubblicare sia su `main` o sia stato mergeato secondo il flusso GitHub della repo. Non pubblicare codice non committato o una branch feature usando il flag `--branch main`.
-4. Classifica il diff e applica le verifiche proporzionate della sezione "Verifiche prima di chiudere":
+4. Per ogni modifica visibile nel simulatore, controlla `CHANGELOG.md`: la voce deve stare in una versione rilasciata e `src/lib/version.ts`, `package.json` e `package-lock.json` devono essere sincronizzati dal comando `npm run release`.
+5. Classifica il diff e applica le verifiche proporzionate della sezione "Verifiche prima di chiudere":
    - documentazione pura: solo `git diff --check`;
    - microcopy/UI minima: build e controllo mirato solo se serve;
    - UI sostanziale o flussi: build, preview e browser sui flussi coinvolti;
    - codice/logica/dati/persistenza: test mirati, `npm test` e `npm run build`;
    - deploy/configurazione: build e controllo della configurazione toccata.
-5. Controlla che non ci siano modifiche indesiderate a `dist/`, `tmp/`, allegati o file generati.
-6. Esegui il deploy Cloudflare solo se il diff cambia l'app pubblicata, asset pubblici, routing o configurazione di build/deploy, oppure se l'utente chiede esplicitamente una ridistribuzione anche per modifiche non runtime. In quel caso esegui:
+6. Controlla che non ci siano modifiche indesiderate a `dist/`, `tmp/`, allegati o file generati.
+7. Esegui il deploy Cloudflare solo se il diff cambia l'app pubblicata, asset pubblici, routing o configurazione di build/deploy, oppure se l'utente chiede esplicitamente una ridistribuzione anche per modifiche non runtime. In quel caso esegui:
 
 ```bash
 npm run deploy:cloudflare

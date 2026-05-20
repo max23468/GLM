@@ -772,55 +772,7 @@ input[type="checkbox"] {
   gap: 8px;
 }
 
-.base-card-row {
-  display: flex;
-  align-items: stretch;
-  gap: 6px;
-}
-
-.base-card-row .base-card {
-  flex: 1;
-  min-width: 0;
-}
-
-.base-card-row .icon-button {
-  align-self: stretch;
-  height: auto;
-  min-height: 34px;
-  flex: 0 0 28px;
-}
-
-.base-card {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface-soft);
-  padding: 10px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.base-card.active {
-  border-color: var(--teal-border);
-  background: var(--teal-soft);
-}
-
-.base-card strong {
-  display: block;
-  width: 100%;
-  color: var(--section-title);
-  font-size: 0.9rem;
-  line-height: 1.25;
-}
-
-.base-card span {
-  display: block;
-  width: 100%;
-  color: var(--muted);
-  font-size: 0.78rem;
+.base-scenario-main small {
   line-height: 1.35;
 }
 
