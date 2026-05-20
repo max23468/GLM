@@ -70,6 +70,7 @@ Usa queste fonti prima di intervenire sulle aree corrispondenti:
 - ottimizzazione: `src/lib/optimization.ts`, `src/lib/tradeoff.ts` e `src/lib/optimization.test.ts`;
 - persistenza, migrazioni storage e import/export JSON: `src/lib/scenario-persistence.ts`;
 - UI principale, report, confronto e istruzioni: `src/App.tsx`, `src/components/scenario-panels.tsx`, `src/components/instructions-page.tsx`;
+- versioning e changelog frontend: `CHANGELOG.md`, `src/lib/version.ts`, `src/lib/changelog.ts`, `src/components/release-panel.tsx`, `docs/guides/versioning-e-release.md`;
 - layout, token e responsive: `src/styles.css`;
 - deploy Cloudflare: `wrangler.toml`, `package.json` e script npm collegati;
 - documenti ufficiali: `docs/milano-lotti-extraurbani-om/`.
@@ -108,10 +109,15 @@ npm run deploy:cloudflare
 - `src/lib/optimization.ts`: motore di ottimizzazione punteggio, leve tecniche e riallocazioni verso ribasso.
 - `src/lib/tradeoff.ts`: logica interna dell'analisi puntuale criterio e costo stimato.
 - `src/lib/scenario-persistence.ts`: normalizzazione workspace, migrazione storage e import/export JSON.
+- `src/lib/version.ts`: versione applicativa e data build mostrate nel frontend.
+- `src/lib/changelog.ts`: parser del changelog bundlato a build time.
 - `src/lib/*.test.ts`: test Vitest del motore di scoring e della persistenza.
 - `src/App.tsx`: UI principale, persistenza locale, import/export, analisi puntuale criterio e ottimizzazione.
+- `src/components/release-panel.tsx`: scheda `Versione e changelog`.
 - `src/components/scenario-panels.tsx`: pannelli scenario, confronto, report.
 - `src/styles.css`: token CSS e layout responsive.
+- `CHANGELOG.md`: storico versionato in formato Keep a Changelog.
+- `docs/guides/versioning-e-release.md`: procedura SemVer e rilascio.
 - `docs/milano-lotti-extraurbani-om/`: allegati gara, da trattare come fonti e non come file da riscrivere.
 - `wrangler.toml`: configurazione Cloudflare Pages.
 
@@ -126,6 +132,7 @@ npm run deploy:cloudflare
 | Ottimizzazione/tradeoff | `src/lib/optimization.ts`, `src/lib/tradeoff.ts`, `src/lib/optimization.test.ts` | Test ottimizzazione, `npm test`, `npm run build` |
 | Persistenza/import/export | `src/lib/scenario-persistence.ts`, `src/App.tsx`, test persistence | Test persistence/import, `npm test`, `npm run build` |
 | UI o microcopy | `src/App.tsx`, `src/components/**`, `src/styles.css` | `npm run build`; browser mirato se layout/flusso può cambiare |
+| Versioning/changelog frontend | `CHANGELOG.md`, `src/lib/version.ts`, `src/lib/changelog.ts`, `src/components/release-panel.tsx`, `scripts/release.mjs`, `package.json`, `package-lock.json` | `npm test`, `npm run build`, browser mirato se cambia la scheda |
 | Routing/istruzioni pubbliche | `src/components/instructions-page.tsx`, `public/_redirects`, routing Vite/Cloudflare | `npm run build`, preview e verifica rotta |
 | Deploy/build config | `package.json`, `wrangler.toml`, config Vite | `npm run build`, controllo config e deploy solo se richiesto |
 
@@ -172,6 +179,27 @@ La cartella `docs/milano-lotti-extraurbani-om/` contiene file binari e documenti
 - I testi non devono uscire dai contenitori o sovrapporsi su mobile, desktop, tema chiaro o tema scuro.
 - Usa icone e controlli coerenti con l'interfaccia esistente; non introdurre librerie UI senza motivo esplicito.
 - Su modifiche UI sostanziali verifica desktop/mobile e tema chiaro/scuro.
+
+## Versioning e changelog
+
+La versione applicativa è in `src/lib/version.ts` e va mantenuta sincronizzata con `package.json` e `package-lock.json`.
+
+Il changelog segue `CHANGELOG.md` con sezioni in italiano:
+
+- `### Novità`: capacità nuove e retrocompatibili;
+- `### Correzioni`: fix e miglioramenti visibili;
+- `### Sotto il cofano`: modifiche tecniche o operative consegnate con il prodotto;
+- `### Non versionato`: note senza impatto su prodotto pubblicato, supporto o comportamento operativo.
+
+Per preparare una nuova versione, aggiungi le voci sotto `## [Non rilasciato]` ed esegui:
+
+```bash
+npm run release
+```
+
+Il comando aggiorna `CHANGELOG.md`, `src/lib/version.ts`, `package.json` e `package-lock.json`; non esegue deploy. La procedura completa è in `docs/guides/versioning-e-release.md`.
+
+La scheda `Versione e changelog` nel frontend legge `CHANGELOG.md` a build time e mostra solo versioni rilasciate. Non introdurre link, rimandi o informazioni su repository esterni nella scheda frontend.
 
 ## Errori comuni da evitare
 

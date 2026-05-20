@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   CircleDollarSign,
   ClipboardList,
-  GitBranch,
   LineChart,
   type LucideIcon,
   Monitor,
@@ -20,7 +19,6 @@ import {
   X,
 } from "lucide-react";
 import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
-import packageJson from "../package.json";
 import {
   AMBITS,
   CRITERIA,
@@ -72,6 +70,7 @@ import {
 } from "./components/scenario-panels";
 import { InstructionsPage } from "./components/instructions-page";
 import { HelpTooltip } from "./components/help-tooltip";
+import { ReleasePanel } from "./components/release-panel";
 import {
   LEGACY_STORAGE_KEYS,
   STORAGE_KEYS,
@@ -108,14 +107,6 @@ type ThemePreference = "auto" | "light" | "dark";
 type WorkspaceTab = "tecnica" | "economica" | "ottimizza" | "combinatorie" | "risultati";
 type CriterionFilter = "all" | "work" | "warn" | "open";
 type AppView = "simulatore" | "istruzioni";
-
-const APP_VERSION = packageJson.version;
-const APP_CHANGELOG_ITEMS = [
-  "CI GitHub con validazione dati, test e build.",
-  "Controlli automatici su dati gara, fonti, warning e scenari condivisi.",
-  "Pannello versione senza chiamate API o link verso repository privati.",
-];
-const GITHUB_ACCESS_NOTE = "Repository GitHub privato: release e storico si consultano solo da GitHub con accesso autorizzato.";
 
 const themeOptions: { value: ThemePreference; label: string; icon: LucideIcon }[] = [
   { value: "auto", label: "Auto", icon: Monitor },
@@ -1367,34 +1358,6 @@ function App() {
         </aside>
       </div>
     </div>
-  );
-}
-
-function ReleasePanel() {
-  return (
-    <section className="panel release-panel">
-      <div className="section-title">
-        <GitBranch size={18} />
-        Versione e changelog
-        <HelpTooltip>La versione locale arriva dal package; le note sono statiche per evitare chiamate GitHub dal browser.</HelpTooltip>
-      </div>
-      <div className="release-version-row">
-        <span>Versione app</span>
-        <strong>v{APP_VERSION}</strong>
-      </div>
-      <div className="release-card">
-        <span>Note build</span>
-        <ul>
-          {APP_CHANGELOG_ITEMS.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </div>
-      <p className="release-access-note">{GITHUB_ACCESS_NOTE}</p>
-      <div className="release-links">
-        <span className="repository-link repository-link-disabled">GitHub privato</span>
-      </div>
-    </section>
   );
 }
 

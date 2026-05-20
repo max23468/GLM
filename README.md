@@ -33,7 +33,7 @@ npm run preview -- --port 4173
 - Mostra l'analisi puntuale criterio per sub-criterio, con costo stimato e impatto su punteggio/ribasso.
 - Usa l'ottimizzazione per partire da un'offerta iniziale, massimizzare il punteggio con leve tecniche e riallocare automaticamente tecnica verso ribasso.
 - Genera un report stampabile o salvabile in PDF dal browser.
-- Mostra versione locale e note build senza chiamare API GitHub dal browser.
+- Mostra versione locale, data build e changelog bundlato direttamente nel sito.
 - Espone una pagina web di istruzioni raggiungibile dal pulsante `Istruzioni` nella testata e dall'URL `/istruzioni/`.
 - Supporta tema chiaro/scuro/automatico e layout responsive.
 
@@ -59,11 +59,16 @@ src/lib/optimization.ts                Motore di ottimizzazione punteggio, leve 
 src/lib/scenario-persistence.ts        Normalizzazione snapshot, migrazione storage e import JSON
 src/lib/scoring.ts                     Motore di scoring e selezione scenario
 src/lib/tradeoff.ts                    Logica interna di analisi puntuale criterio e costo tecnico
+src/lib/version.ts                     Versione applicativa e data build mostrate nel frontend
+src/lib/changelog.ts                   Parser del changelog bundlato a build time
 src/lib/*.test.ts                      Test Vitest su scoring e persistenza
 src/components/instructions-page.tsx   Pagina web navigabile con istruzioni di compilazione
+src/components/release-panel.tsx       Scheda Versione e changelog
 src/styles.css                         Design system locale e layout responsive
 public/_redirects                      Fallback Cloudflare Pages per URL /istruzioni
 .github/workflows/ci.yml               CI GitHub Actions con validazione dati, test e build
+CHANGELOG.md                           Storico versionato in formato Keep a Changelog
+docs/guides/versioning-e-release.md    Procedura SemVer e rilascio
 docs/LOGICA_SIMULATORE.md              Logica e assunzioni operative del simulatore
 docs/milano-lotti-extraurbani-om/      Allegati di gara versionati con Git LFS
 wrangler.toml                          Configurazione Cloudflare Pages
@@ -81,18 +86,20 @@ npm run validate:data
 npm run validate:demo
 npm run smoke
 npm run prepublish:check
+npm run release -- --dry-run
+npm run release
 npm run preview -- --port 4173
 ```
 
-`npm test` esegue i test Vitest su scoring, persistenza e dati demo. `npm run validate:data` concentra i controlli automatici su dati gara e scenari demo. `npm run build` esegue TypeScript e build Vite. `npm run smoke` avvia una preview locale e verifica con Playwright i flussi principali della tab `Ottimizzazione`; `npm run prepublish:check` raggruppa i controlli prima della pubblicazione.
+`npm test` esegue i test Vitest su scoring, persistenza e dati demo. `npm run validate:data` concentra i controlli automatici su dati gara e scenari demo. `npm run build` esegue TypeScript e build Vite. `npm run smoke` avvia una preview locale e verifica con Playwright i flussi principali della tab `Ottimizzazione`; `npm run prepublish:check` raggruppa i controlli prima della pubblicazione. `npm run release` prepara una nuova versione locale aggiornando `CHANGELOG.md`, `src/lib/version.ts`, `package.json` e `package-lock.json`, ma non esegue il deploy.
 
-## Integrazione GitHub
+## CI e changelog locale
 
-Il repository espone una prima integrazione leggera con GitHub:
+Il repository espone controlli automatici e un changelog locale bundlato nel sito:
 
 - CI GitHub Actions su push, pull request e avvio manuale, con `npm run validate:data`, `npm test` e `npm run build`;
 - validatori Vitest per coerenza di lotti, criteri, soglie, fonti, warning e scenari demo;
-- pannello `Versione e changelog` con versione locale e note sintetiche della build, senza chiamate API pubbliche o link cliccabili verso il repository privato dal browser.
+- pannello `Versione e changelog` con versione locale, data build e note lette da `CHANGELOG.md` a build time, senza link o rimandi a repository esterni nel frontend.
 
 ## Fonti e allegati
 
@@ -134,6 +141,25 @@ Prima di cambiare UI o testi:
 3. Verifica che i pannelli restino leggibili su desktop e mobile.
 4. Per microcopy o UI minima esegui almeno `npm run build` e, se serve, un controllo browser mirato della schermata coinvolta.
 5. Esegui `npm run smoke` quando la modifica tocca o rischia di rompere salvataggio scenario, schema storage, ottimizzazione, import/export, confronto o microcopy critica rimossa.
+
+## Versioning
+
+La versione applicativa è definita in `src/lib/version.ts` e sincronizzata con `package.json` e `package-lock.json` dal comando di release.
+
+Il changelog segue il formato Keep a Changelog con sezioni in italiano:
+
+- `### Novità` per capacità nuove e retrocompatibili;
+- `### Correzioni` per fix e miglioramenti visibili;
+- `### Sotto il cofano` per modifiche tecniche consegnate con il prodotto;
+- `### Non versionato` per note o documentazione senza impatto sul prodotto pubblicato.
+
+Per preparare una release:
+
+```bash
+npm run release
+```
+
+La procedura completa è in [`docs/guides/versioning-e-release.md`](docs/guides/versioning-e-release.md).
 
 ## Deploy
 

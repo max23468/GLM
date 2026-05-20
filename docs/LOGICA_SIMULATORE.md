@@ -147,14 +147,14 @@ Ogni scenario base genera anche una configurazione completa di ottimizzazione: m
 
 I dati demo sono protetti da validator automatici: `npm run validate:demo` controlla che scenari base, tradeoff puntuali e catalogo leve tecniche restino completi e coerenti. `npm run validate:data` aggiunge controlli su lotti, criteri, soglie, fonti, warning documentali e scenari demo. `npm run smoke` verifica in browser i flussi principali della tab `Ottimizzazione`; `npm run prepublish:check` unisce controlli statici, validazione dati, test, build e smoke prima della pubblicazione.
 
-## Integrazione GitHub
+## CI e changelog locale
 
-La prima integrazione GitHub resta leggera e coerente con il perimetro statico dell'app:
+La CI e il changelog restano leggeri e coerenti con il perimetro statico dell'app:
 
 - `.github/workflows/ci.yml` esegue validazione dati, test Vitest e build su push, pull request e avvio manuale;
-- il pannello `Versione e changelog` mostra `package.json` come versione locale e note sintetiche della build senza esporre link cliccabili verso il repository privato.
+- il pannello `Versione e changelog` mostra `src/lib/version.ts` come versione locale, data build e note lette da `CHANGELOG.md` a build time, senza link o rimandi a repository esterni nel frontend.
 
-Il pannello non usa API GitHub dal browser e non apre URL GitHub privati: evita token, pagine 404 per utenti non autenticati e errori console se non esiste ancora una release pubblica.
+Il pannello non usa API esterne dal browser: il changelog che l'utente legge è già incluso nella build.
 
 ## Criticità documentali
 
