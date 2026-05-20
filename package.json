@@ -9,9 +9,10 @@
     "deploy": "npm run deploy:cloudflare",
     "deploy:cloudflare": "npm run build && wrangler pages deploy dist --project-name gare-lotti-milanesi --branch main",
     "preview": "vite preview --host 127.0.0.1",
-    "prepublish:check": "git diff --check && npm test && npm run build && npm run smoke",
+    "prepublish:check": "git diff --check && npm run validate:data && npm test && npm run build && npm run smoke",
     "smoke": "node scripts/smoke.mjs",
     "test": "vitest run",
+    "validate:data": "vitest run src/data/tender.validation.test.ts src/data/demo-data.validation.test.ts src/data/scenario-library.test.ts",
     "validate:demo": "vitest run src/data/demo-data.validation.test.ts"
   },
   "dependencies": {

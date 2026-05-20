@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 7,
+  "id": "github-local-presence",
+  "name": "Libreria GitHub - Presidio locale",
+  "savedAt": "2026-05-20T00:00:00.000Z",
+  "baseScenarioId": "local",
+  "selectedBidderId": "star",
+  "selectedLotId": "L4",
+  "selectedPairId": "L3+L4"
+}

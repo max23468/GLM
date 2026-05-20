@@ -20,8 +20,9 @@ Non va usato come fonte ufficiale autonoma. Ogni dato deve restare riconducibile
 - `src/lib/optimization.ts`: genera piani di miglioramento da un'offerta iniziale, con leve tecniche e riallocazioni verso ribasso.
 - `src/lib/tradeoff.ts`: applica l'analisi puntuale criterio e calcola il relativo costo stimato.
 - `src/lib/scenario-persistence.ts`: normalizza workspace, scenari salvati, import JSON e migrazione dai campi legacy.
+- `src/data/scenario-library.ts` e `public/scenarios/*.json`: dichiarano e servono gli snapshot JSON versionati importabili dalla libreria GitHub.
 - `src/App.tsx`: gestisce stato UI, gestione workspace laterale, salvataggio locale, import/export JSON, selezione tab, analisi puntuale criterio e ottimizzazione.
-- `src/components/scenario-panels.tsx`: contiene pannelli scenario, riepilogo strategico, confronto e report.
+- `src/components/scenario-panels.tsx`: contiene pannelli scenario, riepilogo strategico e confronto.
 - `src/lib/*.test.ts`: copre motore di scoring e normalizzazione della persistenza.
 
 ## Flusso di calcolo
@@ -130,6 +131,8 @@ Le chiavi legacy `tpl-simulator-*` restano lette in fallback. L'import/export us
 
 Gli snapshot correnti usano `schemaVersion: 7` e includono la configurazione di ottimizzazione senza tetti finanziari esterni, step economici o massimi di ribasso. La normalizzazione deve continuare ad accettare snapshot precedenti privi del blocco `optimization` o con i vecchi campi legacy.
 
+La libreria GitHub usa gli stessi snapshot JSON, serviti da `public/scenarios/*.json` e dichiarati in `src/data/scenario-library.ts`. Quando l'utente importa uno snapshot GitHub, il file viene normalizzato, inserito nella libreria locale del browser e resta modificabile come uno scenario ordinario. Gli snapshot versionati sono basi operative, non offerte ufficiali.
+
 La gestione di scenari, concorrenti, lotti e opzioni di partecipazione è concentrata nella barra laterale. La vista ordinaria mostra solo il riepilogo `Workspace`; il pulsante `Gestisci workspace` apre i controlli laterali e `Indietro` chiude l'intera gestione.
 
 ## Scenari base
@@ -141,11 +144,22 @@ Gli scenari base sono definiti in `src/data/base-scenarios.ts`:
 - `Ribasso aggressivo`
 - `Presidio locale`
 
-Usano basi ricavate dagli allegati locali e segnali pubblici per operatori reali. Non rappresentano offerte ufficiali e non devono essere descritti come tali in UI, README o report.
+Usano basi ricavate dagli allegati locali e segnali pubblici per operatori reali. Non rappresentano offerte ufficiali e non devono essere descritti come tali in UI o README.
 
 Ogni scenario base genera anche una configurazione completa di ottimizzazione: modalità, scope di default, granularità interna, quantità massime, basi e costi unitari per tutti i lotti. La normalizzazione di workspace e JSON usa questi valori come fallback quando uno scenario salvato non contiene ancora i campi introdotti dall'ottimizzazione.
 
-I dati demo sono protetti da validator automatici: `npm run validate:demo` controlla che scenari base, tradeoff puntuali e catalogo leve tecniche restino completi e coerenti. `npm run smoke` verifica in browser i flussi principali della tab `Ottimizzazione`; `npm run prepublish:check` unisce controlli statici, test, build e smoke prima della pubblicazione.
+I dati demo sono protetti da validator automatici: `npm run validate:demo` controlla che scenari base, tradeoff puntuali e catalogo leve tecniche restino completi e coerenti. `npm run validate:data` aggiunge controlli su lotti, criteri, soglie, fonti, warning documentali e snapshot GitHub importabili. `npm run smoke` verifica in browser i flussi principali della tab `Ottimizzazione`; `npm run prepublish:check` unisce controlli statici, validazione dati, test, build e smoke prima della pubblicazione.
+
+## Integrazione GitHub
+
+La prima integrazione GitHub resta leggera e coerente con il perimetro statico dell'app:
+
+- `.github/workflows/ci.yml` esegue validazione dati, test Vitest e build su push, pull request e avvio manuale;
+- `public/scenarios/*.json` rende versionabili gli snapshot scenario senza introdurre backend o account;
+- `src/data/scenario-library.test.ts` verifica che ogni snapshot della libreria sia importabile tramite `normalizeScenarioSnapshot`;
+- il pannello `Versione e changelog` mostra `package.json` come versione locale e note sintetiche della build senza esporre link cliccabili verso il repository privato.
+
+Il pannello non usa API GitHub dal browser e non apre URL GitHub privati: evita token, pagine 404 per utenti non autenticati e errori console se non esiste ancora una release pubblica.
 
 ## Criticità documentali
 

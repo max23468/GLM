@@ -22,16 +22,17 @@ npm run preview -- --port 4173
 
 ## Cosa fa
 
-- Gestisce scenari, concorrenti e partecipazioni dalla barra laterale `Workspace`, con modalità `Gestisci workspace` e rientro unico tramite `Indietro`.
+- Gestisce scenari, concorrenti, lotti e partecipazioni direttamente dalla barra laterale, senza passaggi intermedi.
 - Gestisce più concorrenti e la partecipazione ai lotti singoli `L1`, `L2`, `L3`, `L4`.
 - Simula le combinatorie ammesse `L1+L2`, `L2+L3`, `L3+L4`, `L1+L4`.
 - Calcola punteggi tecnici Q/T/D, soglia Q/T, riparametrazione per ambito, punteggio economico e scenario vincente.
 - Evidenzia warning su soglie, dipendenze, combinatorie non ammissibili, sorteggio e deroga al limite di due lotti.
 - Offre scenari base con profili simulati ispirati a fonti pubbliche e allegati locali, senza trasformarli in offerte reali.
 - Permette salvataggio locale, duplicazione, import/export JSON e confronto fra scenari.
+- Importa snapshot JSON versionati nel repository dalla libreria GitHub dell'app.
 - Mostra l'analisi puntuale criterio per sub-criterio, con costo stimato e impatto su punteggio/ribasso.
 - Usa l'ottimizzazione per partire da un'offerta iniziale, massimizzare il punteggio con leve tecniche e riallocare automaticamente tecnica verso ribasso.
-- Genera un report stampabile o salvabile in PDF dal browser.
+- Mostra versione locale e note build senza chiamare API GitHub dal browser.
 - Espone una pagina web di istruzioni raggiungibile dal pulsante `Istruzioni` nella testata e dall'URL `/istruzioni/`.
 - Supporta tema chiaro/scuro/automatico e layout responsive.
 
@@ -50,8 +51,9 @@ Le basi operative degli scenari derivano da documenti locali di gara e segnali p
 
 ```text
 src/App.tsx                            UI principale, gestione workspace laterale, stato, import/export, analisi puntuale criterio e ottimizzazione
-src/components/scenario-panels.tsx     Pannelli scenario, confronto, riepilogo e report
+src/components/scenario-panels.tsx     Pannelli scenario, confronto e riepilogo
 src/data/base-scenarios.ts             Scenari base, profili simulati e baseline operative
+src/data/scenario-library.ts           Manifest degli snapshot JSON importabili dalla libreria GitHub
 src/data/tender.ts                     Lotti, coppie, criteri, soglie, fonti e criticità documentali
 src/lib/optimization.ts                Motore di ottimizzazione punteggio, leve tecniche e riallocazioni verso ribasso
 src/lib/scenario-persistence.ts        Normalizzazione snapshot, migrazione storage e import JSON
@@ -61,6 +63,8 @@ src/lib/*.test.ts                      Test Vitest su scoring e persistenza
 src/components/instructions-page.tsx   Pagina web navigabile con istruzioni di compilazione
 src/styles.css                         Design system locale e layout responsive
 public/_redirects                      Fallback Cloudflare Pages per URL /istruzioni
+public/scenarios/*.json                Snapshot scenario versionati, serviti e importabili dall'app
+.github/workflows/ci.yml               CI GitHub Actions con validazione dati, test e build
 docs/LOGICA_SIMULATORE.md              Logica e assunzioni operative del simulatore
 docs/milano-lotti-extraurbani-om/      Allegati di gara versionati con Git LFS
 wrangler.toml                          Configurazione Cloudflare Pages
@@ -74,13 +78,25 @@ Per i dettagli sul calcolo, vedi [`docs/LOGICA_SIMULATORE.md`](docs/LOGICA_SIMUL
 npm run dev -- --port 4173
 npm test
 npm run build
+npm run validate:data
 npm run validate:demo
 npm run smoke
 npm run prepublish:check
 npm run preview -- --port 4173
 ```
 
-`npm test` esegue i test Vitest su scoring, persistenza e dati demo. `npm run build` esegue TypeScript e build Vite. `npm run smoke` avvia una preview locale e verifica con Playwright i flussi principali della tab `Ottimizzazione`; `npm run prepublish:check` raggruppa i controlli prima della pubblicazione.
+`npm test` esegue i test Vitest su scoring, persistenza e dati demo. `npm run validate:data` concentra i controlli automatici su dati gara, scenari demo e snapshot JSON della libreria GitHub. `npm run build` esegue TypeScript e build Vite. `npm run smoke` avvia una preview locale e verifica con Playwright i flussi principali della tab `Ottimizzazione`; `npm run prepublish:check` raggruppa i controlli prima della pubblicazione.
+
+## Integrazione GitHub
+
+Il repository espone una prima integrazione leggera con GitHub:
+
+- CI GitHub Actions su push, pull request e avvio manuale, con `npm run validate:data`, `npm test` e `npm run build`;
+- snapshot scenario versionati in `public/scenarios/*.json`, importabili dal pannello `Libreria GitHub`;
+- validatori Vitest per coerenza di lotti, criteri, soglie, fonti, warning e libreria scenari;
+- pannello `Versione e changelog` con versione locale e note sintetiche della build, senza chiamate API pubbliche o link cliccabili verso il repository privato dal browser.
+
+Gli snapshot GitHub sono basi di lavoro versionate: quando vengono importati, entrano nella libreria locale del browser e restano modificabili come qualsiasi altro scenario.
 
 ## Fonti e allegati
 
@@ -120,7 +136,8 @@ Prima di cambiare UI o testi:
 1. Mantieni la lingua italiana e il tono operativo.
 2. Non presentare scenari base o profili simulati come offerte ufficiali.
 3. Verifica che i pannelli restino leggibili su desktop e mobile.
-4. Esegui `npm run smoke` per intercettare regressioni su salvataggio scenario, schema storage e microcopy rimossa.
+4. Per microcopy o UI minima esegui almeno `npm run build` e, se serve, un controllo browser mirato della schermata coinvolta.
+5. Esegui `npm run smoke` quando la modifica tocca o rischia di rompere salvataggio scenario, schema storage, ottimizzazione, import/export, confronto o microcopy critica rimossa.
 
 ## Deploy
 
@@ -134,14 +151,20 @@ npm run deploy:cloudflare
 
 Il comando compila l'app con Vite e pubblica la cartella `dist` sul branch `main`.
 
-Eseguire il deploy solo quando richiesto esplicitamente. Quando la richiesta è `pubblica`, `rilascia`, `deploya` o equivalente, il flusso atteso è una pubblicazione completa:
+Eseguire il deploy solo quando richiesto esplicitamente. Quando la richiesta è `pubblica`, `rilascia`, `deploya` o equivalente, il flusso atteso è una pubblicazione completa ma proporzionata al tipo di diff:
 
 1. verificare `git status --short` e il diff;
 2. portare su `main` solo modifiche intenzionali, con commit e PR/merge se necessari;
-3. eseguire i check pertinenti (`git diff --check` per documenti, `npm test` e `npm run build` per codice/logica, preview e verifica browser per UI);
+3. eseguire i check pertinenti:
+   - documentazione pura: `git diff --check`;
+   - microcopy/UI minima: `npm run build` e controllo mirato solo se utile;
+   - UI sostanziale o flussi: `npm run build`, preview e verifica browser dei flussi coinvolti;
+   - codice/logica/dati/persistenza: test mirati, `npm test` e `npm run build`;
+   - configurazione deploy/build: `npm run build` e controllo della configurazione toccata;
 4. controllare che `dist/`, `tmp/`, allegati e file generati non contengano modifiche indesiderate;
-5. eseguire `npm run deploy:cloudflare`;
-6. verificare la produzione su `https://gare-lotti-milanesi.pages.dev` e comunicare risultato, controlli e rischi residui.
+5. eseguire `npm run deploy:cloudflare` solo se il diff cambia l'app pubblicata, asset pubblici, routing o configurazione di build/deploy, oppure se viene chiesta esplicitamente una ridistribuzione anche per modifiche non runtime;
+6. verificare la produzione su `https://gare-lotti-milanesi.pages.dev` in modo proporzionato: caricamento app sempre dopo un deploy, scenario base principale per modifiche runtime, flussi specifici e temi solo se coinvolti;
+7. comunicare risultato, controlli eseguiti, verifiche saltate intenzionalmente e rischi residui.
 
 ## Limiti noti
 

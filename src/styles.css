@@ -777,6 +777,47 @@ input[type="checkbox"] {
   line-height: 1.35;
 }
 
+.github-library-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.github-scenario-list {
+  display: grid;
+  gap: 8px;
+}
+
+.github-scenario-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 9px;
+}
+
+.github-scenario-card strong {
+  display: block;
+  color: var(--section-title);
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+
+.github-scenario-card p {
+  margin: 3px 0;
+  color: var(--body-soft);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.github-scenario-card small {
+  color: var(--muted);
+  font-size: 0.69rem;
+  font-weight: 750;
+}
+
 .active-scenario {
   display: grid;
   gap: 2px;
@@ -844,41 +885,6 @@ input[type="checkbox"] {
 .icon-button:disabled {
   cursor: not-allowed;
   opacity: 0.42;
-}
-
-.workspace-entry-panel,
-.workspace-management-head {
-  display: grid;
-  gap: 12px;
-}
-
-.workspace-summary-grid {
-  display: grid;
-  gap: 8px;
-}
-
-.workspace-summary-grid > div {
-  display: grid;
-  gap: 2px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  background: var(--control-bg);
-  padding: 9px;
-}
-
-.workspace-summary-grid span {
-  color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 760;
-  text-transform: uppercase;
-}
-
-.workspace-summary-grid strong {
-  min-width: 0;
-  overflow-wrap: anywhere;
-  color: var(--strong-text);
-  font-size: 0.84rem;
-  line-height: 1.25;
 }
 
 .offeror-list {
@@ -1118,6 +1124,50 @@ input[type="checkbox"] {
   color: var(--score-text);
   font-size: 1.35rem;
   font-variant-numeric: tabular-nums;
+}
+
+.summary-score.per-lot {
+  display: grid;
+  gap: 6px;
+  min-width: 260px;
+}
+
+.summary-lot-score-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.summary-lot-score-grid > div {
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--teal-border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 6px 7px;
+}
+
+.summary-lot-score-grid small {
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.summary-lot-score-grid strong {
+  color: var(--score-text);
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+}
+
+.summary-lot-score-grid.compact strong,
+.hero-lot-scores strong {
+  font-size: 0.9rem;
+}
+
+.hero-lot-scores {
+  margin-bottom: 4px;
 }
 
 .summary-actions {
@@ -1941,6 +1991,20 @@ input[type="checkbox"] {
   font-size: 1.05rem;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
+}
+
+.metric-tile.lot-score-tile {
+  gap: 8px;
+}
+
+.metric-tile .summary-lot-score-grid > div {
+  background: var(--surface);
+}
+
+.metric-tile .summary-lot-score-grid strong {
+  color: var(--score-text);
+  font-size: 0.9rem;
+  line-height: 1.05;
 }
 
 .metric-tile.ok {
@@ -2865,25 +2929,18 @@ input[type="checkbox"] {
   background: var(--surface-soft);
 }
 
-.comparison-panel,
-.report-panel {
+.comparison-panel {
   display: grid;
   gap: 12px;
 }
 
-.comparison-grid,
-.report-summary {
+.comparison-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
-.report-summary {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.comparison-grid > div,
-.report-summary > div {
+.comparison-grid > div {
   display: grid;
   gap: 3px;
   border: 1px solid var(--border);
@@ -2893,15 +2950,13 @@ input[type="checkbox"] {
 }
 
 .comparison-grid span,
-.report-summary span,
 .source-card small {
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 750;
 }
 
-.comparison-grid strong,
-.report-summary strong {
+.comparison-grid strong {
   color: var(--strong-text);
   font-variant-numeric: tabular-nums;
 }
@@ -2936,8 +2991,7 @@ input[type="checkbox"] {
 
 .comparison-lots span,
 .comparison-lots small,
-.comparison-notes,
-.report-executive span {
+.comparison-notes {
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 750;
@@ -2957,33 +3011,86 @@ input[type="checkbox"] {
   line-height: 1.35;
 }
 
-.report-executive {
+.release-panel {
   display: grid;
-  gap: 8px;
-  border-top: 1px solid var(--border);
-  padding-top: 10px;
+  gap: 10px;
 }
 
-.report-executive > div {
+.release-version-row,
+.release-card {
   display: grid;
-  gap: 3px;
+  gap: 4px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface-soft);
   padding: 9px;
 }
 
-.report-executive strong {
-  color: var(--strong-text);
-  font-size: 0.84rem;
-  line-height: 1.25;
+.release-version-row span,
+.release-card span,
+.release-card small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
 }
 
-.report-executive p {
+.release-version-row strong,
+.release-card a {
+  color: var(--strong-text);
+  font-weight: 820;
+  overflow-wrap: anywhere;
+}
+
+.release-card ul {
+  display: grid;
+  gap: 5px;
+  margin: 6px 0 0;
+  padding-left: 16px;
+  color: var(--body-soft);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.release-card p {
   margin: 0;
   color: var(--body-soft);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.release-card.muted {
+  background: var(--control-bg);
+}
+
+.release-access-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 720;
+  line-height: 1.35;
+}
+
+.release-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.repository-link {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-soft);
+  padding: 7px 9px;
+  color: var(--score-text);
   font-size: 0.78rem;
-  line-height: 1.4;
+  font-weight: 780;
+}
+
+.repository-link-disabled {
+  color: var(--muted);
 }
 
 @media (max-width: 1320px) {
@@ -3105,7 +3212,6 @@ input[type="checkbox"] {
   .contextual-grid,
   .comparison-grid,
   .comparison-lots,
-  .report-summary,
   .tradeoff-grid,
   .tradeoff-preview,
   .economic-detail-grid,
@@ -3121,7 +3227,8 @@ input[type="checkbox"] {
   .impact-row,
   .impact-row dl,
   .investment-card dl,
-  .lot-toggle-grid {
+  .lot-toggle-grid,
+  .github-scenario-card {
     grid-template-columns: 1fr;
   }
 
@@ -3180,41 +3287,5 @@ input[type="checkbox"] {
 
   .row-status {
     justify-self: end;
-  }
-}
-
-@media print {
-  body {
-    background: #fff;
-    color: #111;
-  }
-
-  .topbar-actions,
-  .left-rail,
-  .workspace-tabs,
-  .technical-workbench,
-  .action-button {
-    display: none !important;
-  }
-
-  .app-shell {
-    padding: 0;
-  }
-
-  .layout {
-    display: block;
-    max-width: none;
-  }
-
-  .workspace,
-  .right-panel {
-    display: grid;
-    gap: 12px;
-  }
-
-  .panel,
-  .strategic-summary {
-    box-shadow: none;
-    break-inside: avoid;
   }
 }
