@@ -6,9 +6,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
-### Non versionato
+## [0.2.6] — 2026-05-20
 
-- Rafforzata l'integrazione Cloudflare Pages con deploy preview/produzione, smoke post-deploy, endpoint runtime, header, Web Analytics opzionale e runbook operativo.
+### Correzioni
+
+- **Punteggi sotto criterio**: la tabella mostra solo i concorrenti che partecipano al lotto selezionato, senza colonne `non partecipa` o celle `n/p`.
+- **Versione pubblica**: rafforzati i controlli di stato e integrità della build online, così la verifica della versione pubblicata è più affidabile.
 
 ## [0.2.5] — 2026-05-20
 

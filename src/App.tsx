@@ -2487,7 +2487,7 @@ function ComboWorkbench({
 }
 
 function ResultsWorkbench({ result, selectedLotId, bidders }: { result: SimulationResult; selectedLotId: LotId; bidders: Bidder[] }) {
-  const scoreBidders = bidders;
+  const scoreBidders = bidders.filter((bidder) => result.lotScores[bidder.id]?.[selectedLotId]?.participates);
   const scoreColumnCount = scoreBidders.length + 2;
   const qtMax = maxQtPoints();
   const technicalMax = AMBITS.reduce((sum, ambit) => sum + ambit.maxPoints, 0);
@@ -2563,75 +2563,76 @@ function ResultsWorkbench({ result, selectedLotId, bidders }: { result: Simulati
           <HelpTooltip>Mostra i punti grezzi assegnati a ogni sotto-criterio sul lotto selezionato. La riparametrazione per ambito resta riportata nel totale tecnico.</HelpTooltip>
         </div>
         <div className="subcriteria-table-wrap">
-          <table className="subcriteria-score-table" style={{ "--score-column-count": scoreColumnCount } as CSSProperties}>
-            <thead>
-              <tr>
-                <th>Criterio</th>
-                <th>Max</th>
-                {scoreBidders.map((bidder) => (
-                  <th key={bidder.id}>
-                    <span>{bidder.name}</span>
-                    <small>{bidder.lots[selectedLotId].enabled ? "attivo" : "non partecipa"}</small>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {AMBITS.map((ambit) => {
-                const ambitCriteria = CRITERIA.filter((criterion) => criterion.ambit === ambit.id);
-                return (
-                  <Fragment key={ambit.id}>
-                    <tr className="subcriteria-ambit-row">
-                      <th colSpan={scoreColumnCount}>
-                        <span>{ambit.id}</span>
-                        <strong>{ambit.label}</strong>
-                      </th>
-                    </tr>
-                    {ambitCriteria.map((criterion) => (
-                      <tr key={criterion.id}>
-                        <th>
-                          <span>{criterion.id}</span>
-                          <strong>{criterion.label}</strong>
+          {scoreBidders.length ? (
+            <table className="subcriteria-score-table" style={{ "--score-column-count": scoreColumnCount } as CSSProperties}>
+              <thead>
+                <tr>
+                  <th>Criterio</th>
+                  <th>Max</th>
+                  {scoreBidders.map((bidder) => (
+                    <th key={bidder.id}>
+                      <span>{bidder.name}</span>
+                      <small>attivo</small>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {AMBITS.map((ambit) => {
+                  const ambitCriteria = CRITERIA.filter((criterion) => criterion.ambit === ambit.id);
+                  return (
+                    <Fragment key={ambit.id}>
+                      <tr className="subcriteria-ambit-row">
+                        <th colSpan={scoreColumnCount}>
+                          <span>{ambit.id}</span>
+                          <strong>{ambit.label}</strong>
                         </th>
-                        <td>{formatPoints(criterion.maxPoints)}</td>
-                        {scoreBidders.map((bidder) => {
-                          const lotScore = result.lotScores[bidder.id]?.[selectedLotId];
-                          const subScore = lotScore?.subScores[criterion.id];
-                          const lotOffer = bidder.lots[selectedLotId];
-                          return (
-                            <td key={bidder.id} className={!lotScore?.participates ? "muted-cell" : subScore?.dependencyBlocked ? "warn-cell" : ""}>
-                              <strong>{lotScore?.participates ? formatPoints(subScore?.rawScore ?? 0) : "n/p"}</strong>
-                              {lotScore?.participates && subScore ? (
-                                <small>{formatCriterionRowValue(criterion, subScore.value, lotOffer.quantityInputs?.[criterion.id])}</small>
-                              ) : null}
-                            </td>
-                          );
-                        })}
                       </tr>
-                    ))}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr>
-                <th>Punteggio soglia di sbarramento</th>
-                <td>{formatPoints(qtMax)}</td>
-                {scoreBidders.map((bidder) => {
-                  const lotScore = result.lotScores[bidder.id]?.[selectedLotId];
-                  return <td key={bidder.id}>{lotScore?.participates ? formatPoints(lotScore.qtRaw) : "n/p"}</td>;
+                      {ambitCriteria.map((criterion) => (
+                        <tr key={criterion.id}>
+                          <th>
+                            <span>{criterion.id}</span>
+                            <strong>{criterion.label}</strong>
+                          </th>
+                          <td>{formatPoints(criterion.maxPoints)}</td>
+                          {scoreBidders.map((bidder) => {
+                            const subScore = result.lotScores[bidder.id]?.[selectedLotId]?.subScores[criterion.id];
+                            const lotOffer = bidder.lots[selectedLotId];
+                            return (
+                              <td key={bidder.id} className={subScore?.dependencyBlocked ? "warn-cell" : ""}>
+                                <strong>{formatPoints(subScore?.rawScore ?? 0)}</strong>
+                                {subScore ? <small>{formatCriterionRowValue(criterion, subScore.value, lotOffer.quantityInputs?.[criterion.id])}</small> : null}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </Fragment>
+                  );
                 })}
-              </tr>
-              <tr>
-                <th>Totale tecnico riparametrato</th>
-                <td>{formatPoints(technicalMax)}</td>
-                {scoreBidders.map((bidder) => {
-                  const lotScore = result.lotScores[bidder.id]?.[selectedLotId];
-                  return <td key={bidder.id}>{lotScore?.participates ? formatPoints(lotScore.technical) : "n/p"}</td>;
-                })}
-              </tr>
-            </tfoot>
-          </table>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Punteggio soglia di sbarramento</th>
+                  <td>{formatPoints(qtMax)}</td>
+                  {scoreBidders.map((bidder) => {
+                    const lotScore = result.lotScores[bidder.id]?.[selectedLotId];
+                    return <td key={bidder.id}>{formatPoints(lotScore?.qtRaw ?? 0)}</td>;
+                  })}
+                </tr>
+                <tr>
+                  <th>Totale tecnico riparametrato</th>
+                  <td>{formatPoints(technicalMax)}</td>
+                  {scoreBidders.map((bidder) => {
+                    const lotScore = result.lotScores[bidder.id]?.[selectedLotId];
+                    return <td key={bidder.id}>{formatPoints(lotScore?.technical ?? 0)}</td>;
+                  })}
+                </tr>
+              </tfoot>
+            </table>
+          ) : (
+            <div className="empty-state compact">Nessun concorrente partecipa al lotto selezionato.</div>
+          )}
         </div>
       </section>
     </div>
