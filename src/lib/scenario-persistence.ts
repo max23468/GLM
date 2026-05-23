@@ -207,30 +207,27 @@ export const normalizeOptimizationConfig = (value: unknown, fallbackConfig?: Opt
 export const normalizeLotOffer = (value: unknown, fallbackOffer?: LotOffer): LotOffer => {
   const fallback = fallbackOffer ?? emptyLotOffer();
   const source = isRecord(value) ? value : {};
-  const qValues = Object.fromEntries(
-    CRITERIA.filter((criterion) => criterion.kind === "Q").map((criterion) => [
-      criterion.id,
-      finiteNumber(recordValue(source.qValues, criterion.id), fallback.qValues[criterion.id] ?? 0),
-    ]),
-  );
-  const quantityInputs = Object.fromEntries(
-    CRITERIA.filter((criterion) => criterion.quantityInput).map((criterion) => [
-      criterion.id,
-      normalizeQuantityInput(recordValue(source.quantityInputs, criterion.id)),
-    ]),
-  );
-  const tValues = Object.fromEntries(
-    CRITERIA.filter((criterion) => criterion.kind === "T").map((criterion) => [
-      criterion.id,
-      Boolean(recordValue(source.tValues, criterion.id) ?? fallback.tValues[criterion.id]),
-    ]),
-  );
-  const dValues = Object.fromEntries(
-    CRITERIA.filter((criterion) => criterion.kind === "D").map((criterion) => [
-      criterion.id,
-      finiteNumber(recordValue(source.dValues, criterion.id), fallback.dValues[criterion.id] ?? 0),
-    ]),
-  );
+  const qValues: LotOffer["qValues"] = {};
+  const quantityInputs: LotOffer["quantityInputs"] = {};
+  const tValues: LotOffer["tValues"] = {};
+  const dValues: LotOffer["dValues"] = {};
+
+  for (const criterion of CRITERIA) {
+    if (criterion.kind === "Q") {
+      qValues[criterion.id] = finiteNumber(recordValue(source.qValues, criterion.id), fallback.qValues[criterion.id] ?? 0);
+      if (criterion.quantityInput) {
+        quantityInputs[criterion.id] = normalizeQuantityInput(recordValue(source.quantityInputs, criterion.id));
+      }
+      continue;
+    }
+
+    if (criterion.kind === "T") {
+      tValues[criterion.id] = Boolean(recordValue(source.tValues, criterion.id) ?? fallback.tValues[criterion.id]);
+      continue;
+    }
+
+    dValues[criterion.id] = finiteNumber(recordValue(source.dValues, criterion.id), fallback.dValues[criterion.id] ?? 0);
+  }
   const tradeoffs = Object.fromEntries(
     CRITERIA.map((criterion) => [
       criterion.id,

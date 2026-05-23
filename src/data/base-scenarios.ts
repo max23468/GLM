@@ -412,16 +412,22 @@ const simulatedOffer = (lotId: LotId, profile: OfferProfile, assumptionProfile: 
     }
   };
 
-  const qValues = Object.fromEntries(CRITERIA.filter((criterion) => criterion.kind === "Q").map((criterion) => [criterion.id, qValue(criterion)]));
-  const quantityInputs = Object.fromEntries(
-    CRITERIA.filter((criterion) => criterion.quantityInput).map((criterion) => [
-      criterion.id,
-      quantityInputFromComputedValue(criterion, qValues[criterion.id] ?? 0, lotId),
-    ]),
-  );
-  const tValues = Object.fromEntries(
-    CRITERIA.filter((criterion) => criterion.kind === "T").map((criterion) => {
-      const value =
+  const qValues: Record<string, number> = {};
+  const quantityInputs: Record<string, QuantityInputValue> = {};
+  const tValues: Record<string, boolean> = {};
+  const dValues: Record<string, number> = {};
+
+  for (const criterion of CRITERIA) {
+    if (criterion.kind === "Q") {
+      qValues[criterion.id] = qValue(criterion);
+      if (criterion.quantityInput) {
+        quantityInputs[criterion.id] = quantityInputFromComputedValue(criterion, qValues[criterion.id] ?? 0, lotId);
+      }
+      continue;
+    }
+
+    if (criterion.kind === "T") {
+      tValues[criterion.id] =
         criterion.id === "C.2.2" ? profile.tech >= 0.72 :
         criterion.id === "C.2.3" ? profile.safety >= 0.78 :
         criterion.id === "C.3.2" ? profile.digital >= 0.55 :
@@ -430,20 +436,17 @@ const simulatedOffer = (lotId: LotId, profile: OfferProfile, assumptionProfile: 
         criterion.id === "G.2.1" ? profile.safety >= 0.7 :
         criterion.id === "G.3.1" ? profile.quality >= 0.68 :
         true;
-      return [criterion.id, value];
-    }),
-  );
-  const dValues = Object.fromEntries(
-    CRITERIA.filter((criterion) => criterion.kind === "D").map((criterion) => {
-      const value =
-        criterion.id === "B.5.1" ? profile.discretionary + (profile.service - 1) * 0.18 :
-        criterion.id === "E.2.1" ? profile.discretionary + (profile.digital - 0.7) * 0.12 :
-        criterion.id === "G.1.1" ? profile.discretionary + (profile.tech - 0.7) * 0.12 :
-        criterion.id === "G.4.1" ? profile.discretionary + (profile.quality - 0.75) * 0.1 :
-        profile.discretionary;
-      return [criterion.id, rounded(clamp01(value), 2)];
-    }),
-  );
+      continue;
+    }
+
+    const value =
+      criterion.id === "B.5.1" ? profile.discretionary + (profile.service - 1) * 0.18 :
+      criterion.id === "E.2.1" ? profile.discretionary + (profile.digital - 0.7) * 0.12 :
+      criterion.id === "G.1.1" ? profile.discretionary + (profile.tech - 0.7) * 0.12 :
+      criterion.id === "G.4.1" ? profile.discretionary + (profile.quality - 0.75) * 0.1 :
+      profile.discretionary;
+    dValues[criterion.id] = rounded(clamp01(value), 2);
+  }
   return {
     enabled: true,
     qValues,

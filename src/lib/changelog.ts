@@ -54,7 +54,7 @@ export function parseChangelog(raw: string): ChangelogEntry[] {
     const end = index + 1 < matches.length ? matches[index + 1].index! : raw.length;
     let body = raw.slice(start, end).trim();
 
-    const separatorIndex = body.indexOf("\n---");
+    const separatorIndex = body.search(/\n---/);
     if (separatorIndex !== -1) body = body.slice(0, separatorIndex).trim();
 
     const version = match[1].trim();

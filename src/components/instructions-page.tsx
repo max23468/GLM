@@ -261,7 +261,7 @@ export function InstructionsPage({ onBack }: InstructionsPageProps) {
   return (
     <div className="guide-page">
       <header className="guide-topbar">
-        <button className="guide-back" onClick={onBack}>
+          <button className="guide-back" type="button" onClick={onBack}>
           <ArrowLeft size={17} />
           Torna al simulatore
         </button>

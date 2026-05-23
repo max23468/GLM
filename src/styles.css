@@ -192,6 +192,7 @@ button {
   color: var(--success-text);
   font-weight: 780;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .doc-link:hover {
@@ -1302,6 +1303,9 @@ input[type="checkbox"] {
   grid-template-columns: repeat(4, minmax(46px, 1fr));
   gap: 6px;
   min-width: 248px;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 .lot-switcher-buttons button {

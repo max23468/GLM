@@ -149,17 +149,47 @@ export type EconomicBreakdown = {
   ribasso: number;
 };
 
-export const emptyQuantityInputs = () =>
-  Object.fromEntries(
-    CRITERIA.filter((criterion) => criterion.quantityInput).map((criterion) => [criterion.id, { numerator: 0, denominator: 0 } satisfies QuantityInputValue]),
-  );
+const criterionById = new Map(CRITERIA.map((criterion) => [criterion.id, criterion]));
+const compatiblePairSetKeys = new Set(COMPATIBLE_PAIR_SETS.map((set) => Array.from(set).sort().join("|")));
+
+export const emptyQuantityInputs = () => {
+  const inputs: Record<string, QuantityInputValue> = {};
+  for (const criterion of CRITERIA) {
+    if (criterion.quantityInput) inputs[criterion.id] = { numerator: 0, denominator: 0 };
+  }
+  return inputs;
+};
+
+const emptyQuantitativeValues = () => {
+  const values: Record<string, number> = {};
+  for (const criterion of CRITERIA) {
+    if (criterion.kind === "Q") values[criterion.id] = 0;
+  }
+  return values;
+};
+
+const emptyTabularValues = () => {
+  const values: Record<string, boolean> = {};
+  for (const criterion of CRITERIA) {
+    if (criterion.kind === "T") values[criterion.id] = false;
+  }
+  return values;
+};
+
+const emptyDiscretionaryValues = () => {
+  const values: Record<string, number> = {};
+  for (const criterion of CRITERIA) {
+    if (criterion.kind === "D") values[criterion.id] = 0.6;
+  }
+  return values;
+};
 
 export const emptyLotOffer = (): LotOffer => ({
   enabled: false,
-  qValues: Object.fromEntries(CRITERIA.filter((criterion) => criterion.kind === "Q").map((criterion) => [criterion.id, 0])),
+  qValues: emptyQuantitativeValues(),
   quantityInputs: emptyQuantityInputs(),
-  tValues: Object.fromEntries(CRITERIA.filter((criterion) => criterion.kind === "T").map((criterion) => [criterion.id, false])),
-  dValues: Object.fromEntries(CRITERIA.filter((criterion) => criterion.kind === "D").map((criterion) => [criterion.id, 0.6])),
+  tValues: emptyTabularValues(),
+  dValues: emptyDiscretionaryValues(),
   tradeoffs: emptyTradeoffs(),
   phaseDiscounts: [0, 0, 0],
 });
@@ -294,20 +324,29 @@ const computeTechnicalRawScores = (bidders: Bidder[], settings: Settings): Recor
     bidders.map((bidder) => [bidder.id, makeBidderLotScores(bidder)]),
   ) as Record<string, Record<LotId, LotScore>>;
 
-  for (const lot of LOTS) {
-    for (const criterion of CRITERIA) {
-      const enabledOffers = bidders.filter((bidder) => bidder.lots[lot.id].enabled);
-      const values = enabledOffers.map((bidder) => {
-        const offer = bidder.lots[lot.id];
-        if (criterion.kind === "Q") return getQuantitativeCriterionValue(offer, criterion);
-        if (criterion.kind === "T") return offer.tValues[criterion.id] ?? false;
-        return offer.dValues[criterion.id] ?? 0;
-      });
-      const numericValues = values.map(Number).filter((value) => Number.isFinite(value));
-      const maxValue = Math.max(0, ...numericValues);
-      const positiveValues = numericValues.filter((value) => value > 0);
-      const minPositive = positiveValues.length ? Math.min(...positiveValues) : 0;
-      const maxDiscretionary = criterion.kind === "D" ? Math.max(0, ...numericValues) : 0;
+    for (const lot of LOTS) {
+      for (const criterion of CRITERIA) {
+        let maxValue = 0;
+        let minPositive = Number.POSITIVE_INFINITY;
+        let maxDiscretionary = 0;
+
+        for (const bidder of bidders) {
+          const offer = bidder.lots[lot.id];
+          if (!offer.enabled) continue;
+          const value =
+            criterion.kind === "Q"
+              ? getQuantitativeCriterionValue(offer, criterion)
+              : criterion.kind === "T"
+                ? Number(offer.tValues[criterion.id] ?? false)
+                : offer.dValues[criterion.id] ?? 0;
+          const numericValue = Number(value);
+          if (!Number.isFinite(numericValue)) continue;
+          maxValue = Math.max(maxValue, numericValue);
+          if (numericValue > 0) minPositive = Math.min(minPositive, numericValue);
+          if (criterion.kind === "D") maxDiscretionary = Math.max(maxDiscretionary, numericValue);
+        }
+
+        if (minPositive === Number.POSITIVE_INFINITY) minPositive = 0;
 
       for (const bidder of bidders) {
         const lotOffer = bidder.lots[lot.id];
@@ -347,7 +386,7 @@ const computeTechnicalRawScores = (bidders: Bidder[], settings: Settings): Recor
         if (criterion.kind === "T") {
           value = Boolean(lotOffer.tValues[criterion.id]);
           if (criterion.dependency) {
-            const dependencyCriterion = CRITERIA.find((item) => item.id === criterion.dependency?.criterionId);
+              const dependencyCriterion = criterion.dependency ? criterionById.get(criterion.dependency.criterionId) : undefined;
             const dependencyValue = dependencyCriterion ? getQuantitativeCriterionValue(lotOffer, dependencyCriterion) : 0;
             dependencyBlocked = dependencyValue < criterion.dependency.value;
             if (dependencyBlocked && value) {
@@ -382,13 +421,11 @@ const computeTechnicalRawScores = (bidders: Bidder[], settings: Settings): Recor
     }
 
     for (const ambit of AMBITS) {
-      const bestRaw = Math.max(
-        0,
-        ...bidders
-          .map((bidder) => result[bidder.id][lot.id])
-          .filter((score) => score.admitted)
-          .map((score) => score.rawByAmbit[ambit.id] ?? 0),
-      );
+      let bestRaw = 0;
+      for (const bidder of bidders) {
+        const score = result[bidder.id][lot.id];
+        if (score.admitted) bestRaw = Math.max(bestRaw, score.rawByAmbit[ambit.id] ?? 0);
+      }
       for (const bidder of bidders) {
         const score = result[bidder.id][lot.id];
         const raw = score.rawByAmbit[ambit.id] ?? 0;
@@ -406,20 +443,25 @@ const computeTechnicalRawScores = (bidders: Bidder[], settings: Settings): Recor
 };
 
 const comboHasOverlaps = (bidder: Bidder, pairId: PairId) => {
-  const enabledPairs = PAIRS.filter((pair) => bidder.combos[pair.id].enabled).map((pair) => pair.id);
   const selected = getPair(pairId);
-  return enabledPairs.some((otherId) => {
-    if (otherId === pairId) return false;
-    const other = getPair(otherId);
-    return selected.lots.some((lotId) => other.lots.includes(lotId));
+  return PAIRS.some((other) => {
+    if (other.id === pairId || !bidder.combos[other.id].enabled) return false;
+    return selected.lots[0] === other.lots[0] ||
+      selected.lots[0] === other.lots[1] ||
+      selected.lots[1] === other.lots[0] ||
+      selected.lots[1] === other.lots[1];
   });
 };
 
 const comboSetAllowed = (bidder: Bidder) => {
-  const enabled = PAIRS.filter((pair) => bidder.combos[pair.id].enabled).map((pair) => pair.id).sort();
+  const enabled: PairId[] = [];
+  for (const pair of PAIRS) {
+    if (bidder.combos[pair.id].enabled) enabled.push(pair.id);
+  }
   if (enabled.length <= 1) return true;
   if (enabled.length > 2) return false;
-  return COMPATIBLE_PAIR_SETS.some((set) => [...set].sort().join("|") === enabled.join("|"));
+  enabled.sort();
+  return compatiblePairSetKeys.has(enabled.join("|"));
 };
 
 const computeComboScores = (
@@ -509,13 +551,15 @@ const computeComboScores = (
 const computeRMaxByLot = (bidders: Bidder[], lotScores: Record<string, Record<LotId, LotScore>>) => {
   const rMaxByLot = Object.fromEntries(LOTS.map((lot) => [lot.id, 0])) as Record<LotId, number>;
   for (const lot of LOTS) {
-    const singleRibassi = bidders
-      .filter((bidder) => lotScores[bidder.id][lot.id].admitted)
-      .map((bidder) => lotScores[bidder.id][lot.id].singleRibasso);
-    const comboRibassi = bidders.flatMap((bidder) =>
-      PAIRS.filter((pair) => {
+    let rMax = 0;
+    for (const bidder of bidders) {
+      if (lotScores[bidder.id][lot.id].admitted) {
+        rMax = Math.max(rMax, lotScores[bidder.id][lot.id].singleRibasso);
+      }
+      for (const pair of PAIRS) {
         const combo = bidder.combos[pair.id];
         const [firstLotId, secondLotId] = pair.lots;
+        const pairContainsLot = firstLotId === lot.id || secondLotId === lot.id;
         const firstScore = lotScores[bidder.id][firstLotId];
         const secondScore = lotScores[bidder.id][secondLotId];
         const firstLot = getLot(firstLotId);
@@ -524,9 +568,8 @@ const computeRMaxByLot = (bidders: Bidder[], lotScores: Record<string, Record<Lo
         const singleOfferedSum =
           computeOfferedAmount(firstLot.baseByPhase, bidder.lots[firstLotId].phaseDiscounts) +
           computeOfferedAmount(secondLot.baseByPhase, bidder.lots[secondLotId].phaseDiscounts);
-
-        return (
-          pair.lots.includes(lot.id) &&
+        if (
+          pairContainsLot &&
           combo.enabled &&
           firstScore.admitted &&
           secondScore.admitted &&
@@ -535,10 +578,12 @@ const computeRMaxByLot = (bidders: Bidder[], lotScores: Record<string, Record<Lo
           combo.insertedInBothBuste &&
           combo.pefCoherent &&
           comboOffered < singleOfferedSum
-        );
-      }).map((pair) => computeWeightedRibasso(pairBaseByPhase(pair.id), bidder.combos[pair.id].phaseDiscounts)),
-    );
-    rMaxByLot[lot.id] = Math.max(0, ...singleRibassi, ...comboRibassi);
+        ) {
+          rMax = Math.max(rMax, computeWeightedRibasso(pairBaseByPhase(pair.id), bidder.combos[pair.id].phaseDiscounts));
+        }
+      }
+    }
+    rMaxByLot[lot.id] = rMax;
   }
   return rMaxByLot;
 };
@@ -632,8 +677,13 @@ const enumerateScenarios = (candidates: AssignmentCandidate[], allowAwardLimitDe
 
     recurse(new Set([...processedLots, nextLot]), occupiedLots, bidderCounts, assignments);
 
-    for (const candidate of candidates.filter((item) => item.lotIds.includes(nextLot))) {
-      if (candidate.lotIds.some((lotId) => occupiedLots.has(lotId))) continue;
+    for (const candidate of candidates) {
+      if (candidate.lotIds[0] !== nextLot && candidate.lotIds[1] !== nextLot) continue;
+      let hasOccupiedLot = false;
+      for (const lotId of candidate.lotIds) {
+        if (occupiedLots.has(lotId)) hasOccupiedLot = true;
+      }
+      if (hasOccupiedLot) continue;
       const currentCount = bidderCounts[candidate.bidderId] ?? 0;
       const nextCount = currentCount + candidate.lotIds.length;
       if (!allowAwardLimitDerogation && nextCount > 2) continue;
@@ -649,7 +699,8 @@ const enumerateScenarios = (candidates: AssignmentCandidate[], allowAwardLimitDe
 
   recurse(new Set(), new Set(), {}, []);
 
-  const sorted = [...scenarios.values()].sort((a, b) => {
+  const sorted = Array.from(scenarios.values());
+  sorted.sort((a, b) => {
     if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
     if (b.technicalScore !== a.technicalScore) return b.technicalScore - a.technicalScore;
     return a.id.localeCompare(b.id);
@@ -719,15 +770,19 @@ const buildWarnings = (
   comboScores: Record<string, Record<PairId, ComboScore>>,
   scenarios: Scenario[],
 ) => {
-  const warnings: string[] = [];
-  for (const bidder of bidders) {
-    for (const lot of LOTS) {
-      warnings.push(...lotScores[bidder.id][lot.id].warnings.map((warning) => `${bidder.name} ${lot.shortLabel}: ${warning}`));
+    const warnings: string[] = [];
+    for (const bidder of bidders) {
+      for (const lot of LOTS) {
+        for (const warning of lotScores[bidder.id][lot.id].warnings) {
+          warnings.push(`${bidder.name} ${lot.shortLabel}: ${warning}`);
+        }
+      }
+      for (const pair of PAIRS) {
+        for (const warning of comboScores[bidder.id][pair.id].warnings) {
+          warnings.push(`${bidder.name} ${pair.label}: ${warning}`);
+        }
+      }
     }
-    for (const pair of PAIRS) {
-      warnings.push(...comboScores[bidder.id][pair.id].warnings.map((warning) => `${bidder.name} ${pair.label}: ${warning}`));
-    }
-  }
   const selected = scenarios[0];
   if (selected?.drawRequired) {
     warnings.push("Lo scenario migliore è ex aequo anche dopo il criterio tecnico: è richiesto sorteggio pubblico.");
@@ -772,14 +827,16 @@ const buildSuggestions = (
         body = subScore.dependencyBlocked
           ? `${criterion.id}: prima risolvi la dipendenza indicata, poi il sì assegna ${formatPoints(criterion.maxPoints)} punti tabellari.`
           : `${criterion.id}: portare il selettore a sì assegna ${formatPoints(criterion.maxPoints)} punti tabellari se l'impegno è documentabile.`;
-      } else if (criterion.formula === "higher") {
-        const enabledBidders = bidders.filter((item) => item.lots[lot.id].enabled);
-        const bestBidder = enabledBidders
-          .map((item) => ({ bidder: item, value: getQuantitativeCriterionValue(item.lots[lot.id], criterion) }))
-          .sort((a, b) => b.value - a.value)[0];
-        const bestValue = bestBidder?.value ?? 0;
-        const currentInput = bidder.lots[lot.id].quantityInputs?.[criterion.id];
-        const bestInput = bestBidder?.bidder.lots[lot.id].quantityInputs?.[criterion.id];
+        } else if (criterion.formula === "higher") {
+          let bestBidder: { bidder: Bidder; value: number } | undefined;
+          for (const item of bidders) {
+            if (!item.lots[lot.id].enabled) continue;
+            const value = getQuantitativeCriterionValue(item.lots[lot.id], criterion);
+            if (!bestBidder || value > bestBidder.value) bestBidder = { bidder: item, value };
+          }
+          const bestValue = bestBidder?.value ?? 0;
+          const currentInput = bidder.lots[lot.id].quantityInputs?.[criterion.id];
+          const bestInput = bestBidder?.bidder.lots[lot.id].quantityInputs?.[criterion.id];
         if (criterion.quantityInput && bestInput?.denominator) {
           const denominator = currentInput?.denominator || bestInput.denominator;
           const targetNumerator =
@@ -788,9 +845,14 @@ const buildSuggestions = (
         } else {
           body = `${criterion.id}: per allinearti al migliore scenario corrente il valore deve raggiungere ${bestValue.toLocaleString("it-IT")} ${criterion.unit}.`;
         }
-      } else if (criterion.formula === "lower") {
-        const bestValue = Math.min(...bidders.filter((item) => item.lots[lot.id].enabled).map((item) => getQuantitativeCriterionValue(item.lots[lot.id], criterion) || Infinity));
-        body = `${criterion.id}: il punteggio cresce riducendo l'indice verso ${bestValue.toLocaleString("it-IT")} ${criterion.unit}.`;
+        } else if (criterion.formula === "lower") {
+          let bestValue = Number.POSITIVE_INFINITY;
+          for (const item of bidders) {
+            if (!item.lots[lot.id].enabled) continue;
+            bestValue = Math.min(bestValue, getQuantitativeCriterionValue(item.lots[lot.id], criterion) || Infinity);
+          }
+          if (bestValue === Number.POSITIVE_INFINITY) bestValue = 0;
+          body = `${criterion.id}: il punteggio cresce riducendo l'indice verso ${bestValue.toLocaleString("it-IT")} ${criterion.unit}.`;
       } else if (criterion.formula === "soil") {
         body = `${criterion.id}: consumo di suolo netto <= 0 assegna direttamente il massimo previsto.`;
       } else {
@@ -862,7 +924,13 @@ export const simulate = (bidders: Bidder[], settings: Settings, selectedBidderId
 
 export const criteriaByAmbit = (ambit: Ambit) => CRITERIA.filter((criterion) => criterion.ambit === ambit.id);
 
-export const maxQtPoints = () => CRITERIA.filter((criterion) => criterion.kind !== "D").reduce((sum, criterion) => sum + criterion.maxPoints, 0);
+export const maxQtPoints = () => {
+  let total = 0;
+  for (const criterion of CRITERIA) {
+    if (criterion.kind !== "D") total += criterion.maxPoints;
+  }
+  return total;
+};
 
 export const getCriterion = (id: string) => {
   const criterion = CRITERIA.find((item) => item.id === id);

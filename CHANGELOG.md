@@ -6,6 +6,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.1.1] — 2026-05-23
+
+### Correzioni
+
+- **Interfaccia**: migliorata accessibilità e robustezza dei controlli di scenario, criteri, ottimizzazione e risultati senza cambiare le formule di simulazione.
+
 ## [1.1.0] — 2026-05-20
 
 ### Novità

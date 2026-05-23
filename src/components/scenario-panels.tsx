@@ -66,25 +66,25 @@ export function ScenarioTools({
           Nome scenario
           <HelpTooltip>Usa un nome descrittivo dell'ipotesi, per esempio soglia, lotto o strategia economica testata.</HelpTooltip>
         </span>
-        <input value={scenarioName} onChange={(event) => onScenarioNameChange(event.target.value)} />
+          <input aria-label="Nome scenario" value={scenarioName} onChange={(event) => onScenarioNameChange(event.target.value)} />
       </label>
       <div className="scenario-actions" aria-label="Azioni rapide scenario">
-        <button className="icon-button" onClick={onNew} aria-label="Nuovo scenario" title="Nuovo scenario">
+          <button className="icon-button" type="button" onClick={onNew} aria-label="Nuovo scenario" title="Nuovo scenario">
           <Plus size={16} />
         </button>
-        <button className="icon-button primary" onClick={onSave} aria-label="Salva scenario in libreria" title="Salva in libreria">
+          <button className="icon-button primary" type="button" onClick={onSave} aria-label="Salva scenario in libreria" title="Salva in libreria">
           <Save size={16} />
         </button>
-        <button className="icon-button" onClick={onDuplicate} aria-label="Duplica scenario" title="Duplica scenario">
+          <button className="icon-button" type="button" onClick={onDuplicate} aria-label="Duplica scenario" title="Duplica scenario">
           <CopyPlus size={16} />
         </button>
-        <button className="icon-button danger" onClick={onDelete} disabled={!activeSavedScenarioId} aria-label="Elimina scenario attivo" title="Elimina scenario attivo">
+          <button className="icon-button danger" type="button" onClick={onDelete} disabled={!activeSavedScenarioId} aria-label="Elimina scenario attivo" title="Elimina scenario attivo">
           <X size={16} />
         </button>
-        <button className="icon-button" onClick={onExport} aria-label="Esporta scenario JSON" title="Esporta JSON">
+          <button className="icon-button" type="button" onClick={onExport} aria-label="Esporta scenario JSON" title="Esporta JSON">
           <Download size={16} />
         </button>
-        <button className="icon-button" onClick={() => fileInputRef.current?.click()} aria-label="Importa scenario JSON" title="Importa JSON">
+          <button className="icon-button" type="button" onClick={() => fileInputRef.current?.click()} aria-label="Importa scenario JSON" title="Importa JSON">
           <Upload size={16} />
         </button>
       </div>
@@ -95,7 +95,8 @@ export function ScenarioTools({
       <input
         ref={fileInputRef}
         className="visually-hidden"
-        type="file"
+          type="file"
+          aria-label="Importa scenario JSON"
         accept="application/json,.json"
         onChange={(event) => {
           const file = event.currentTarget.files?.[0];
@@ -112,12 +113,13 @@ export function ScenarioTools({
           {savedScenarios.length ? (
             savedScenarios.map((scenario) => (
               <div key={scenario.id} className={`saved-scenario-row ${scenario.id === activeSavedScenarioId ? "selected" : ""}`}>
-                <button className="saved-scenario-main" onClick={() => onLoadSaved(scenario.id)}>
+                  <button className="saved-scenario-main" type="button" onClick={() => onLoadSaved(scenario.id)}>
                   <span>{scenario.name}</span>
                   <small>{new Date(scenario.savedAt).toLocaleDateString("it-IT")}</small>
                 </button>
-                <button
-                  className="icon-button mini danger"
+                  <button
+                    className="icon-button mini danger"
+                    type="button"
                   onClick={() => onDeleteSaved(scenario.id)}
                   aria-label={`Elimina scenario ${scenario.name}`}
                   title="Elimina scenario"
@@ -131,11 +133,11 @@ export function ScenarioTools({
           )}
         </div>
       </div>
-      <button className="action-button subtle" onClick={onResetBaseScenario}>
+        <button className="action-button subtle" type="button" onClick={onResetBaseScenario}>
         <RotateCcw size={16} />
         Ripristina scenario base
       </button>
-      <button className="action-button danger subtle" onClick={onResetTool}>
+        <button className="action-button danger subtle" type="button" onClick={onResetTool}>
         <RotateCcw size={16} />
         Reset totale tool
       </button>
@@ -185,7 +187,7 @@ export function StrategicSummary({
           </div>
         </div>
         <div className="summary-actions" aria-label="Azioni rapide">
-          <button className="action-button compact primary" onClick={onOpenResults}>
+            <button className="action-button compact primary" type="button" onClick={onOpenResults}>
             <Trophy size={16} />
             Risultati
           </button>

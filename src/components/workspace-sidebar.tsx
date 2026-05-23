@@ -146,18 +146,20 @@ export function WorkspaceSidebar({
             <div className="base-list">
               {visibleBaseScenarios.map((scenario) => (
                 <div key={scenario.id} className={`sidebar-row-actions base-scenario-row ${scenario.id === baseScenarioId ? "selected" : ""}`}>
-                  <button
-                    className="saved-scenario-main base-scenario-main"
-                    onClick={() => onLoadBaseScenario(scenario)}
-                  >
+                    <button
+                      className="saved-scenario-main base-scenario-main"
+                      type="button"
+                      onClick={() => onLoadBaseScenario(scenario)}
+                    >
                     <span>{scenario.title}</span>
                     <small>{scenario.body}</small>
                   </button>
                   {isBaseScenarioManagementOpen && (
-                    <button
-                      className="icon-button mini danger"
-                      onClick={() => onDeleteBaseScenario(scenario)}
-                      aria-label={`Elimina scenario base ${scenario.title}`}
+                      <button
+                        className="icon-button mini danger"
+                        type="button"
+                        onClick={() => onDeleteBaseScenario(scenario)}
+                        aria-label={`Elimina scenario base ${scenario.title}`}
                       title="Elimina scenario base"
                     >
                       <X size={14} />
@@ -168,9 +170,9 @@ export function WorkspaceSidebar({
               {!visibleBaseScenarios.length && <div className="empty-sidebar-note">Tutti gli scenari base sono stati eliminati dalla lista.</div>}
             </div>
             {hiddenBaseScenarioCount > 0 && (
-              <button className="action-button compact" onClick={restoreBaseScenarios}>
-                Ripristina scenari base
-              </button>
+                <button className="action-button compact" type="button" onClick={restoreBaseScenarios}>
+                  Ripristina scenari base
+                </button>
             )}
             <div className="hint">Profili simulati da fonti pubbliche e modelli locali: servono per confrontare scenari, non rappresentano offerte ufficiali.</div>
           </>
@@ -184,9 +186,9 @@ export function WorkspaceSidebar({
             Concorrenti
             <HelpTooltip>Da qui aggiungi, rinomini, selezioni o elimini i concorrenti. La compilazione centrale lavora sempre sul concorrente attivo.</HelpTooltip>
           </span>
-          <button className="icon-button primary" onClick={onAddBidder} aria-label="Aggiungi concorrente" title="Aggiungi concorrente">
-            <Plus size={17} />
-          </button>
+            <button className="icon-button primary" type="button" onClick={onAddBidder} aria-label="Aggiungi concorrente" title="Aggiungi concorrente">
+              <Plus size={17} />
+            </button>
         </div>
         {selectedBidder && (
           <div className="sidebar-admin-block">
@@ -195,7 +197,7 @@ export function WorkspaceSidebar({
                 Nome concorrente
                 <HelpTooltip>Il nome serve a rendere leggibili classifica, confronto ed export. Non incide sui punteggi.</HelpTooltip>
               </span>
-              <input value={selectedBidder.name} onChange={(event) => onSelectedBidderNameChange(event.target.value)} />
+                <input aria-label="Nome concorrente" value={selectedBidder.name} onChange={(event) => onSelectedBidderNameChange(event.target.value)} />
             </label>
           </div>
         )}
@@ -205,15 +207,16 @@ export function WorkspaceSidebar({
             const isSelected = bidder.id === selectedBidder?.id;
             return (
               <div key={bidder.id} className={`sidebar-row-actions ${isSelected ? "selected" : ""}`}>
-                <button className="offeror-row" onClick={() => onSelectBidder(bidder.id)}>
-                  <span>{bidder.name}</span>
+                  <button className="offeror-row" type="button" onClick={() => onSelectBidder(bidder.id)}>
+                    <span>{bidder.name}</span>
                   <small>
                     {activeLots} {activeLots === 1 ? "lotto" : "lotti"}
                   </small>
                 </button>
-                <button
-                  className="icon-button mini danger"
-                  disabled={bidders.length <= 1}
+                  <button
+                    className="icon-button mini danger"
+                    type="button"
+                    disabled={bidders.length <= 1}
                   onClick={() => onRemoveBidder(bidder.id)}
                   aria-label={`Elimina concorrente ${bidder.name}`}
                   title="Elimina concorrente"
@@ -239,9 +242,10 @@ export function WorkspaceSidebar({
               return (
                 <label key={lot.id} className={selectedBidder.lots[lot.id].enabled ? lotScore.admitted ? "ok" : "warn" : ""}>
                   <span>{lot.shortLabel}</span>
-                  <input
-                    type="checkbox"
-                    checked={selectedBidder.lots[lot.id].enabled}
+                    <input
+                      type="checkbox"
+                      aria-label={`Partecipa al ${lot.shortLabel} con ${selectedBidder.name}`}
+                      checked={selectedBidder.lots[lot.id].enabled}
                     onChange={(event) => onLotParticipationChange(lot.id, event.target.checked)}
                   />
                 </label>
@@ -255,9 +259,10 @@ export function WorkspaceSidebar({
               return (
                 <label key={pair.id} className={selectedBidder.combos[pair.id].enabled ? comboScore.admissible ? "ok" : "warn" : ""}>
                   <span>{pair.label.replace("Lotti ", "")}</span>
-                  <input
-                    type="checkbox"
-                    checked={selectedBidder.combos[pair.id].enabled}
+                    <input
+                      type="checkbox"
+                      aria-label={`Presenta combinatoria ${pair.label.replace("Lotti ", "")} con ${selectedBidder.name}`}
+                      checked={selectedBidder.combos[pair.id].enabled}
                     onChange={(event) => onComboParticipationChange(pair.id, event.target.checked)}
                   />
                 </label>
@@ -300,9 +305,10 @@ export function WorkspaceSidebar({
           </select>
         </label>
         <label className="toggle-row">
-          <input
-            type="checkbox"
-            checked={settings.applyAwardLimitDerogation}
+            <input
+              type="checkbox"
+              aria-label="Applica deroga al limite di due lotti"
+              checked={settings.applyAwardLimitDerogation}
             onChange={(event) => onSettingsChange({ applyAwardLimitDerogation: event.target.checked })}
           />
           <span>Applica deroga al limite di due lotti se necessaria per evitare lotti non assegnati</span>

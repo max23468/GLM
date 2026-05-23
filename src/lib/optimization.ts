@@ -72,6 +72,20 @@ type OptimizationCandidate = Omit<OptimizationStep, "id" | "afterScore"> & {
   score: number;
 };
 
+const compareOptimizationCandidates = (left: OptimizationCandidate, right: OptimizationCandidate) => {
+  if (right.objectiveDelta !== left.objectiveDelta) return right.objectiveDelta - left.objectiveDelta;
+  if (right.efficiency !== left.efficiency) return right.efficiency - left.efficiency;
+  return left.cost - right.cost;
+};
+
+const pickBestCandidate = (candidates: OptimizationCandidate[]) => {
+  let best: OptimizationCandidate | undefined;
+  for (const candidate of candidates) {
+    if (!best || compareOptimizationCandidates(candidate, best) < 0) best = candidate;
+  }
+  return best;
+};
+
 export const defaultOptimizationConfig = (): OptimizationConfig => ({
   mode: "technical-economic",
   scope: "active-lot",
@@ -126,11 +140,7 @@ export const optimizeOffer = (
       config,
       currentScore,
     });
-    const best = candidates.sort((a, b) => {
-      if (b.objectiveDelta !== a.objectiveDelta) return b.objectiveDelta - a.objectiveDelta;
-      if (b.efficiency !== a.efficiency) return b.efficiency - a.efficiency;
-      return a.cost - b.cost;
-    })[0];
+    const best = pickBestCandidate(candidates);
 
     if (!best || best.objectiveDelta <= 0.0001) break;
     currentBidders = best.bidders;
@@ -192,7 +202,11 @@ const getTargetLots = (bidders: Bidder[], selectedBidderId: string, selectedLotI
   const bidder = bidders.find((item) => item.id === selectedBidderId);
   if (!bidder) return [];
   if (scope === "active-lot") return bidder.lots[selectedLotId].enabled ? [selectedLotId] : [];
-  return LOTS.filter((lot) => bidder.lots[lot.id].enabled).map((lot) => lot.id);
+  const lotIds: LotId[] = [];
+  for (const lot of LOTS) {
+    if (bidder.lots[lot.id].enabled) lotIds.push(lot.id);
+  }
+  return lotIds;
 };
 
 const objectiveScore = (simulation: SimulationResult, bidders: Bidder[], selectedBidderId: string, selectedLotId: LotId, scope: OptimizationScope) => {
@@ -200,14 +214,22 @@ const objectiveScore = (simulation: SimulationResult, bidders: Bidder[], selecte
   if (!bidder) return 0;
 
   if (scope === "scenario") {
-    return round4(
-      simulation.selectedScenario?.assignments
-        .filter((assignment) => assignment.bidderId === selectedBidderId)
-        .reduce((sum, assignment) => sum + assignment.lotIds.reduce((lotSum, lotId) => lotSum + candidateLotScore(assignment, lotId), 0), 0) ?? 0,
-    );
+    let score = 0;
+    for (const assignment of simulation.selectedScenario?.assignments ?? []) {
+      if (assignment.bidderId !== selectedBidderId) continue;
+      score += assignment.lotIds.reduce((lotSum, lotId) => lotSum + candidateLotScore(assignment, lotId), 0);
+    }
+    return round4(score);
   }
 
-  const lotIds = scope === "active-lot" ? [selectedLotId] : LOTS.filter((lot) => bidder.lots[lot.id].enabled).map((lot) => lot.id);
+  const lotIds: LotId[] = [];
+  if (scope === "active-lot") {
+    lotIds.push(selectedLotId);
+  } else {
+    for (const lot of LOTS) {
+      if (bidder.lots[lot.id].enabled) lotIds.push(lot.id);
+    }
+  }
   return round4(lotIds.reduce((sum, lotId) => sum + (simulation.lotScores[selectedBidderId]?.[lotId].singleTotal ?? 0), 0));
 };
 
@@ -236,6 +258,8 @@ const buildCandidates = ({
   const bidder = currentBidders.find((item) => item.id === selectedBidderId);
   const baselineBidder = baselineBidders.find((item) => item.id === selectedBidderId);
   if (!bidder || !baselineBidder) return candidates;
+  const selectedBidderIndex = currentBidders.findIndex((item) => item.id === selectedBidderId);
+  if (selectedBidderIndex === -1) return candidates;
 
   for (const lotId of targetLots) {
     const currentOffer = bidder.lots[lotId];
@@ -253,7 +277,7 @@ const buildCandidates = ({
         if (cost <= 0) continue;
 
         const nextBidders = structuredClone(currentBidders);
-        const nextBidder = nextBidders.find((item) => item.id === selectedBidderId);
+        const nextBidder = nextBidders[selectedBidderIndex];
         if (!nextBidder) continue;
         const plan = technicalUnitsToTradeoff(criterion, lever, units);
         applyTradeoffPlanToOffer(nextBidder.lots[lotId], criterion, plan);
@@ -294,6 +318,7 @@ const buildCandidates = ({
             selectedLotId,
             settings,
             config,
+            selectedBidderIndex,
           })
         : [];
     candidates.push(...reallocationCandidates);
@@ -313,6 +338,7 @@ const buildReallocationCandidates = ({
   selectedLotId,
   settings,
   config,
+  selectedBidderIndex,
 }: {
   baselineOffer: Bidder["lots"][LotId];
   currentBidders: Bidder[];
@@ -323,66 +349,67 @@ const buildReallocationCandidates = ({
   selectedLotId: LotId;
   settings: Settings;
   config: OptimizationConfig;
+  selectedBidderIndex: number;
 }): OptimizationCandidate[] => {
   const lot = LOTS.find((item) => item.id === lotId);
   if (!lot) return [];
 
-  return CRITERIA.flatMap((criterion): OptimizationCandidate[] => {
-    if (criterion.kind === "D") return [];
+  const candidates: OptimizationCandidate[] = [];
+    for (const criterion of CRITERIA) {
+      if (criterion.kind === "D") continue;
     const lever = getOptimizationLever(config, lotId, criterion, currentOffer.tradeoffs[criterion.id] ?? defaultTradeoff());
-    if (!lever.enabled) return [];
+    if (!lever.enabled) continue;
 
     const availableReductionUnits = availableTechnicalReductionUnits(baselineOffer, currentOffer, criterion, lever);
 
-    return candidateQuantities(availableReductionUnits, lever.granularityUnits, criterion).flatMap((reductionUnits): OptimizationCandidate[] => {
+    for (const reductionUnits of candidateQuantities(availableReductionUnits, lever.granularityUnits, criterion)) {
       const releasedValue = technicalReductionCost(criterion, reductionUnits, lever);
-      if (reductionUnits <= 0 || releasedValue <= 0) return [];
+      if (reductionUnits <= 0 || releasedValue <= 0) continue;
 
       const economicStep = fundedEconomicStepUnits(currentOffer, lot.totalBase, releasedValue);
-      if (economicStep <= 0.0001) return [];
+      if (economicStep <= 0.0001) continue;
 
       const economicCost = (lot.totalBase * economicStep) / 100;
-      if (economicCost - releasedValue > 0.0001) return [];
+      if (economicCost - releasedValue > 0.0001) continue;
 
       const reducedBidders = structuredClone(currentBidders);
-      const reducedBidder = reducedBidders.find((item) => item.id === selectedBidderId);
-      if (!reducedBidder) return [];
+      const reducedBidder = reducedBidders[selectedBidderIndex];
+      if (!reducedBidder) continue;
       applyTechnicalReductionToOffer(reducedBidder.lots[lotId], criterion, lever, reductionUnits);
       const reducedSimulation = simulate(reducedBidders, settings, selectedBidderId);
       const reducedScore = objectiveScore(reducedSimulation, reducedBidders, selectedBidderId, selectedLotId, config.scope);
 
       const nextBidders = structuredClone(reducedBidders);
-      const nextBidder = nextBidders.find((item) => item.id === selectedBidderId);
-      if (!nextBidder) return [];
+      const nextBidder = nextBidders[selectedBidderIndex];
+      if (!nextBidder) continue;
       nextBidder.lots[lotId].phaseDiscounts = nextBidder.lots[lotId].phaseDiscounts.map((discount) => discount + economicStep) as [number, number, number];
       const nextSimulation = simulate(nextBidders, settings, selectedBidderId);
       const nextScore = objectiveScore(nextSimulation, nextBidders, selectedBidderId, selectedLotId, config.scope);
       const objectiveDelta = round4(nextScore - currentScore);
-      if (objectiveDelta <= 0) return [];
+      if (objectiveDelta <= 0) continue;
 
-      return [
-        {
-          kind: "reallocation",
-          lotId,
-          criterionId: criterion.id,
-          criterionLabel: criterion.label,
-          ambit: criterion.ambit,
-          title: `${lotId} - rialloca ${criterion.id} verso ribasso`,
-          units: reductionUnits,
-          unitLabel: criterion.kind === "T" ? "impegno tecnico" : criterion.tradeoffUnit,
-          cost: economicCost,
-          releasedValue,
-          economicUnits: economicStep,
-          technicalDelta: round4(reducedScore - currentScore),
-          economicDelta: round4(nextScore - reducedScore),
-          objectiveDelta,
-          efficiency: efficiency(objectiveDelta, Math.max(1, economicCost)),
-          score: nextScore,
-          bidders: nextBidders,
-        },
-      ];
-    });
-  });
+      candidates.push({
+        kind: "reallocation",
+        lotId,
+        criterionId: criterion.id,
+        criterionLabel: criterion.label,
+        ambit: criterion.ambit,
+        title: `${lotId} - rialloca ${criterion.id} verso ribasso`,
+        units: reductionUnits,
+        unitLabel: criterion.kind === "T" ? "impegno tecnico" : criterion.tradeoffUnit,
+        cost: economicCost,
+        releasedValue,
+        economicUnits: economicStep,
+        technicalDelta: round4(reducedScore - currentScore),
+        economicDelta: round4(nextScore - reducedScore),
+        objectiveDelta,
+        efficiency: efficiency(objectiveDelta, Math.max(1, economicCost)),
+        score: nextScore,
+        bidders: nextBidders,
+      });
+    }
+  }
+  return candidates;
 };
 
 const technicalUnitsToTradeoff = (criterion: Criterion, lever: OptimizationLeverInput, units: number): TradeoffPlan => ({
@@ -447,7 +474,12 @@ const candidateQuantities = (availableUnits: number, granularityUnits: number, c
   }
   values.add(available);
 
-  return [...values].filter((value) => value > 0).sort((a, b) => a - b);
+  const result: number[] = [];
+  for (const value of values) {
+    if (value > 0) result.push(value);
+  }
+  result.sort((a, b) => a - b);
+  return result;
 };
 
 const isBelowInitialTechnicalOffer = (
@@ -530,12 +562,11 @@ const resolvedMaxUnits = (
   if (criterion.formula === "lower" || criterion.formula === "soil") {
     return Math.max(0, Number(getQuantitativeCriterionValue(baselineOffer, criterion)) || 0);
   }
-  const bestValue = Math.max(
-    0,
-    ...bidders
-      .filter((bidder) => bidder.lots[lotId].enabled)
-      .map((bidder) => Number(getQuantitativeCriterionValue(bidder.lots[lotId], criterion)) || 0),
-  );
+  let bestValue = 0;
+  for (const bidder of bidders) {
+    if (!bidder.lots[lotId].enabled) continue;
+    bestValue = Math.max(bestValue, Number(getQuantitativeCriterionValue(bidder.lots[lotId], criterion)) || 0);
+  }
   return Math.max(0, bestValue - currentValue);
 };
 
@@ -572,8 +603,10 @@ const summarizeAreas = (steps: OptimizationStep[]): OptimizationAreaSummary[] =>
     current.objectiveDelta = round4(current.objectiveDelta + step.objectiveDelta);
     map.set(key, current);
   }
-  return [...map.values()].sort((a, b) => {
+  const areas = Array.from(map.values());
+  areas.sort((a, b) => {
     if (b.objectiveDelta !== a.objectiveDelta) return b.objectiveDelta - a.objectiveDelta;
     return b.cost - a.cost;
   });
+  return areas;
 };
