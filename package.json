@@ -10,6 +10,7 @@
     "deploy:cloudflare": "node scripts/deploy-cloudflare.mjs production",
     "deploy:doctor": "node scripts/deploy-doctor.mjs",
     "deploy:preview": "node scripts/deploy-cloudflare.mjs preview",
+    "quality:react-doctor": "react-doctor --full --fail-on error .",
     "preview": "vite preview --host 127.0.0.1",
     "prepublish:check": "git diff --check && npm run validate:data && npm test && npm run build && npm run smoke",
     "release": "node scripts/release.mjs",
@@ -32,6 +33,7 @@
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
     "playwright": "^1.60.0",
+    "react-doctor": "0.2.3",
     "vitest": "^4.1.7",
     "wrangler": "^4.93.0"
   },
