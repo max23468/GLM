@@ -86,6 +86,15 @@ wrangler.toml                          Configurazione Cloudflare Pages
 
 Per i dettagli sul calcolo, vedi [`docs/LOGICA_SIMULATORE.md`](docs/LOGICA_SIMULATORE.md).
 
+## Documentazione
+
+- [`docs/INDEX.md`](docs/INDEX.md): indice unico della documentazione.
+- [`docs/ROADMAP.md`](docs/ROADMAP.md): priorità e prossimi passi.
+- [`docs/BACKLOG.md`](docs/BACKLOG.md): idee, debiti e attività non ancora promosse.
+- [`docs/CONTEXT.md`](docs/CONTEXT.md): handoff operativo per riprendere il lavoro.
+- [`docs/TOOLCHAIN.md`](docs/TOOLCHAIN.md): runtime, comandi e verifiche.
+- [`docs/decisions/`](docs/decisions/): ADR e decisioni stabili.
+
 ## Comandi utili
 
 ```bash

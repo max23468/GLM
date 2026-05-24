@@ -1,0 +1,48 @@
+# Backlog GLM
+
+Il backlog raccoglie possibilità, debiti, bug e idee non ancora promosse in roadmap.
+
+Una voce nel backlog non è scope approvato.
+
+## Idee prodotto
+
+- Migliorare la lettura operativa delle differenze tra scenari, con focus sui lotti più fragili e sui warning decisivi.
+- Valutare viste o report più sintetici per condividere scenari senza trasformare il simulatore in generatore di offerta.
+- Migliorare la chiarezza dei limiti del modello quando fonti pubbliche e assunzioni simulative incidono sugli scenari base.
+
+## Backlog tecnico
+
+- Rafforzare test e normalizzazione quando cambia lo schema export/import o la compatibilità con chiavi `localStorage` legacy.
+- Valutare controlli periodici su fonti pubbliche, URL e date `verifiedAt`.
+- Valutare un controllo scriptabile leggero su documenti canonici e link interni.
+- Verificare se dichiarare esplicitamente `engines.node` e `packageManager` in `package.json`, allineando CI, dipendenze e setup locale.
+
+## Bug
+
+- Nessun bug promosso in backlog al momento.
+
+## Debiti
+
+- Alcune decisioni stabili sono documentate in `AGENTS.md`, `README.md` e guide, ma non ancora estratte come ADR autonome.
+- La fedeltà del modello dipende da allegati, warning documentali e fonti pubbliche che possono cambiare o richiedere riesame.
+- La robustezza sugli snapshot importati resta un'area da presidiare quando si aggiungono campi a scenari, ottimizzazione o persistenza.
+
+## Decisioni sospese
+
+- Estrarre subito un'ADR su Cloudflare Pages come unico target deploy o lasciarla nelle guide finché non emerge una modifica di deploy.
+- Estrarre un'ADR sulla stabilità dell'URL pubblico `gare-lotti-milanesi.pages.dev` separata dal nome visibile del prodotto.
+- Definire se aggiungere branch protection/CODEOWNERS oltre alla baseline GitHub già presente.
+
+## Attività operative ricorrenti
+
+- Controllare `Codex feedback inbox` prima di PR ready, merge, pubblicazione o deploy.
+- Eseguire verifiche proporzionate secondo `AGENTS.md`.
+- Non modificare allegati in `docs/milano-lotti-extraurbani-om/` senza richiesta esplicita.
+- Aggiornare `docs/ROADMAP.md` quando cambia priorità o fase.
+- Aggiornare `docs/CONTEXT.md` dopo passaggi lunghi, release, deploy o decisioni operative.
+
+## Regole
+
+- Quando una voce diventa prioritaria, promuoverla in `docs/ROADMAP.md`.
+- Quando una voce diventa decisione stabile, collegarla o spostarla in `docs/decisions/`.
+- Non usare il backlog come storico dei lavori completati.
