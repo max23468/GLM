@@ -74,6 +74,5 @@ Durante handoff e migrazioni, non perdere contenuti: se una nota viene spostata,
 
 ## Prossimo passo
 
-- Chiudere la prima PR di allineamento Atlas.
-- Poi scegliere dal backlog il primo debito prodotto/tecnico da promuovere, se serve.
+- Scegliere dal backlog il primo debito prodotto/tecnico da promuovere, se serve.
 - Se un pattern GLM sembra utile ad altre repo, aggiornare prima Atlas e non applicarlo automaticamente repo-per-repo.

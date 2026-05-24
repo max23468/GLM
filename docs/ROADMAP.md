@@ -59,16 +59,15 @@ Legenda stato: `Fatto`, `In corso`, `Da fare`, `Idea`, `Bloccato`.
 | Fatto | Cloudflare Pages | Produzione solo su progetto `gare-lotti-milanesi`, tramite `npm run deploy:cloudflare` e solo su richiesta esplicita. |
 | Fatto | Preview Cloudflare PR | Preview PR interna presente quando i secret sono configurati. |
 | Fatto | Codex feedback inbox | Issue GitHub presente; nessun thread actionable al controllo del 2026-05-24. |
-| In corso | Baseline Atlas | Indice, roadmap, backlog, contesto, toolchain, ADR index/template e template GitHub introdotti nella PR corrente. |
+| Fatto | Baseline Atlas | Indice, roadmap, backlog, contesto, toolchain, ADR index/template e template GitHub introdotti con PR `max23468/Gare-Lotti-Milanesi#7`. |
 | Da fare | ADR autonome | Valutare ADR per Cloudflare-only, stabilità URL e policy allegati Git LFS. |
 | Idea | Branch protection/CODEOWNERS | Da valutare solo se aggiunge controllo reale. |
 
 ## Prossime mosse suggerite
 
-1. Chiudere la PR di allineamento Atlas senza runtime/deploy.
-2. Scegliere se estrarre subito una ADR Cloudflare-only o lasciarla come decisione documentata in guide e `AGENTS.md`.
-3. Promuovere un solo debito dal backlog, preferibilmente tracciabilità fonti pubbliche o robustezza import/export.
-4. Aggiornare Atlas se dai pattern GLM emerge uno standard utile anche alle altre repo.
+1. Scegliere se estrarre subito una ADR Cloudflare-only o lasciarla come decisione documentata in guide e `AGENTS.md`.
+2. Promuovere un solo debito dal backlog, preferibilmente tracciabilità fonti pubbliche o robustezza import/export.
+3. Aggiornare Atlas se dai pattern GLM emerge uno standard utile anche alle altre repo.
 
 ## Regole
 
