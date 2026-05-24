@@ -6,7 +6,7 @@ Istruzioni operative per agenti che lavorano in questa repository.
 
 1. Istruzioni di sistema/developer ricevute nella sessione corrente.
 2. Questo file `AGENTS.md`.
-3. `README.md`, `docs/LOGICA_SIMULATORE.md` e documenti di progetto collegati.
+3. `README.md`, `docs/INDEX.md`, `docs/CONTEXT.md`, `docs/ROADMAP.md`, `docs/BACKLOG.md`, `docs/TOOLCHAIN.md`, `docs/LOGICA_SIMULATORE.md` e documenti di progetto collegati.
 4. Allegati e fonti ufficiali di gara, quando la task riguarda dati, criteri o regole.
 5. Assunzioni dell'agente.
 
@@ -63,6 +63,10 @@ Se il worktree contiene modifiche non tue o non collegate alla richiesta, non no
 Usa queste fonti prima di intervenire sulle aree corrispondenti:
 
 - orientamento generale: `README.md`;
+- indice documentale e handoff: `docs/INDEX.md` e `docs/CONTEXT.md`;
+- priorità e debiti: `docs/ROADMAP.md` e `docs/BACKLOG.md`;
+- runtime e verifiche: `docs/TOOLCHAIN.md`;
+- decisioni stabili: `docs/decisions/`;
 - logica, formule, soglie e assunzioni: `docs/LOGICA_SIMULATORE.md`;
 - dati gara, criteri, fonti, warning e `verifiedAt`: `src/data/tender.ts`;
 - scenari base e profili simulati: `src/data/base-scenarios.ts`;

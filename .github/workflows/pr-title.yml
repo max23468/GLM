@@ -1,0 +1,26 @@
+name: PR title
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  conventional-title:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          case "$PR_TITLE" in
+            feat:\ *|fix:\ *|docs:\ *|chore:\ *|refactor:\ *|test:\ *|ci:\ *)
+              exit 0
+              ;;
+            *)
+              echo "PR title must start with one of: feat:, fix:, docs:, chore:, refactor:, test:, ci:"
+              exit 1
+              ;;
+          esac
