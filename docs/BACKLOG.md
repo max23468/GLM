@@ -17,6 +17,22 @@ Una voce nel backlog non è scope approvato.
 - Valutare un controllo scriptabile leggero su documenti canonici e link interni.
 - Verificare se dichiarare esplicitamente `engines.node` e `packageManager` in `package.json`, allineando CI, dipendenze e setup locale.
 
+## Pattern emersi dall'allineamento Atlas
+
+Questi elementi non vanno persi né copiati automaticamente in altre repo. Vanno classificati caso per caso.
+
+| Pattern GLM | Valutazione | Possibile uso trasversale |
+| --- | --- | --- |
+| `docs/LOGICA_SIMULATORE.md` come contratto di fiducia del modello | Mantenere in GLM | Pattern utile per repo con motori decisionali, scoring, parser o AI governata. |
+| Changelog mostrato nel frontend | Mantenere in GLM | Può essere utile per web app operative; non va imposto a bot o repo docs-first. |
+| Cloudflare Pages runbook molto concreto | Mantenere in GLM | Pattern riusabile per repo Cloudflare; non trasferire a Vercel/Supabase. |
+| Separazione nome prodotto / URL deploy | Mantenere e forse trasformare in ADR | Pattern utile per tutte le repo con brand visibile distinto da slug tecnico. |
+| Allegati gara Git LFS come fonti non modificabili | Mantenere in GLM | Pattern utile per repo con documenti ufficiali o dataset sorgente. |
+| Smoke browser proporzionato al rischio | Mantenere in GLM | Pattern trasversale: check più profondi solo quando il diff tocca flussi coperti. |
+| Codex feedback inbox già presente | Mantenere | Standard già trasversale nelle repo coordinate. |
+
+Prima di promuovere uno di questi pattern ad Atlas, verificare almeno una seconda repo comparabile.
+
 ## Bug
 
 - Nessun bug promosso in backlog al momento.
@@ -32,6 +48,7 @@ Una voce nel backlog non è scope approvato.
 - Estrarre subito un'ADR su Cloudflare Pages come unico target deploy o lasciarla nelle guide finché non emerge una modifica di deploy.
 - Estrarre un'ADR sulla stabilità dell'URL pubblico `gare-lotti-milanesi.pages.dev` separata dal nome visibile del prodotto.
 - Definire se aggiungere branch protection/CODEOWNERS oltre alla baseline GitHub già presente.
+- Definire se Atlas deve avere una regola esplicita di discovery degli extra repo-specifici prima di ogni allineamento.
 
 ## Attività operative ricorrenti
 

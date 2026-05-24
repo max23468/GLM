@@ -29,6 +29,7 @@
 - Il nome visibile del prodotto è separato dallo slug deploy.
 - La Codex feedback inbox GitHub non segnala thread actionable al controllo del 2026-05-24.
 - L'allineamento Atlas è documentale e di processo: non cambia logica, UI, allegati, release o deploy.
+- Durante l'allineamento non copiare ciecamente template Atlas: censire funzioni, documenti e regole GLM già mature, poi decidere se mantenerle specifiche, promuoverle ad Atlas, sostituirle con pattern più maturi o parcheggiarle in backlog.
 
 ## Vincoli repo-specifici
 
@@ -75,3 +76,4 @@ Durante handoff e migrazioni, non perdere contenuti: se una nota viene spostata,
 
 - Chiudere la prima PR di allineamento Atlas.
 - Poi scegliere dal backlog il primo debito prodotto/tecnico da promuovere, se serve.
+- Se un pattern GLM sembra utile ad altre repo, aggiornare prima Atlas e non applicarlo automaticamente repo-per-repo.
