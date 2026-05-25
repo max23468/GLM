@@ -6,6 +6,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.2.3] — 2026-05-25
+
+### Correzioni
+
+- **Pacchetto Excel**: il workbook ha ora dashboard iniziale, guida integrata, glossario, formattazione operativa e validazioni sui campi principali.
+
 ## [1.2.2] — 2026-05-25
 
 ### Correzioni

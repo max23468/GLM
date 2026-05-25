@@ -40,6 +40,7 @@
 - check pre-publish: `npm run prepublish:check`.
 - package Excel: `npm run package:excel`.
 - validazione package Excel: `npm run validate:excel-package`.
+- finitura workbook Excel: `scripts/enhance-excel-workbook.py` con un Python che includa `openpyxl`.
 - React Doctor: `npm run quality:react-doctor`.
 - release locale: `npm run release`.
 - release dry-run: `npm run release -- --dry-run`.

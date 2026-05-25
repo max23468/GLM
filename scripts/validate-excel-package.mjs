@@ -64,6 +64,9 @@ if (vbaProject.length < 1024) {
 const workbookXml = unzipEntry(workbookPath, 'xl/workbook.xml').toString('utf8');
 const sheetNames = [...workbookXml.matchAll(/<sheet[^>]* name="([^"]+)"/g)].map((match) => match[1]);
 const requiredSheets = [
+  'Dashboard',
+  'Guida',
+  'Glossario',
   'Istruzioni',
   'Parametri',
   'Offerte',

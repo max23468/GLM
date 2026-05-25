@@ -103,7 +103,7 @@ Quando aggiorni il workbook pubblico, aggiorna anche il manifest (`version`, `bu
 
 ## Manutenzione del template `.xlsm`
 
-Quando modifichi i sorgenti `src/*.bas`, apri `templates/Simulatore-TPL-Lotti-1-4-template.xlsm`, sostituisci o reimporta i moduli nel progetto VBA, salva il workbook e poi rigenera il file pubblico con `npm run package:excel`.
+Quando modifichi i sorgenti `src/*.bas`, apri `templates/Simulatore-TPL-Lotti-1-4-template.xlsm`, sostituisci o reimporta i moduli nel progetto VBA, salva il workbook, rifinisci layout/guida con `scripts/enhance-excel-workbook.py` e poi rigenera il file pubblico con `npm run package:excel`.
 
 
 ## Priorità implementate
@@ -139,4 +139,4 @@ Questa implementazione segue modalità **light**: supporto operativo offline e c
 
 ## Verifica pacchetto
 
-Dopo `npm run package:excel`, esegui `npm run validate:excel-package` per verificare hash, schema manifest, presenza del file `.xlsm` unico, content type macro-enabled e progetto VBA incorporato.
+Dopo `npm run package:excel`, esegui `npm run validate:excel-package` per verificare hash, schema manifest, presenza del file `.xlsm` unico, fogli operativi principali, content type macro-enabled e progetto VBA incorporato.
