@@ -6,6 +6,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.2.1] — 2026-05-25
+
+### Correzioni
+
+- **Pacchetto Excel**: il download include direttamente un template `.xlsm` con macro incorporate e controlli di packaging più severi sul progetto VBA.
+
 ## [1.2.0] — 2026-05-25
 
 ### Novità

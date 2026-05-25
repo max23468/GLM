@@ -4,6 +4,13 @@ Option Explicit
 Public Sub ConfrontoWebGolden()
     Dim ws As Worksheet
     Set ws = ThisWorkbook.Worksheets("ConfrontoWeb")
+
+    Dim expectedL1 As Double, expectedL2 As Double, expectedL3 As Double, expectedL4 As Double
+    expectedL1 = CDbl(Val(ws.Range("J2").Value))
+    expectedL2 = CDbl(Val(ws.Range("J3").Value))
+    expectedL3 = CDbl(Val(ws.Range("J4").Value))
+    expectedL4 = CDbl(Val(ws.Range("J5").Value))
+
     ws.Cells.Clear
     ws.Range("A1:H1").Value = Array("Caso", "Lotto", "AttesoWeb", "CalcolatoExcel", "Delta", "Tolleranza", "Esito", "Note")
 
@@ -13,16 +20,20 @@ Public Sub ConfrontoWebGolden()
     Dim rowOut As Long
     rowOut = 2
 
-    BuildGoldenCase ws, rowOut, "Totale L1 migliore", "L1", CDbl(Val(ThisWorkbook.Worksheets("ConfrontoWeb").Range("J2").Value)), BestTotalForLot(wsRes, "L1"), 0.05
-    BuildGoldenCase ws, rowOut, "Totale L2 migliore", "L2", CDbl(Val(ThisWorkbook.Worksheets("ConfrontoWeb").Range("J3").Value)), BestTotalForLot(wsRes, "L2"), 0.05
-    BuildGoldenCase ws, rowOut, "Totale L3 migliore", "L3", CDbl(Val(ThisWorkbook.Worksheets("ConfrontoWeb").Range("J4").Value)), BestTotalForLot(wsRes, "L3"), 0.05
-    BuildGoldenCase ws, rowOut, "Totale L4 migliore", "L4", CDbl(Val(ThisWorkbook.Worksheets("ConfrontoWeb").Range("J5").Value)), BestTotalForLot(wsRes, "L4"), 0.05
+    BuildGoldenCase ws, rowOut, "Totale L1 migliore", "L1", expectedL1, BestTotalForLot(wsRes, "L1"), 0.05
+    BuildGoldenCase ws, rowOut, "Totale L2 migliore", "L2", expectedL2, BestTotalForLot(wsRes, "L2"), 0.05
+    BuildGoldenCase ws, rowOut, "Totale L3 migliore", "L3", expectedL3, BestTotalForLot(wsRes, "L3"), 0.05
+    BuildGoldenCase ws, rowOut, "Totale L4 migliore", "L4", expectedL4, BestTotalForLot(wsRes, "L4"), 0.05
 
     ws.Range("I1:J1").Value = Array("Input expected", "Valore")
     ws.Range("I2").Value = "Web L1"
     ws.Range("I3").Value = "Web L2"
     ws.Range("I4").Value = "Web L3"
     ws.Range("I5").Value = "Web L4"
+    ws.Range("J2").Value = expectedL1
+    ws.Range("J3").Value = expectedL2
+    ws.Range("J4").Value = expectedL3
+    ws.Range("J5").Value = expectedL4
 
     Dim passCount As Long, failCount As Long
     CountGoldenResults ws, passCount, failCount

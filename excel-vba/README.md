@@ -1,4 +1,4 @@
-# Versione Excel avanzata (VBA/Macro)
+# Template Excel e moduli VBA
 
 Implementazione Excel + VBA del simulatore con estensioni avanzate:
 
@@ -12,7 +12,7 @@ Implementazione Excel + VBA del simulatore con estensioni avanzate:
 
 ## Template pronto all'uso
 
-Nel pacchetto è incluso `templates/Simulatore-TPL-Lotti-1-4-template.xlsm`, già predisposto con fogli, intestazioni, parametri base, log ottimizzazione e sezione confronto web.
+Nel pacchetto è incluso `templates/Simulatore-TPL-Lotti-1-4-template.xlsm`, già predisposto con fogli, intestazioni, parametri base, log ottimizzazione, sezione confronto web e moduli VBA incorporati. I sorgenti `.bas` restano in `src/` per audit e manutenzione, ma non devono essere importati dall'utente finale.
 
 Fogli inclusi nel template:
 1. `Istruzioni`
@@ -56,7 +56,7 @@ Fogli inclusi nel template:
 
 ## Avvio rapido (ready to use)
 1. Apri `templates/Simulatore-TPL-Lotti-1-4-template.xlsm`.
-2. Premi `ALT+F11` e importa tutti i moduli `.bas` da `src/`.
+2. Abilita le macro se Excel lo richiede.
 3. Verifica `Parametri` e aggiorna `Offerte` (puoi partire da `templates/offerte-esempio.csv`).
 4. Esegui in ordine: `CheckBeforeRun`, `SimulaScenario`, `OttimizzaLottoAttivo`, `ConfrontoWebGolden`.
 5. Per uso quotidiano, assegna queste macro alla Barra di accesso rapido di Excel (File > Opzioni > Barra di accesso rapido).
@@ -101,13 +101,17 @@ Fogli inclusi nel template:
 Il sito legge il badge versione da `public/downloads/pacchetto-excel-vba.manifest.json`.
 Quando aggiorni lo ZIP, aggiorna anche il manifest (`version`, `builtAt`, `sha256`, `templateFile`, `minAppVersion`, `generatedBy`).
 
+## Manutenzione del template `.xlsm`
+
+Quando modifichi i sorgenti `src/*.bas`, apri `templates/Simulatore-TPL-Lotti-1-4-template.xlsm`, sostituisci o reimporta i moduli nel progetto VBA, salva il workbook e poi rigenera il pacchetto con `npm run package:excel`.
+
 
 ## Priorità implementate
 
 1. **Golden versionati**: aggiunto `templates/golden-cases.csv` per tracciare expected Lotto L1-L4.
 2. **Leve Q/T**: ottimizzazione con step separati e massimali distinti per ridurre divergenza con web.
 3. **Validazioni macro**: aggiunto `modChecks.bas` con `CheckBeforeRun` e verifica setup fogli/soglia.
-4. **Packaging ripetibile**: aggiunto script `scripts/package-excel-vba.mjs` per rigenerare ZIP + manifest + hash.
+4. **Packaging ripetibile**: aggiunto script `scripts/package-excel-vba.mjs` per rigenerare ZIP + manifest + hash dal template `.xlsm` macro-abilitato.
 5. **Confronto strutturato**: `ConfrontoWebGolden` ora include colonna lotto e output tabellare più esplicito.
 
 
@@ -135,4 +139,4 @@ Questa implementazione segue modalità **light**: supporto operativo offline e c
 
 ## Verifica pacchetto
 
-Dopo `npm run package:excel`, esegui `npm run validate:excel-package` per verificare hash, schema manifest e presenza del template XLSM nello ZIP.
+Dopo `npm run package:excel`, esegui `npm run validate:excel-package` per verificare hash, schema manifest, presenza del template `.xlsm`, content type macro-enabled e progetto VBA incorporato.

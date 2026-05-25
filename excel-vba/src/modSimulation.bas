@@ -4,7 +4,7 @@ Option Explicit
 Public Sub SimulaScenario()
     Dim wsOff As Worksheet, wsRes As Worksheet
     Dim lastRow As Long, r As Long, outRow As Long
-    Dim lot As String, rMax As Double, threshold As Double
+    Dim lot As Variant, rMax As Double, threshold As Double
     
     Set wsOff = ThisWorkbook.Worksheets(SHEET_OFFERTE)
     Set wsRes = ThisWorkbook.Worksheets(SHEET_RISULTATI)

@@ -6,7 +6,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / "excel-vba" / "templates" / "Simulatore-TPL-Lotti-1-4-template.xlsm"
+OUT = ROOT / "tmp" / "Simulatore-TPL-Lotti-1-4-template-base.xlsx"
 OFFERS_CSV = ROOT / "excel-vba" / "templates" / "offerte-esempio.csv"
 GOLDEN_CSV = ROOT / "excel-vba" / "templates" / "golden-cases.csv"
 
@@ -38,14 +38,14 @@ wb.remove(wb.active)
 intro = wb.create_sheet("Istruzioni")
 intro["A1"] = "Simulatore gara TPL lotti 1-4 - Template Excel (modalità light)"
 intro["A1"].font = Font(size=14, bold=True)
-intro["A3"] = "Workbook predisposto: importa i moduli VBA da excel-vba/src e avvia le macro principali."
+intro["A3"] = "Base tecnica per manutenzione: importa i moduli VBA da excel-vba/src, poi salva come template .xlsm."
 intro["A5"] = "Checklist rapida"
 intro["A5"].font = Font(bold=True)
 steps = [
-    "1) Apri ALT+F11 e importa tutti i file .bas da excel-vba/src/.",
+    "1) Apri questa base in Excel, poi ALT+F11 e importa tutti i file .bas da excel-vba/src/.",
     "2) Verifica i nomi foglio: Offerte, Parametri, Ottimizzazione, Risultati, ConfrontoWeb, LogOttimizzazione.",
     "3) Compila/aggiorna Offerte e Parametri.",
-    "4) Esegui macro: CheckBeforeRun, SimulaScenario, OttimizzaLottoAttivo, ConfrontoWebGolden.",
+    "4) Salva come excel-vba/templates/Simulatore-TPL-Lotti-1-4-template.xlsm, poi esegui: CheckBeforeRun, SimulaScenario, OttimizzaLottoAttivo, ConfrontoWebGolden.",
 ]
 for i, step in enumerate(steps, start=6):
     intro[f"A{i}"] = step

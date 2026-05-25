@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | Node | `22` in CI; usare Node `>=22` in locale | `.github/workflows/ci.yml`, dipendenze in `package-lock.json` |
 | npm | npm con lockfile v3 | `package-lock.json` |
-| Python | non applicabile | nessun runtime Python |
+| Python | `python3` con `openpyxl` | solo per rigenerare la base tecnica Excel con `scripts/build-excel-template.py` |
 
 `package.json` non dichiara ancora `engines.node` o `packageManager`.
 
@@ -14,8 +14,8 @@
 
 - JavaScript/TypeScript: npm.
 - Lockfile JS: `package-lock.json`.
-- Python: non applicabile.
-- Lockfile Python: non applicabile.
+- Python: usato solo per generare una base tecnica `.xlsx` temporanea (`scripts/build-excel-template.py`) quando si manutiene il template.
+- Lockfile Python: non presente; il pacchetto distribuito usa il template `.xlsm` già incorporato in repository.
 
 ## Tool esterni
 
@@ -38,6 +38,8 @@
 - smoke: `npm run smoke`.
 - benchmark ottimizzazione: `npm run benchmark:optimization`.
 - check pre-publish: `npm run prepublish:check`.
+- package Excel: `npm run package:excel`.
+- validazione package Excel: `npm run validate:excel-package`.
 - React Doctor: `npm run quality:react-doctor`.
 - release locale: `npm run release`.
 - release dry-run: `npm run release -- --dry-run`.

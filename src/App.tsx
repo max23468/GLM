@@ -1164,7 +1164,7 @@ function SimulatorHeader({ controller }: { controller: SimulatorController }) {
         setExcelBadge(`${manifest.version} · ${manifest.builtAt}`);
         if (manifest.sha256) setExcelHashShort(manifest.sha256.slice(0, 8));
         const noteParts: string[] = [];
-        if (manifest.templateFile) noteParts.push("Template XLSM incluso");
+        if (manifest.templateFile) noteParts.push("Template XLSM con macro incluso");
         if (manifest.minAppVersion) noteParts.push(`Compatibile da web v${manifest.minAppVersion}`);
         if (manifest.notes) noteParts.push(manifest.notes);
         setExcelPackageNote(noteParts.join(" · "));
