@@ -99,11 +99,11 @@ Fogli inclusi nel template:
 ## Versione pacchetto web
 
 Il sito legge il badge versione da `public/downloads/pacchetto-excel-vba.manifest.json`.
-Quando aggiorni lo ZIP, aggiorna anche il manifest (`version`, `builtAt`, `sha256`, `templateFile`, `minAppVersion`, `generatedBy`).
+Quando aggiorni il workbook pubblico, aggiorna anche il manifest (`version`, `builtAt`, `sha256`, `file`, `templateFile`, `minAppVersion`, `generatedBy`).
 
 ## Manutenzione del template `.xlsm`
 
-Quando modifichi i sorgenti `src/*.bas`, apri `templates/Simulatore-TPL-Lotti-1-4-template.xlsm`, sostituisci o reimporta i moduli nel progetto VBA, salva il workbook e poi rigenera il pacchetto con `npm run package:excel`.
+Quando modifichi i sorgenti `src/*.bas`, apri `templates/Simulatore-TPL-Lotti-1-4-template.xlsm`, sostituisci o reimporta i moduli nel progetto VBA, salva il workbook e poi rigenera il file pubblico con `npm run package:excel`.
 
 
 ## Priorità implementate
@@ -111,7 +111,7 @@ Quando modifichi i sorgenti `src/*.bas`, apri `templates/Simulatore-TPL-Lotti-1-
 1. **Golden versionati**: aggiunto `templates/golden-cases.csv` per tracciare expected Lotto L1-L4.
 2. **Leve Q/T**: ottimizzazione con step separati e massimali distinti per ridurre divergenza con web.
 3. **Validazioni macro**: aggiunto `modChecks.bas` con `CheckBeforeRun` e verifica setup fogli/soglia.
-4. **Packaging ripetibile**: aggiunto script `scripts/package-excel-vba.mjs` per rigenerare ZIP + manifest + hash dal template `.xlsm` macro-abilitato.
+4. **Packaging ripetibile**: aggiunto script `scripts/package-excel-vba.mjs` per rigenerare workbook pubblico + manifest + hash dal template `.xlsm` macro-abilitato.
 5. **Confronto strutturato**: `ConfrontoWebGolden` ora include colonna lotto e output tabellare più esplicito.
 
 
@@ -139,4 +139,4 @@ Questa implementazione segue modalità **light**: supporto operativo offline e c
 
 ## Verifica pacchetto
 
-Dopo `npm run package:excel`, esegui `npm run validate:excel-package` per verificare hash, schema manifest, presenza del template `.xlsm`, content type macro-enabled e progetto VBA incorporato.
+Dopo `npm run package:excel`, esegui `npm run validate:excel-package` per verificare hash, schema manifest, presenza del file `.xlsm` unico, content type macro-enabled e progetto VBA incorporato.

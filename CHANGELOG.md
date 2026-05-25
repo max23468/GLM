@@ -6,6 +6,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.2.2] — 2026-05-25
+
+### Correzioni
+
+- **Pacchetto Excel**: il pulsante scarica ora direttamente un file `.xlsm` unico con macro, senza ZIP o file sorgenti separati.
+
 ## [1.2.1] — 2026-05-25
 
 ### Correzioni

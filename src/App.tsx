@@ -1151,9 +1151,10 @@ function SimulatorApp({ controller }: { controller: SimulatorController }) {
 
 function SimulatorHeader({ controller }: { controller: SimulatorController }) {
   const { navigateToInstructions, themePreference, setThemePreference, resolvedTheme } = controller;
-  const [excelBadge, setExcelBadge] = useState("v0.1 · 25/05/2026");
+  const [excelBadge, setExcelBadge] = useState("v0.3 · 25/05/2026");
   const [excelHashShort, setExcelHashShort] = useState("");
   const [excelPackageNote, setExcelPackageNote] = useState("");
+  const [excelPackageHref, setExcelPackageHref] = useState("/downloads/Simulatore-TPL-Lotti-1-4.xlsm");
 
   useEffect(() => {
     let cancelled = false;
@@ -1163,8 +1164,9 @@ function SimulatorHeader({ controller }: { controller: SimulatorController }) {
         if (cancelled || !manifest?.version || !manifest?.builtAt) return;
         setExcelBadge(`${manifest.version} · ${manifest.builtAt}`);
         if (manifest.sha256) setExcelHashShort(manifest.sha256.slice(0, 8));
+        if (manifest.file) setExcelPackageHref(manifest.file);
         const noteParts: string[] = [];
-        if (manifest.templateFile) noteParts.push("Template XLSM con macro incluso");
+        if (manifest.templateFile) noteParts.push("File XLSM unico con macro");
         if (manifest.minAppVersion) noteParts.push(`Compatibile da web v${manifest.minAppVersion}`);
         if (manifest.notes) noteParts.push(manifest.notes);
         setExcelPackageNote(noteParts.join(" · "));
@@ -1209,7 +1211,7 @@ function SimulatorHeader({ controller }: { controller: SimulatorController }) {
           <BookOpen size={16} />
           Istruzioni
         </button>
-        <a className="doc-link" href="/downloads/pacchetto-excel-vba.zip" download>
+        <a className="doc-link" href={excelPackageHref} download>
           <Download size={16} />
           Pacchetto Excel
         </a>
