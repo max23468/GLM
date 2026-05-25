@@ -1,0 +1,7 @@
+Caso,Scenario,LotId,ExpectedTotal,Tolerance,WebSource,VerifiedAt,Note
+G01,MERCATO_REALISTICO,L1,0,0.05,https://gare-lotti-milanesi.pages.dev,2026-05-25,Da compilare con output web
+G02,MERCATO_REALISTICO,L2,0,0.05,https://gare-lotti-milanesi.pages.dev,2026-05-25,Da compilare con output web
+G03,TECNOLOGIA_FLOTTA,L3,0,0.05,https://gare-lotti-milanesi.pages.dev,2026-05-25,Da compilare con output web
+G04,RIBASSO_AGGRESSIVO,L4,0,0.05,https://gare-lotti-milanesi.pages.dev,2026-05-25,Da compilare con output web
+G05,PRESIDIO_LOCALE,L4,0,0.05,https://gare-lotti-milanesi.pages.dev,2026-05-25,Da compilare con output web
+G06,MERCATO_REALISTICO,L3,0,0.05,https://gare-lotti-milanesi.pages.dev,2026-05-25,Da compilare con output web
