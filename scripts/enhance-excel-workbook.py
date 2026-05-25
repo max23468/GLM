@@ -31,6 +31,9 @@ INPUT = "FFF8CC"
 OUTPUT = "EAF7EA"
 SECTION = "E8EEF8"
 
+MAX_OFFER_ROWS = 200
+MAX_COMBO_ROWS = 80
+
 THIN_GRID = Side(style="thin", color=GRID)
 BORDER = Border(left=THIN_GRID, right=THIN_GRID, top=THIN_GRID, bottom=THIN_GRID)
 
@@ -54,6 +57,13 @@ def reset_sheet(wb, name: str):
 def move_sheet_first(wb, sheet):
     wb._sheets.remove(sheet)
     wb._sheets.insert(0, sheet)
+
+
+def reorder_sheets(wb, ordered_names: list[str]):
+    by_name = {sheet.title: sheet for sheet in wb.worksheets}
+    ordered = [by_name[name] for name in ordered_names if name in by_name]
+    ordered.extend(sheet for sheet in wb.worksheets if sheet.title not in ordered_names)
+    wb._sheets = ordered
 
 
 def clear_layout_helpers(ws):
@@ -173,11 +183,13 @@ def create_dashboard(wb):
     links = [
         ("A19", "Parametri", "Parametri"),
         ("C19", "Offerte", "Offerte"),
-        ("E19", "Risultati", "Risultati"),
-        ("G19", "Confronto web", "ConfrontoWeb"),
+        ("E19", "Combinatorie", "Combinatorie"),
+        ("G19", "Scenario globale", "ScenarioGlobale"),
         ("A21", "Guida", "Guida"),
         ("C21", "Glossario", "Glossario"),
-        ("E21", "Log ottimizzazione", "LogOttimizzazione"),
+        ("E21", "Risultati", "Risultati"),
+        ("G21", "Confronto web", "ConfrontoWeb"),
+        ("A22", "Log ottimizzazione", "LogOttimizzazione"),
     ]
     for ref, label, sheet_name in links:
         add_sheet_link(ws[ref], label, sheet_name)
@@ -268,6 +280,10 @@ def create_glossary(wb):
         ("Offerte", "Attivo", "Offerte!D:D", "1 include la riga nella simulazione, 0 la esclude.", "Usare 0/1."),
         ("Offerte", "PunteggioTecnicoRaw", "Offerte!E:E", "Punteggio tecnico simulato aggregato.", "Modalità light, 0-70."),
         ("Offerte", "RibassoMedioPercento", "Offerte!F:F", "Ribasso economico medio simulato.", "0-100."),
+        ("Offerte", "TotaleFormula", "Offerte!J:J", "Totale calcolato direttamente nel foglio.", "Replica light di tecnico + economico."),
+        ("Combinatorie", "Attivo", "Combinatorie!D:D", "1 include la coppia nella matrice scenario.", "Richiede lotti singoli ammessi."),
+        ("Combinatorie", "RibassoCombinatoria", "Combinatorie!E:E", "Ribasso medio della coppia.", "Deve migliorare il riferimento singolo indicativo."),
+        ("Scenario globale", "Matrice scenari", "ScenarioGlobale", "Confronta singoli e combinatorie compatibili.", "Indicativa: per vincoli avanzati resta centrale la web app."),
         ("Ottimizzazione", "BidderId", "Ottimizzazione!B2", "Concorrente target.", "Deve esistere in Offerte."),
         ("Macro", "CheckBeforeRun", "Macro", "Controllo input e struttura workbook.", "Eseguire prima di simulare."),
         ("Macro", "SimulaScenario", "Macro", "Calcola risultati, combinatorie e vincitori.", "Aggiorna Risultati."),
@@ -389,26 +405,315 @@ def polish_offerte(wb):
     clear_layout_helpers(ws)
     ws.sheet_properties.tabColor = "ED7D31"
     ws.sheet_view.showGridLines = False
-    style_header_row(ws, 1, 6)
-    style_cells(ws, f"A2:F{max(ws.max_row, 200)}", WHITE)
-    for row in range(2, max(ws.max_row, 200) + 1):
+    headers = [
+        "BidderId",
+        "BidderNome",
+        "Lotto",
+        "Attivo",
+        "PunteggioTecnicoRaw",
+        "RibassoMedioPercento",
+        "AmmessoFormula",
+        "RMaxAmmessi",
+        "EconomicoFormula",
+        "TotaleFormula",
+        "Warning",
+        "ChiaveOfferta",
+        "ChiaveLottoTotale",
+    ]
+    for col, header in enumerate(headers, start=1):
+        ws.cell(row=1, column=col).value = header
+    style_header_row(ws, 1, len(headers))
+    style_cells(ws, f"A2:M{MAX_OFFER_ROWS}", WHITE)
+    for row in range(2, MAX_OFFER_ROWS + 1):
         for col in range(1, 7):
-            ws.cell(row=row, column=col).fill = fill(INPUT if col in [1, 2, 3, 4, 5, 6] else WHITE)
+            ws.cell(row=row, column=col).fill = fill(INPUT)
+        for col in range(7, 14):
+            ws.cell(row=row, column=col).fill = fill(OUTPUT)
+
+        ws[f"G{row}"] = f'=IF($A{row}="","",IF(IFERROR(VALUE($D{row}),0)<>1,"NO",IF(IFERROR(VALUE($E{row}),0)>=Parametri!$B$2,"SI","NO")))'
+        ws[f"H{row}"] = (
+            f'=IF($G{row}="SI",'
+            f'SUMPRODUCT(MAX(($C$2:$C${MAX_OFFER_ROWS}=$C{row})*(IFERROR($D$2:$D${MAX_OFFER_ROWS}*1,0)=1)*'
+            f'(IFERROR($E$2:$E${MAX_OFFER_ROWS}*1,0)>=Parametri!$B$2)*IFERROR($F$2:$F${MAX_OFFER_ROWS}*1,0))),0)'
+        )
+        ws[f"I{row}"] = f'=IF($G{row}="SI",IF($H{row}>0,30*(IFERROR(VALUE($F{row}),0)/$H{row}),0),0)'
+        ws[f"J{row}"] = f'=IF($A{row}="",0,IF($G{row}="SI",ROUND(IFERROR(VALUE($E{row}),0)+$I{row},4),ROUND(IFERROR(VALUE($E{row}),0),4)))'
+        ws[f"K{row}"] = (
+            f'=IF($A{row}="","",'
+            f'IF(IFERROR(VALUE($D{row}),0)<>1,"Non attiva",IF(IFERROR(VALUE($E{row}),0)<Parametri!$B$2,"Sotto soglia","")))'
+        )
+        ws[f"L{row}"] = f'=IF($A{row}="","",$A{row}&"|"&$C{row})'
+        ws[f"M{row}"] = f'=IF($A{row}="","",$C{row}&"|"&TEXT($J{row},"0.0000"))'
     dv_lot = DataValidation(type="list", formula1='"L1,L2,L3,L4"', allow_blank=True)
     dv_active = DataValidation(type="list", formula1='"1,0"', allow_blank=True)
     dv_tech = DataValidation(type="decimal", operator="between", formula1="0", formula2="70", allow_blank=True)
     dv_discount = DataValidation(type="decimal", operator="between", formula1="0", formula2="100", allow_blank=True)
     for dv in [dv_lot, dv_active, dv_tech, dv_discount]:
         ws.add_data_validation(dv)
-    dv_lot.add("C2:C200")
-    dv_active.add("D2:D200")
-    dv_tech.add("E2:E200")
-    dv_discount.add("F2:F200")
-    ws.conditional_formatting.add("D2:D200", CellIsRule(operator="equal", formula=['"0"'], fill=fill(RED)))
-    ws.conditional_formatting.add("E2:E200", FormulaRule(formula=['AND($E2<Parametri!$B$2,$A2<>"")'], fill=fill(AMBER)))
-    add_table(ws, "tblOfferte", "A1:F200")
-    set_widths(ws, {"A": 16, "B": 26, "C": 12, "D": 12, "E": 24, "F": 24})
+    dv_lot.add(f"C2:C{MAX_OFFER_ROWS}")
+    dv_active.add(f"D2:D{MAX_OFFER_ROWS}")
+    dv_tech.add(f"E2:E{MAX_OFFER_ROWS}")
+    dv_discount.add(f"F2:F{MAX_OFFER_ROWS}")
+    ws.conditional_formatting.add(f"D2:D{MAX_OFFER_ROWS}", CellIsRule(operator="equal", formula=['"0"'], fill=fill(RED)))
+    ws.conditional_formatting.add(f"E2:E{MAX_OFFER_ROWS}", FormulaRule(formula=['AND($E2<Parametri!$B$2,$A2<>"")'], fill=fill(AMBER)))
+    ws.conditional_formatting.add(f"G2:G{MAX_OFFER_ROWS}", CellIsRule(operator="equal", formula=['"SI"'], fill=fill(GREEN)))
+    ws.conditional_formatting.add(f"G2:G{MAX_OFFER_ROWS}", CellIsRule(operator="equal", formula=['"NO"'], fill=fill(RED)))
+    add_table(ws, "tblOfferte", f"A1:M{MAX_OFFER_ROWS}")
+    set_widths(ws, {"A": 16, "B": 26, "C": 12, "D": 12, "E": 24, "F": 24, "G": 18, "H": 14, "I": 18, "J": 18, "K": 22, "L": 22, "M": 18})
+    ws.column_dimensions["M"].hidden = True
     ws.freeze_panes = "A2"
+
+
+def create_combinatorie(wb):
+    ws = reset_sheet(wb, "Combinatorie")
+    ws.sheet_properties.tabColor = "8064A2"
+    ws.sheet_view.showGridLines = False
+    title(
+        ws,
+        "Combinatorie",
+        "Input light per confrontare coppie L1+L2, L2+L3, L3+L4 e L1+L4 nella matrice scenario globale.",
+    )
+    headers = [
+        "BidderId",
+        "BidderNome",
+        "Coppia",
+        "Attivo",
+        "RibassoCombinatoria",
+        "InseritoBuste",
+        "PEFCoerente",
+        "LottoA",
+        "LottoB",
+        "AttivoA",
+        "AttivoB",
+        "TecnicoA",
+        "TecnicoB",
+        "Ammissibile",
+        "EconomicoA",
+        "EconomicoB",
+        "TotaleCoppia",
+        "Note",
+        "RibassoSingoloA",
+        "RibassoSingoloB",
+        "RibassoMinimoIndicativo",
+        "ChiaveCoppiaTotale",
+        "ChiaveCoppiaBidder",
+    ]
+    header_row = 4
+    for col, header in enumerate(headers, start=1):
+        ws.cell(row=header_row, column=col).value = header
+    style_header_row(ws, header_row, len(headers))
+    style_cells(ws, f"A{header_row + 1}:W{MAX_COMBO_ROWS}", WHITE)
+
+    pair_a = 'IF($C{row}="L1+L2","L1",IF($C{row}="L2+L3","L2",IF($C{row}="L3+L4","L3",IF($C{row}="L1+L4","L1",""))))'
+    pair_b = 'IF($C{row}="L1+L2","L2",IF($C{row}="L2+L3","L3",IF($C{row}="L3+L4","L4",IF($C{row}="L1+L4","L4",""))))'
+
+    offer_rows: dict[tuple[str, str], float] = {}
+    bidders: dict[str, str] = {}
+    ws_off = wb["Offerte"]
+    for offer_row in range(2, MAX_OFFER_ROWS + 1):
+        bidder_id = str(ws_off[f"A{offer_row}"].value or "").strip()
+        bidder_name = str(ws_off[f"B{offer_row}"].value or "").strip()
+        lot_id = str(ws_off[f"C{offer_row}"].value or "").strip()
+        if not bidder_id or lot_id not in {"L1", "L2", "L3", "L4"}:
+            continue
+        bidders.setdefault(bidder_id, bidder_name)
+        try:
+            offer_rows[(bidder_id, lot_id)] = float(ws_off[f"F{offer_row}"].value or 0)
+        except (TypeError, ValueError):
+            offer_rows[(bidder_id, lot_id)] = 0
+
+    pairs = [("L1+L2", "L1", "L2"), ("L2+L3", "L2", "L3"), ("L3+L4", "L3", "L4"), ("L1+L4", "L1", "L4")]
+    seed_rows: list[tuple[str, str, float]] = []
+    for bidder_id in bidders:
+        for pair_id, first_lot, second_lot in pairs:
+            if (bidder_id, first_lot) in offer_rows and (bidder_id, second_lot) in offer_rows:
+                reference = (offer_rows[(bidder_id, first_lot)] + offer_rows[(bidder_id, second_lot)]) / 2
+                seed_rows.append((bidder_id, pair_id, round(min(reference + 0.1, 100), 4)))
+
+    for row in range(header_row + 1, MAX_COMBO_ROWS + 1):
+        seed_index = row - (header_row + 1)
+        if seed_index < len(seed_rows):
+            bidder_id, pair_id, discount = seed_rows[seed_index]
+            ws[f"A{row}"] = bidder_id
+            ws[f"C{row}"] = pair_id
+            ws[f"D{row}"] = 0
+            ws[f"E{row}"] = discount
+            ws[f"F{row}"] = 1
+            ws[f"G{row}"] = 1
+        for col in range(1, 8):
+            ws.cell(row=row, column=col).fill = fill(INPUT)
+        for col in range(8, 24):
+            ws.cell(row=row, column=col).fill = fill(OUTPUT)
+
+        ws[f"B{row}"] = f'=IF($A{row}="","",IFERROR(INDEX(Offerte!$B$2:$B${MAX_OFFER_ROWS},MATCH($A{row},Offerte!$A$2:$A${MAX_OFFER_ROWS},0)),""))'
+        ws[f"H{row}"] = "=" + pair_a.format(row=row)
+        ws[f"I{row}"] = "=" + pair_b.format(row=row)
+        ws[f"J{row}"] = f'=IF($H{row}="","",IFERROR(INDEX(Offerte!$D$2:$D${MAX_OFFER_ROWS},MATCH($A{row}&"|"&$H{row},Offerte!$L$2:$L${MAX_OFFER_ROWS},0)),0))'
+        ws[f"K{row}"] = f'=IF($I{row}="","",IFERROR(INDEX(Offerte!$D$2:$D${MAX_OFFER_ROWS},MATCH($A{row}&"|"&$I{row},Offerte!$L$2:$L${MAX_OFFER_ROWS},0)),0))'
+        ws[f"L{row}"] = f'=IF($H{row}="","",IFERROR(INDEX(Offerte!$E$2:$E${MAX_OFFER_ROWS},MATCH($A{row}&"|"&$H{row},Offerte!$L$2:$L${MAX_OFFER_ROWS},0)),0))'
+        ws[f"M{row}"] = f'=IF($I{row}="","",IFERROR(INDEX(Offerte!$E$2:$E${MAX_OFFER_ROWS},MATCH($A{row}&"|"&$I{row},Offerte!$L$2:$L${MAX_OFFER_ROWS},0)),0))'
+        ws[f"S{row}"] = f'=IF($H{row}="","",IFERROR(INDEX(Offerte!$F$2:$F${MAX_OFFER_ROWS},MATCH($A{row}&"|"&$H{row},Offerte!$L$2:$L${MAX_OFFER_ROWS},0)),0))'
+        ws[f"T{row}"] = f'=IF($I{row}="","",IFERROR(INDEX(Offerte!$F$2:$F${MAX_OFFER_ROWS},MATCH($A{row}&"|"&$I{row},Offerte!$L$2:$L${MAX_OFFER_ROWS},0)),0))'
+        ws[f"U{row}"] = f'=IF($A{row}="","",ROUND((IFERROR(VALUE($S{row}),0)+IFERROR(VALUE($T{row}),0))/2,4))'
+        ws[f"N{row}"] = (
+            f'=IF($A{row}="","",IF(IFERROR(VALUE($D{row}),0)<>1,"NO",'
+            f'IF(AND(IFERROR(VALUE($J{row}),0)=1,IFERROR(VALUE($K{row}),0)=1,IFERROR(VALUE($L{row}),0)>=Parametri!$B$2,IFERROR(VALUE($M{row}),0)>=Parametri!$B$2,'
+            f'IFERROR(VALUE($F{row}),0)=1,IFERROR(VALUE($G{row}),0)=1,IFERROR(VALUE($E{row}),0)>$U{row}),"SI","NO")))'
+        )
+        ws[f"O{row}"] = (
+            f'=IF($N{row}="SI",IFERROR(30*(IFERROR(VALUE($E{row}),0)/MAX('
+            f'SUMPRODUCT(MAX((Offerte!$C$2:$C${MAX_OFFER_ROWS}=$H{row})*(IFERROR(Offerte!$D$2:$D${MAX_OFFER_ROWS}*1,0)=1)*'
+            f'(IFERROR(Offerte!$E$2:$E${MAX_OFFER_ROWS}*1,0)>=Parametri!$B$2)*IFERROR(Offerte!$F$2:$F${MAX_OFFER_ROWS}*1,0))),'
+            f'SUMPRODUCT(MAX(($H$5:$H${MAX_COMBO_ROWS}=$H{row})*($N$5:$N${MAX_COMBO_ROWS}="SI")*IFERROR($E$5:$E${MAX_COMBO_ROWS}*1,0))),'
+            f'SUMPRODUCT(MAX(($I$5:$I${MAX_COMBO_ROWS}=$H{row})*($N$5:$N${MAX_COMBO_ROWS}="SI")*IFERROR($E$5:$E${MAX_COMBO_ROWS}*1,0))))),0),0)'
+        )
+        ws[f"P{row}"] = (
+            f'=IF($N{row}="SI",IFERROR(30*(IFERROR(VALUE($E{row}),0)/MAX('
+            f'SUMPRODUCT(MAX((Offerte!$C$2:$C${MAX_OFFER_ROWS}=$I{row})*(IFERROR(Offerte!$D$2:$D${MAX_OFFER_ROWS}*1,0)=1)*'
+            f'(IFERROR(Offerte!$E$2:$E${MAX_OFFER_ROWS}*1,0)>=Parametri!$B$2)*IFERROR(Offerte!$F$2:$F${MAX_OFFER_ROWS}*1,0))),'
+            f'SUMPRODUCT(MAX(($H$5:$H${MAX_COMBO_ROWS}=$I{row})*($N$5:$N${MAX_COMBO_ROWS}="SI")*IFERROR($E$5:$E${MAX_COMBO_ROWS}*1,0))),'
+            f'SUMPRODUCT(MAX(($I$5:$I${MAX_COMBO_ROWS}=$I{row})*($N$5:$N${MAX_COMBO_ROWS}="SI")*IFERROR($E$5:$E${MAX_COMBO_ROWS}*1,0))))),0),0)'
+        )
+        ws[f"Q{row}"] = f'=IF($N{row}="SI",ROUND($L{row}+$M{row}+$O{row}+$P{row},4),0)'
+        ws[f"R{row}"] = (
+            f'=IF($A{row}="","",IF(IFERROR(VALUE($D{row}),0)<>1,"Non attiva",'
+            f'IF(OR(IFERROR(VALUE($J{row}),0)<>1,IFERROR(VALUE($K{row}),0)<>1),"Singoli non attivi",'
+            f'IF(OR(IFERROR(VALUE($L{row}),0)<Parametri!$B$2,IFERROR(VALUE($M{row}),0)<Parametri!$B$2),"Soglia non superata",'
+            f'IF(OR(IFERROR(VALUE($F{row}),0)<>1,IFERROR(VALUE($G{row}),0)<>1),"Buste/PEF non confermati",'
+            f'IF(IFERROR(VALUE($E{row}),0)<=$U{row},"Ribasso non migliorativo",""))))))'
+        )
+        ws[f"V{row}"] = f'=IF($A{row}="","",$C{row}&"|"&TEXT($Q{row},"0.0000"))'
+        ws[f"W{row}"] = f'=IF($A{row}="","",$C{row}&"|"&$A{row})'
+
+    dv_pair = DataValidation(type="list", formula1='"L1+L2,L2+L3,L3+L4,L1+L4"', allow_blank=True)
+    dv_binary = DataValidation(type="list", formula1='"1,0"', allow_blank=True)
+    dv_discount = DataValidation(type="decimal", operator="between", formula1="0", formula2="100", allow_blank=True)
+    for dv in [dv_pair, dv_binary, dv_discount]:
+        ws.add_data_validation(dv)
+    dv_pair.add(f"C5:C{MAX_COMBO_ROWS}")
+    for ref in [f"D5:D{MAX_COMBO_ROWS}", f"F5:F{MAX_COMBO_ROWS}", f"G5:G{MAX_COMBO_ROWS}"]:
+        dv_binary.add(ref)
+    dv_discount.add(f"E5:E{MAX_COMBO_ROWS}")
+    ws.conditional_formatting.add(f"N5:N{MAX_COMBO_ROWS}", CellIsRule(operator="equal", formula=['"SI"'], fill=fill(GREEN)))
+    ws.conditional_formatting.add(f"N5:N{MAX_COMBO_ROWS}", CellIsRule(operator="equal", formula=['"NO"'], fill=fill(RED)))
+    add_table(ws, "tblCombinatorie", f"A4:W{MAX_COMBO_ROWS}")
+    set_widths(
+        ws,
+        {
+            "A": 16,
+            "B": 26,
+            "C": 14,
+            "D": 10,
+            "E": 22,
+            "F": 14,
+            "G": 14,
+            "H": 10,
+            "I": 10,
+            "J": 10,
+            "K": 10,
+            "L": 12,
+            "M": 12,
+            "N": 14,
+            "O": 14,
+            "P": 14,
+            "Q": 16,
+            "R": 32,
+            "S": 16,
+            "T": 16,
+            "U": 22,
+            "V": 18,
+            "W": 18,
+        },
+    )
+    ws.column_dimensions["V"].hidden = True
+    ws.column_dimensions["W"].hidden = True
+    ws.freeze_panes = "A5"
+
+
+def create_scenario_globale(wb):
+    ws = reset_sheet(wb, "ScenarioGlobale")
+    ws.sheet_properties.tabColor = "00A6A6"
+    ws.sheet_view.showGridLines = False
+    title(
+        ws,
+        "Scenario globale",
+        "Matrice operativa per confrontare singoli e combinatorie compatibili dentro Excel.",
+    )
+
+    section_header(ws, 4, "Migliori singoli per lotto", "H")
+    single_headers = ["Lotto", "BidderId", "BidderNome", "Totale", "Tecnico", "Economico", "Warning", "Origine"]
+    for col, header in enumerate(single_headers, start=1):
+        ws.cell(row=5, column=col).value = header
+    style_header_row(ws, 5, len(single_headers))
+    for row, lot_id in enumerate(["L1", "L2", "L3", "L4"], start=6):
+        ws[f"A{row}"] = lot_id
+        ws[f"D{row}"] = f'=SUMPRODUCT(MAX((Offerte!$C$2:$C${MAX_OFFER_ROWS}=$A{row})*(Offerte!$G$2:$G${MAX_OFFER_ROWS}="SI")*Offerte!$J$2:$J${MAX_OFFER_ROWS}))'
+        ws[f"B{row}"] = f'=IF($D{row}=0,"",IFERROR(INDEX(Offerte!$A$2:$A${MAX_OFFER_ROWS},MATCH($A{row}&"|"&TEXT($D{row},"0.0000"),Offerte!$M$2:$M${MAX_OFFER_ROWS},0)),""))'
+        ws[f"C{row}"] = f'=IF($B{row}="","",IFERROR(INDEX(Offerte!$B$2:$B${MAX_OFFER_ROWS},MATCH($B{row}&"|"&$A{row},Offerte!$L$2:$L${MAX_OFFER_ROWS},0)),""))'
+        ws[f"E{row}"] = f'=IF($B{row}="","",IFERROR(INDEX(Offerte!$E$2:$E${MAX_OFFER_ROWS},MATCH($B{row}&"|"&$A{row},Offerte!$L$2:$L${MAX_OFFER_ROWS},0)),0))'
+        ws[f"F{row}"] = f'=IF($B{row}="","",IFERROR(INDEX(Offerte!$I$2:$I${MAX_OFFER_ROWS},MATCH($B{row}&"|"&$A{row},Offerte!$L$2:$L${MAX_OFFER_ROWS},0)),0))'
+        ws[f"G{row}"] = f'=IF($B{row}="","Nessuna offerta ammessa","")'
+        ws[f"H{row}"] = "Singolo"
+    style_cells(ws, "A6:H9", OUTPUT)
+
+    section_header(ws, 12, "Migliori combinatorie per coppia", "H")
+    combo_headers = ["Coppia", "BidderId", "BidderNome", "Totale", "Ammissibile", "Ribasso", "Note", "Origine"]
+    for col, header in enumerate(combo_headers, start=1):
+        ws.cell(row=13, column=col).value = header
+    style_header_row(ws, 13, len(combo_headers))
+    for row, pair_id in enumerate(["L1+L2", "L2+L3", "L3+L4", "L1+L4"], start=14):
+        ws[f"A{row}"] = pair_id
+        ws[f"D{row}"] = f'=SUMPRODUCT(MAX((Combinatorie!$C$5:$C${MAX_COMBO_ROWS}=$A{row})*(Combinatorie!$N$5:$N${MAX_COMBO_ROWS}="SI")*Combinatorie!$Q$5:$Q${MAX_COMBO_ROWS}))'
+        ws[f"B{row}"] = f'=IF($D{row}=0,"",IFERROR(INDEX(Combinatorie!$A$5:$A${MAX_COMBO_ROWS},MATCH($A{row}&"|"&TEXT($D{row},"0.0000"),Combinatorie!$V$5:$V${MAX_COMBO_ROWS},0)),""))'
+        ws[f"C{row}"] = f'=IF($B{row}="","",IFERROR(INDEX(Combinatorie!$B$5:$B${MAX_COMBO_ROWS},MATCH($A{row}&"|"&$B{row},Combinatorie!$W$5:$W${MAX_COMBO_ROWS},0)),""))'
+        ws[f"E{row}"] = f'=IF($B{row}="","NO","SI")'
+        ws[f"F{row}"] = f'=IF($B{row}="","",IFERROR(INDEX(Combinatorie!$E$5:$E${MAX_COMBO_ROWS},MATCH($A{row}&"|"&$B{row},Combinatorie!$W$5:$W${MAX_COMBO_ROWS},0)),0))'
+        ws[f"G{row}"] = f'=IF($B{row}="","Nessuna combinatoria ammessa","")'
+        ws[f"H{row}"] = "Combinatoria"
+    style_cells(ws, "A14:H17", OUTPUT)
+
+    section_header(ws, 20, "Matrice scenario indicativa", "H")
+    scenario_headers = ["Scenario", "L1", "L2", "L3", "L4", "Totale", "Nota", "Rank"]
+    for col, header in enumerate(scenario_headers, start=1):
+        ws.cell(row=21, column=col).value = header
+    style_header_row(ws, 21, len(scenario_headers))
+    scenarios = [
+        ("Tutti singoli", "Singolo L1", "Singolo L2", "Singolo L3", "Singolo L4", "SUM($D$6:$D$9)"),
+        ("L1+L2 + singoli", "Combo L1+L2", "Combo L1+L2", "Singolo L3", "Singolo L4", "$D$14+$D$8+$D$9"),
+        ("L2+L3 + singoli", "Singolo L1", "Combo L2+L3", "Combo L2+L3", "Singolo L4", "$D$6+$D$15+$D$9"),
+        ("L3+L4 + singoli", "Singolo L1", "Singolo L2", "Combo L3+L4", "Combo L3+L4", "$D$6+$D$7+$D$16"),
+        ("L1+L4 + singoli", "Combo L1+L4", "Singolo L2", "Singolo L3", "Combo L1+L4", "$D$17+$D$7+$D$8"),
+        ("L1+L2 e L3+L4", "Combo L1+L2", "Combo L1+L2", "Combo L3+L4", "Combo L3+L4", "$D$14+$D$16"),
+        ("L2+L3 e L1+L4", "Combo L1+L4", "Combo L2+L3", "Combo L2+L3", "Combo L1+L4", "$D$15+$D$17"),
+    ]
+    for row, scenario in enumerate(scenarios, start=22):
+        name, l1, l2, l3, l4, total_formula = scenario
+        ws[f"A{row}"] = name
+        ws[f"B{row}"] = l1
+        ws[f"C{row}"] = l2
+        ws[f"D{row}"] = l3
+        ws[f"E{row}"] = l4
+        ws[f"F{row}"] = "=" + total_formula
+        ws[f"G{row}"] = f'=IF($F{row}=0,"Nessun dato sufficiente",IF($H{row}=1,"Scenario migliore nella matrice",""))'
+        ws[f"H{row}"] = f'=IF($F{row}=0,"",RANK($F{row},$F$22:$F$28,0))'
+    style_cells(ws, "A22:H28", WHITE)
+    ws.conditional_formatting.add("H22:H28", CellIsRule(operator="equal", formula=["1"], fill=fill(GREEN)))
+
+    section_header(ws, 31, "Limiti della matrice Excel", "H")
+    notes = [
+        "La matrice è pensata per analisi operative rapide: considera singoli e coppie compatibili principali.",
+        "Per warning documentali avanzati, persistenza JSON, simulazioni batch e deroga al limite di due lotti resta più affidabile la web app.",
+        "Se una combinatoria non compare, controlla foglio Combinatorie: singoli attivi, soglia, buste, PEF e ribasso migliorativo.",
+    ]
+    for row, text in enumerate(notes, start=32):
+        ws[f"A{row}"] = text
+        ws.merge_cells(f"A{row}:H{row}")
+        ws[f"A{row}"].fill = fill(AMBER if row == 32 else WHITE)
+        ws[f"A{row}"].alignment = Alignment(wrap_text=True, vertical="top")
+        ws[f"A{row}"].border = BORDER
+
+    set_widths(ws, {"A": 24, "B": 18, "C": 18, "D": 18, "E": 18, "F": 14, "G": 34, "H": 10})
+    ws.freeze_panes = "A5"
 
 
 def polish_results(wb):
@@ -482,11 +787,36 @@ def main():
     polish_parametri(wb)
     polish_ottimizzazione(wb)
     polish_offerte(wb)
+    create_combinatorie(wb)
+    create_scenario_globale(wb)
     polish_results(wb)
     polish_confronto(wb)
     polish_log(wb)
     add_common_footer(wb)
+    wb.calculation.calcMode = "auto"
+    wb.calculation.fullCalcOnLoad = True
+    wb.calculation.forceFullCalc = True
+    reorder_sheets(
+        wb,
+        [
+            "Dashboard",
+            "Istruzioni",
+            "Parametri",
+            "Ottimizzazione",
+            "Offerte",
+            "Combinatorie",
+            "ScenarioGlobale",
+            "Risultati",
+            "ConfrontoWeb",
+            "LogOttimizzazione",
+            "Guida",
+            "Glossario",
+        ],
+    )
 
+    for ws in wb.worksheets:
+        ws.sheet_view.tabSelected = False
+    wb["Dashboard"].sheet_view.tabSelected = True
     wb.active = wb.sheetnames.index("Dashboard")
     wb.save(path)
     print(f"Workbook Excel migliorato: {path}")

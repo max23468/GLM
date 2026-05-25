@@ -62,6 +62,10 @@ if (vbaProject.length < 1024) {
 }
 
 const workbookXml = unzipEntry(workbookPath, 'xl/workbook.xml').toString('utf8');
+if (!workbookXml.includes('activeTab="0"')) {
+  throw new Error('Il workbook deve aprirsi sulla Dashboard senza fogli raggruppati');
+}
+
 const sheetNames = [...workbookXml.matchAll(/<sheet[^>]* name="([^"]+)"/g)].map((match) => match[1]);
 const requiredSheets = [
   'Dashboard',
@@ -70,6 +74,8 @@ const requiredSheets = [
   'Istruzioni',
   'Parametri',
   'Offerte',
+  'Combinatorie',
+  'ScenarioGlobale',
   'Risultati',
   'Ottimizzazione',
   'LogOttimizzazione',
@@ -78,6 +84,20 @@ const requiredSheets = [
 
 for (const sheetName of requiredSheets) {
   if (!sheetNames.includes(sheetName)) throw new Error(`Foglio mancante nel template: ${sheetName}`);
+}
+
+const worksheetEntries = templateEntries.filter((entry) => /^xl\/worksheets\/sheet\d+\.xml$/.test(entry));
+const workbookFormulaXml = worksheetEntries.map((entry) => unzipEntry(workbookPath, entry).toString('utf8')).join('\n');
+const unsupportedFormulaTokens = ['MAXIFS', 'RANK.EQ'];
+for (const token of unsupportedFormulaTokens) {
+  if (workbookFormulaXml.includes(token)) {
+    throw new Error(`Formula Excel non compatibile nel pacchetto: ${token}`);
+  }
+}
+
+const selectedTabs = (workbookFormulaXml.match(/tabSelected="1"/g) ?? []).length;
+if (selectedTabs > 1) {
+  throw new Error(`Il workbook apre ${selectedTabs} fogli selezionati: deve aprirne uno solo`);
 }
 
 console.log('Pacchetto Excel valido');

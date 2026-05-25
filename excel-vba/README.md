@@ -7,6 +7,8 @@ Implementazione Excel + VBA del simulatore con estensioni avanzate:
 - ranking per lotto;
 - valutazione combinatorie principali (L1+L2, L2+L3, L3+L4, L1+L4);
 - scenario vincente per lotti singoli con tie-break su punteggio tecnico;
+- foglio `Combinatorie` con input espliciti per coppie, buste, PEF e ribasso migliorativo;
+- foglio `ScenarioGlobale` con matrice indicativa singoli/combinatorie compatibili;
 - ottimizzazione iterativa su lotto attivo con leve separate Q/T (escluso D);
 - foglio di confronto golden con expected dal web.
 
@@ -15,13 +17,18 @@ Implementazione Excel + VBA del simulatore con estensioni avanzate:
 Nel pacchetto è incluso `templates/Simulatore-TPL-Lotti-1-4-template.xlsm`, già predisposto con fogli, intestazioni, parametri base, log ottimizzazione, sezione confronto web e moduli VBA incorporati. I sorgenti `.bas` restano in `src/` per audit e manutenzione, ma non devono essere importati dall'utente finale.
 
 Fogli inclusi nel template:
-1. `Istruzioni`
-2. `Parametri`
-3. `Offerte`
-4. `Risultati`
-5. `Ottimizzazione`
-6. `LogOttimizzazione`
-7. `ConfrontoWeb`
+1. `Dashboard`
+2. `Istruzioni`
+3. `Parametri`
+4. `Ottimizzazione`
+5. `Offerte`
+6. `Combinatorie`
+7. `ScenarioGlobale`
+8. `Risultati`
+9. `ConfrontoWeb`
+10. `LogOttimizzazione`
+11. `Guida`
+12. `Glossario`
 
 ## Mappatura minima celle
 
@@ -36,6 +43,16 @@ Fogli inclusi nel template:
 - `D`: Attivo (`1/0`)
 - `E`: PunteggioTecnicoRaw (0-70)
 - `F`: RibassoMedioPercento (0-100)
+- `G:M`: colonne calcolate per ammissibilità, `Rmax`, economico, totale e chiavi di scenario.
+
+### Foglio `Combinatorie`
+- `A`: BidderId
+- `C`: Coppia (`L1+L2`, `L2+L3`, `L3+L4`, `L1+L4`)
+- `D`: Attivo (`1/0`)
+- `E`: RibassoCombinatoria (0-100)
+- `F`: InseritoBuste (`1/0`)
+- `G`: PEFCoerente (`1/0`)
+- `H:W`: colonne calcolate per lotti, soglia, ammissibilità, punteggio, note e chiavi.
 
 ### Foglio `Ottimizzazione`
 - `B2`: BidderId selezionato
@@ -80,7 +97,7 @@ Fogli inclusi nel template:
 ### Gap funzionali rispetto al tool Web
 - **Modello criteri**: Excel usa leve aggregate e non replica ancora tutti i sub-criteri A-G con pari granularità.
 - **Combinatorie**: la logica Excel è semplificata e non copre integralmente tutti i vincoli documentali e i warning avanzati.
-- **Scenario globale**: manca un motore completo di enumerazione/cross-scenario equivalente al ranking avanzato del web.
+- **Scenario globale**: la matrice Excel confronta singoli e coppie compatibili principali, ma non replica ancora enumerazione completa, deroga al limite di due lotti e batch/stress test del web.
 - **Persistenza**: non ci sono migrazioni schema/versioni snapshot e compatibilità legacy come nel web.
 - **UX operativa**: assenti confronto scenari salvati, report estesi, pannelli insight e filtri completi della UI React.
 
@@ -113,6 +130,7 @@ Quando modifichi i sorgenti `src/*.bas`, apri `templates/Simulatore-TPL-Lotti-1-
 3. **Validazioni macro**: aggiunto `modChecks.bas` con `CheckBeforeRun` e verifica setup fogli/soglia.
 4. **Packaging ripetibile**: aggiunto script `scripts/package-excel-vba.mjs` per rigenerare workbook pubblico + manifest + hash dal template `.xlsm` macro-abilitato.
 5. **Confronto strutturato**: `ConfrontoWebGolden` ora include colonna lotto e output tabellare più esplicito.
+6. **Matrice scenario globale**: aggiunti `Combinatorie` e `ScenarioGlobale` per leggere in Excel singoli e coppie compatibili senza file esterni.
 
 
 ## Modalità di prodotto

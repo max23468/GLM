@@ -6,6 +6,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.3.0] — 2026-05-25
+
+### Novità
+
+- **Pacchetto Excel**: aggiunti fogli `Combinatorie` e `Scenario globale` per configurare coppie, controllare ammissibilità e confrontare scenari singoli/combinatori direttamente nel file `.xlsm`.
+
 ## [1.2.3] — 2026-05-25
 
 ### Correzioni

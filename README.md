@@ -40,7 +40,7 @@ npm run preview -- --port 4173
 
 ## Toolkit Excel (modalità light)
 
-Il pacchetto `Pacchetto Excel` scarica un file `.xlsm` unico in **modalità light**: aiuta simulazioni rapide e confronti golden, ma non replica integralmente il motore web (scoring completo, warning avanzati, persistenza/migrazioni e UX di confronto scenari restano nel simulatore web). Il workbook è già macro-abilitato con fogli, intestazioni e moduli VBA incorporati.
+Il pacchetto `Pacchetto Excel` scarica un file `.xlsm` unico in **modalità light**: aiuta simulazioni rapide, combinatorie configurabili, matrice di scenario globale e confronti golden, ma non replica integralmente il motore web (scoring completo per sub-criterio, warning avanzati, persistenza/migrazioni e UX di confronto scenari salvati restano nel simulatore web). Il workbook è già macro-abilitato con fogli, intestazioni e moduli VBA incorporati.
 
 ## Scenari base
 
