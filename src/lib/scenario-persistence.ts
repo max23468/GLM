@@ -63,7 +63,7 @@ type LegacyWorkspaceLike = Partial<StoredWorkspace> & {
   baseScenarioId?: unknown;
 };
 
-type ExcelLightScenarioLike = {
+type ExcelScenarioLike = {
   format?: unknown;
   source?: unknown;
   id?: unknown;
@@ -75,6 +75,7 @@ type ExcelLightScenarioLike = {
   selectedLotId?: unknown;
   selectedPairId?: unknown;
   offers?: unknown;
+  criteria?: unknown;
   combos?: unknown;
 };
 
@@ -143,12 +144,13 @@ const extractScenarioImportCandidate = (value: unknown) => {
   return value;
 };
 
-const isExcelLightImport = (value: unknown): value is ExcelLightScenarioLike =>
-  isRecord(value) && (value.format === "glm-excel-light-v1" || value.source === "excel-light");
+const isExcelImport = (value: unknown): value is ExcelScenarioLike =>
+  isRecord(value) && (value.format === "glm-excel-v1" || value.format === "glm-excel-light-v1" || value.source === "excel-light");
 
-const extractExcelLightImportCandidate = (value: unknown) => {
-  if (isExcelLightImport(value)) return value;
-  if (isRecord(value) && isExcelLightImport(value.excelLight)) return value.excelLight;
+const extractExcelImportCandidate = (value: unknown) => {
+  if (isExcelImport(value)) return value;
+  if (isRecord(value) && isExcelImport(value.excel)) return value.excel;
+  if (isRecord(value) && isExcelImport(value.excelLight)) return value.excelLight;
   return undefined;
 };
 
@@ -287,10 +289,13 @@ export const normalizeComboOffer = (value: unknown): ComboOffer => {
   };
 };
 
-const normalizeExcelLightScenarioSnapshot = (value: ExcelLightScenarioLike): SavedScenarioSnapshot | undefined => {
+const criterionById = new Map(CRITERIA.map((criterion) => [criterion.id, criterion]));
+
+const normalizeExcelScenarioSnapshot = (value: ExcelScenarioLike): { snapshot?: SavedScenarioSnapshot; hasCriteria: boolean } => {
   const baseScenarioId = normalizeBaseScenarioId(value.baseScenarioId);
   const fallbackScenario = getBaseScenario(baseScenarioId);
   const bidderMap = new Map<string, Bidder>();
+  let hasCriteria = false;
 
   const ensureBidder = (idValue: unknown, nameValue?: unknown) => {
     const fallbackId = `excel-${bidderMap.size + 1}`;
@@ -324,6 +329,45 @@ const normalizeExcelLightScenarioSnapshot = (value: ExcelLightScenarioLike): Sav
     offer.phaseDiscounts = [discount, discount, discount];
   }
 
+  const criteria = Array.isArray(value.criteria) ? value.criteria : [];
+  for (const row of criteria) {
+    if (!isRecord(row)) continue;
+    const lotId = recordValue(row, "lotId") ?? recordValue(row, "lotto");
+    if (!isLotId(lotId)) continue;
+    const criterionId = recordValue(row, "criterionId") ?? recordValue(row, "criterioId") ?? recordValue(row, "criterio");
+    if (typeof criterionId !== "string") continue;
+    const criterion = criterionById.get(criterionId);
+    if (!criterion) continue;
+    const bidder = ensureBidder(recordValue(row, "bidderId"), recordValue(row, "bidderName") ?? recordValue(row, "bidderNome"));
+    const offer = bidder.lots[lotId];
+    const keyHasOfferRow = offers.some((offerRow) =>
+      isRecord(offerRow) && recordValue(offerRow, "bidderId") === bidder.id && (recordValue(offerRow, "lotId") ?? recordValue(offerRow, "lotto")) === lotId,
+    );
+    if (!keyHasOfferRow) offer.enabled = true;
+
+    if (criterion.kind === "Q") {
+      const numerator = boundedNumber(recordValue(row, "numerator") ?? recordValue(row, "numeratore"), 0, Number.MAX_SAFE_INTEGER);
+      const denominator = boundedNumber(recordValue(row, "denominator") ?? recordValue(row, "denominatore"), 0, Number.MAX_SAFE_INTEGER);
+      if (criterion.quantityInput && typeof numerator === "number" && typeof denominator === "number" && denominator > 0) {
+        offer.quantityInputs[criterion.id] = { numerator, denominator };
+        const ratio = Math.min(1, Math.max(0, numerator / denominator));
+        offer.qValues[criterion.id] = criterion.quantityInput.kind === "percent" ? ratio * 100 : ratio;
+      } else {
+        offer.qValues[criterion.id] = boundedNumber(recordValue(row, "value") ?? recordValue(row, "valore"), 0, Number.MAX_SAFE_INTEGER, 0) ?? 0;
+      }
+    }
+
+    if (criterion.kind === "T") {
+      offer.tValues[criterion.id] = normalizeBoolean(recordValue(row, "flag") ?? recordValue(row, "value") ?? recordValue(row, "valore"), false);
+    }
+
+    if (criterion.kind === "D") {
+      offer.dValues[criterion.id] = boundedNumber(recordValue(row, "flag") ?? recordValue(row, "value") ?? recordValue(row, "valore"), 0, 1, 0) ?? 0;
+    }
+
+    hasCriteria = true;
+  }
+
   const combos = Array.isArray(value.combos) ? value.combos : [];
   for (const row of combos) {
     if (!isRecord(row)) continue;
@@ -339,13 +383,20 @@ const normalizeExcelLightScenarioSnapshot = (value: ExcelLightScenarioLike): Sav
   }
 
   const bidders = Array.from(bidderMap.values());
-  if (!bidders.length) return undefined;
+  if (!bidders.length) return { hasCriteria };
+  if (hasCriteria) {
+    for (const bidder of bidders) {
+      for (const lot of LOTS) delete bidder.lots[lot.id].technicalOverrideRaw;
+    }
+  }
   const firstBidderId = bidders[0]?.id ?? fallbackScenario.defaultBidderId;
 
   return {
+    hasCriteria,
+    snapshot: {
     schemaVersion: 7,
-    id: normalizedId(value.id, `excel-light-${Date.now()}`),
-    name: normalizedName(value.name, "Scenario Excel light"),
+    id: normalizedId(value.id, `excel-${Date.now()}`),
+    name: normalizedName(value.name, "Scenario Excel"),
     savedAt: typeof value.savedAt === "string" ? value.savedAt : new Date().toISOString(),
     baseScenarioId,
     bidders,
@@ -357,6 +408,7 @@ const normalizeExcelLightScenarioSnapshot = (value: ExcelLightScenarioLike): Sav
         : firstBidderId,
     selectedLotId: isLotId(value.selectedLotId) ? value.selectedLotId : fallbackScenario.defaultLotId,
     selectedPairId: isPairId(value.selectedPairId) ? value.selectedPairId : fallbackScenario.defaultPairId,
+    },
   };
 };
 
@@ -456,14 +508,18 @@ const hasDuplicateBidderIds = (value: unknown) => {
 };
 
 export const normalizeScenarioSnapshotWithReport = (value: unknown): ScenarioImportReport => {
-  const excelLightCandidate = extractExcelLightImportCandidate(value);
-  if (excelLightCandidate) {
-    const snapshot = normalizeExcelLightScenarioSnapshot(excelLightCandidate);
+  const excelCandidate = extractExcelImportCandidate(value);
+  if (excelCandidate) {
+    const { snapshot, hasCriteria } = normalizeExcelScenarioSnapshot(excelCandidate);
     return {
       snapshot,
       messages: snapshot
-        ? ["Formato Excel light importato: il tecnico aggregato è conservato come override, i sub-criteri non sono ricostruiti."]
-        : ["Il JSON Excel light non contiene offerte importabili."],
+        ? [
+            hasCriteria
+              ? "Formato Excel importato: sub-criteri tecnici, ribassi e combinatorie acquisiti."
+              : "Formato Excel importato con tecnico aggregato: i sub-criteri non erano presenti nel file.",
+          ]
+        : ["Il JSON Excel non contiene offerte importabili."],
     };
   }
 

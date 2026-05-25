@@ -424,7 +424,7 @@ const computeTechnicalRawScores = (bidders: Bidder[], settings: Settings): Recor
       const overrideRaw = score.participates ? technicalOverrideRaw(bidder.lots[lot.id]) : undefined;
       if (typeof overrideRaw === "number") {
         score.qtRaw = overrideRaw;
-        score.warnings.push("Tecnico aggregato import Excel light: sub-criteri non ricostruiti.");
+        score.warnings.push("Tecnico aggregato importato: sub-criteri non disponibili.");
       }
       score.admitted = score.participates && score.qtRaw >= settings.threshold;
       if (score.participates && !score.admitted) {

@@ -1,7 +1,11 @@
 Caso,Scenario,LotId,ExpectedTotal,Tolerance,WebSource,VerifiedAt,Note
-G01,MERCATO_REALISTICO,L1,0,0.05,https://gare-lotti-milanesi.pages.dev,2026-05-25,Da compilare con output web
-G02,MERCATO_REALISTICO,L2,0,0.05,https://gare-lotti-milanesi.pages.dev,2026-05-25,Da compilare con output web
-G03,TECNOLOGIA_FLOTTA,L3,0,0.05,https://gare-lotti-milanesi.pages.dev,2026-05-25,Da compilare con output web
-G04,RIBASSO_AGGRESSIVO,L4,0,0.05,https://gare-lotti-milanesi.pages.dev,2026-05-25,Da compilare con output web
-G05,PRESIDIO_LOCALE,L4,0,0.05,https://gare-lotti-milanesi.pages.dev,2026-05-25,Da compilare con output web
-G06,MERCATO_REALISTICO,L3,0,0.05,https://gare-lotti-milanesi.pages.dev,2026-05-25,Da compilare con output web
+G01,market,L1,98.4155,0.05,https://gare-lotti-milanesi.pages.dev,2026-05-25,Scenario base Mercato realistico
+G02,market,L2,99.3528,0.05,https://gare-lotti-milanesi.pages.dev,2026-05-25,Scenario base Mercato realistico
+G03,tech,L3,98.0790,0.05,https://gare-lotti-milanesi.pages.dev,2026-05-25,Scenario base Tecnologia e flotta
+G04,discount,L4,99.4015,0.05,https://gare-lotti-milanesi.pages.dev,2026-05-25,Scenario base Ribasso aggressivo
+G05,local,L4,98.1274,0.05,https://gare-lotti-milanesi.pages.dev,2026-05-25,Scenario base Presidio locale
+G06,market,L3,98.9085,0.05,https://gare-lotti-milanesi.pages.dev,2026-05-25,Scenario base Mercato realistico
+G07,tech,L1,98.4155,0.05,https://gare-lotti-milanesi.pages.dev,2026-05-25,Scenario base Tecnologia e flotta
+G08,discount,L2,99.2284,0.05,https://gare-lotti-milanesi.pages.dev,2026-05-25,Scenario base Ribasso aggressivo
+G09,local,L3,98.1274,0.05,https://gare-lotti-milanesi.pages.dev,2026-05-25,Scenario base Presidio locale
+G10,market,L4,99.4015,0.05,https://gare-lotti-milanesi.pages.dev,2026-05-25,Scenario base Mercato realistico

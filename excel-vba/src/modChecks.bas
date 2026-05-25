@@ -5,6 +5,7 @@ Public Function ValidateWorkbookSetup() As Boolean
     ValidateWorkbookSetup = False
     If Not SheetExists(SHEET_PARAMETRI) Then Exit Function
     If Not SheetExists(SHEET_OFFERTE) Then Exit Function
+    If Not SheetExists(SHEET_CRITERI) Then Exit Function
     If Not SheetExists(SHEET_RISULTATI) Then Exit Function
     If Not SheetExists(SHEET_OTTIMIZZAZIONE) Then Exit Function
     If Not SheetExists(SHEET_LOG) Then Exit Function

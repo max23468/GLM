@@ -213,11 +213,11 @@ describe("scenario persistence normalization", () => {
     expect(library.messages).toContain("Struttura JSON riconosciuta: importato il primo scenario disponibile.");
   });
 
-  it("importa il formato Excel light conservando tecnico aggregato e ribassi", () => {
+  it("importa il formato Excel con sub-criteri tecnici e ribassi", () => {
     const report = normalizeScenarioSnapshotWithReport({
-      format: "glm-excel-light-v1",
+      format: "glm-excel-v1",
       schemaVersion: 1,
-      id: "excel-light",
+      id: "excel",
       name: "Scenario Excel",
       baseScenarioId: "market",
       settings: { threshold: 36, applyAwardLimitDerogation: false },
@@ -227,6 +227,11 @@ describe("scenario persistence normalization", () => {
       offers: [
         { bidderId: "excel-a", bidderName: "Operatore Excel", lotId: "L1", enabled: true, technicalRaw: 42.5, discount: 5.5 },
         { bidderId: "excel-a", bidderName: "Operatore Excel", lotId: "L2", enabled: true, technicalRaw: 41, discount: 4.75 },
+      ],
+      criteria: [
+        { bidderId: "excel-a", lotId: "L1", criterionId: "A.1.1", kind: "Q", value: 60, numerator: 60, denominator: 100 },
+        { bidderId: "excel-a", lotId: "L1", criterionId: "C.2.2", kind: "T", value: 1, flag: 1 },
+        { bidderId: "excel-a", lotId: "L1", criterionId: "B.5.1", kind: "D", value: 0.8, flag: 0.8 },
       ],
       combos: [
         {
@@ -242,18 +247,32 @@ describe("scenario persistence normalization", () => {
     });
 
     expect(report.snapshot).toBeDefined();
-    expect(report.messages).toContain("Formato Excel light importato: il tecnico aggregato è conservato come override, i sub-criteri non sono ricostruiti.");
+    expect(report.messages).toContain("Formato Excel importato: sub-criteri tecnici, ribassi e combinatorie acquisiti.");
 
     const snapshot = report.snapshot!;
     const bidder = snapshot.bidders[0];
     expect(bidder.name).toBe("Operatore Excel");
-    expect(bidder.lots.L1.technicalOverrideRaw).toBe(42.5);
+    expect(bidder.lots.L1.technicalOverrideRaw).toBeUndefined();
     expect(bidder.lots.L1.phaseDiscounts).toEqual([5.5, 5.5, 5.5]);
+    expect(bidder.lots.L1.quantityInputs["A.1.1"]).toEqual({ numerator: 60, denominator: 100 });
+    expect(bidder.lots.L1.tValues["C.2.2"]).toBe(true);
+    expect(bidder.lots.L1.dValues["B.5.1"]).toBe(0.8);
     expect(bidder.combos["L1+L2"].enabled).toBe(true);
     expect(bidder.combos["L1+L2"].phaseDiscounts).toEqual([6.25, 6.25, 6.25]);
 
     const result = simulate(snapshot.bidders, snapshot.settings, snapshot.selectedBidderId);
-    expect(result.lotScores["excel-a"].L1.technical).toBe(42.5);
-    expect(result.lotScores["excel-a"].L1.admitted).toBe(true);
+    expect(result.lotScores["excel-a"].L1.subScores["A.1.1"].value).toBe(60);
+    expect(result.lotScores["excel-a"].L1.subScores["C.2.2"].value).toBe(true);
+  });
+
+  it("importa il formato Excel aggregato legacy senza esporre sub-criteri inventati", () => {
+    const report = normalizeScenarioSnapshotWithReport({
+      format: "glm-excel-light-v1",
+      name: "Scenario aggregato",
+      offers: [{ bidderId: "excel-a", bidderName: "Operatore Excel", lotId: "L1", enabled: true, technicalRaw: 42.5, discount: 5.5 }],
+    });
+
+    expect(report.snapshot?.bidders[0].lots.L1.technicalOverrideRaw).toBe(42.5);
+    expect(report.messages).toContain("Formato Excel importato con tecnico aggregato: i sub-criteri non erano presenti nel file.");
   });
 });

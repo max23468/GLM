@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import csv
 import sys
 
 from openpyxl import load_workbook
@@ -15,6 +16,7 @@ from openpyxl.worksheet.table import Table, TableStyleInfo
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_WORKBOOK = ROOT / "excel-vba" / "templates" / "Simulatore-TPL-Lotti-1-4-template.xlsm"
 EXCEL_README = ROOT / "excel-vba" / "README.md"
+CRITERIA_CSV = ROOT / "excel-vba" / "templates" / "criteria.csv"
 
 NAVY = "1F4E78"
 BLUE = "2563EB"
@@ -33,6 +35,16 @@ SECTION = "E8EEF8"
 
 MAX_OFFER_ROWS = 200
 MAX_COMBO_ROWS = 80
+TECHNICAL_START_ROW = 5
+AMBIT_MAX_POINTS = {
+    "A": 7,
+    "B": 14,
+    "C": 14,
+    "D": 10,
+    "E": 4,
+    "F": 14,
+    "G": 7,
+}
 
 THIN_GRID = Side(style="thin", color=GRID)
 BORDER = Border(left=THIN_GRID, right=THIN_GRID, top=THIN_GRID, bottom=THIN_GRID)
@@ -71,6 +83,11 @@ def clear_layout_helpers(ws):
     ws.data_validations.dataValidation = []
     ws.conditional_formatting._cf_rules.clear()
     ws.auto_filter.ref = None
+
+
+def load_criteria() -> list[dict[str, str]]:
+    with CRITERIA_CSV.open(newline="", encoding="utf-8") as fh:
+        return list(csv.DictReader(fh))
 
 
 def title(ws, text: str, subtitle: str | None = None):
@@ -112,6 +129,20 @@ def set_widths(ws, widths: dict[str, float]):
         ws.column_dimensions[col].width = width
 
 
+def coerce_number(value):
+    if value is None or value == "":
+        return value
+    if isinstance(value, (int, float)):
+        return value
+    text = str(value).strip().replace("%", "")
+    if not text:
+        return value
+    try:
+        return float(text.replace(",", "."))
+    except ValueError:
+        return value
+
+
 def add_sheet_link(cell, label: str, sheet_name: str):
     cell.value = label
     cell.hyperlink = f"#'{sheet_name}'!A1"
@@ -127,7 +158,7 @@ def create_dashboard(wb):
     title(
         ws,
         "Simulatore gara TPL lotti 1-4",
-        "Console Excel in modalità light: compila le offerte, esegui le macro e usa il web per i controlli avanzati.",
+        "Console Excel completa: compila offerte, sub-criteri A-G, combinatorie e scambio dati con il web.",
     )
 
     section_header(ws, 4, "Stato rapido", "H")
@@ -183,14 +214,15 @@ def create_dashboard(wb):
     links = [
         ("A19", "Parametri", "Parametri"),
         ("C19", "Offerte", "Offerte"),
-        ("E19", "Combinatorie", "Combinatorie"),
-        ("G19", "Scenario globale", "ScenarioGlobale"),
-        ("A21", "Guida", "Guida"),
-        ("C21", "Glossario", "Glossario"),
+        ("E19", "Criteri tecnici", "CriteriTecnici"),
+        ("G19", "Combinatorie", "Combinatorie"),
+        ("A21", "Scenario globale", "ScenarioGlobale"),
+        ("C21", "Scambio web", "ScambioWeb"),
         ("E21", "Risultati", "Risultati"),
         ("G21", "Confronto web", "ConfrontoWeb"),
-        ("A22", "Scambio web", "ScambioWeb"),
-        ("C22", "Log ottimizzazione", "LogOttimizzazione"),
+        ("A22", "Guida", "Guida"),
+        ("C22", "Glossario", "Glossario"),
+        ("E22", "Log ottimizzazione", "LogOttimizzazione"),
     ]
     for ref, label, sheet_name in links:
         add_sheet_link(ws[ref], label, sheet_name)
@@ -211,8 +243,8 @@ def create_dashboard(wb):
 
     section_header(ws, 29, "Limiti da ricordare", "H")
     limits = [
-        "Excel resta in modalità light: il web conserva scoring completo, warning avanzati, persistenza e confronto scenari.",
-        "Il foglio ScambioWeb produce un JSON light: conserva tecnico aggregato e ribassi, non ricostruisce i sub-criteri A-G.",
+        "Il foglio CriteriTecnici calcola il tecnico dai sub-criteri A-G; il valore aggregato resta solo come fallback di compatibilità.",
+        "Il foglio ScambioWeb produce un JSON completo con offerte, sub-criteri, ribassi e combinatorie.",
         "I costi e le leve sono ipotesi operative: non sono dati ufficiali di gara.",
         "Se Excel blocca le macro dopo il download, sblocca il file dalle proprietà del sistema prima dell'uso.",
     ]
@@ -236,7 +268,7 @@ def create_guide(wb):
     rows = [
         ("Avvio rapido", "1. Apri il file .xlsm e abilita le macro se richiesto.\n2. Vai a Parametri e scegli soglia/lotto attivo.\n3. Compila Offerte.\n4. Esegui CheckBeforeRun e poi SimulaScenario.\n5. Usa ConfrontoWebGolden solo dopo aver copiato gli expected dal web."),
         ("Macro principali", "CheckBeforeRun: valida setup e input.\nSimulaScenario: calcola risultati.\nOttimizzaLottoAttivo: lavora sul bidder e lotto selezionati.\nConfrontoWebGolden: confronta i totali Excel con valori web incollati in J2:J5."),
-        ("Modalità light", "Questo workbook supporta analisi offline rapide. Non sostituisce il simulatore web per scoring completo, warning documentali, persistenza, import/export JSON e confronto scenari salvati."),
+        ("Scoring tecnico", "Il foglio CriteriTecnici raccoglie i sub-criteri A-G e alimenta il punteggio tecnico calcolato in Offerte."),
         ("Sicurezza macro", "Dopo download da web Excel può bloccare le macro. Su macOS/Windows può servire sbloccare il file o spostarlo in una posizione attendibile."),
     ]
     row = 4
@@ -280,13 +312,15 @@ def create_glossary(wb):
         ("Parametri", "SogliaTecnica", "Parametri!B2", "Punteggio tecnico minimo per essere ammessi.", "Valore 0-70."),
         ("Parametri", "LottoAttivo", "Parametri!B3", "Lotto usato dalle macro di ottimizzazione.", "Dropdown L1-L4."),
         ("Offerte", "Attivo", "Offerte!D:D", "1 include la riga nella simulazione, 0 la esclude.", "Usare 0/1."),
-        ("Offerte", "PunteggioTecnicoRaw", "Offerte!E:E", "Punteggio tecnico simulato aggregato.", "Modalità light, 0-70."),
+        ("Offerte", "TecnicoRiparametrato", "Offerte!E:E", "Punteggio tecnico finale alimentato dai sub-criteri A-G.", "Usa fallback aggregato solo se i criteri sono vuoti."),
+        ("Offerte", "TecnicoSogliaQT", "Offerte!O:O", "Somma Q/T usata per la soglia di sbarramento.", "Nascosto: i discrezionali D non entrano nella soglia."),
         ("Offerte", "RibassoMedioPercento", "Offerte!F:F", "Ribasso economico medio simulato.", "0-100."),
-        ("Offerte", "TotaleFormula", "Offerte!J:J", "Totale calcolato direttamente nel foglio.", "Replica light di tecnico + economico."),
+        ("Offerte", "TotaleFormula", "Offerte!J:J", "Totale calcolato direttamente nel foglio.", "Tecnico + economico."),
+        ("CriteriTecnici", "Sub-criteri A-G", "CriteriTecnici!A:S", "Input e punteggi tecnici per ciascuna offerta.", "Q, T e D seguono le formule del simulatore."),
         ("Combinatorie", "Attivo", "Combinatorie!D:D", "1 include la coppia nella matrice scenario.", "Richiede lotti singoli ammessi."),
         ("Combinatorie", "RibassoCombinatoria", "Combinatorie!E:E", "Ribasso medio della coppia.", "Deve migliorare il riferimento singolo indicativo."),
         ("Scenario globale", "Matrice scenari", "ScenarioGlobale", "Confronta singoli e combinatorie compatibili.", "Indicativa: per vincoli avanzati resta centrale la web app."),
-        ("Scambio web", "JSON light", "ScambioWeb!A:A", "Payload copiabile per import/export con il simulatore web.", "Conserva tecnico aggregato e ribassi, non sub-criteri A-G."),
+        ("Scambio web", "JSON Excel", "ScambioWeb!A:A", "Payload copiabile per import/export con il simulatore web.", "Include offerte, criteri A-G e combinatorie."),
         ("Ottimizzazione", "BidderId", "Ottimizzazione!B2", "Concorrente target.", "Deve esistere in Offerte."),
         ("Macro", "CheckBeforeRun", "Macro", "Controllo input e struttura workbook.", "Eseguire prima di simulare."),
         ("Macro", "SimulaScenario", "Macro", "Calcola risultati, combinatorie e vincitori.", "Aggiorna Risultati."),
@@ -349,7 +383,7 @@ def polish_instruction_sheet(wb):
         ws[f"B{row}"].fill = fill(SECTION)
         ws[f"B{row}"].font = Font(bold=True)
     section_header(ws, 12, "Avviso", "H")
-    ws["A13"] = "Il workbook è un supporto offline in modalità light. Per analisi completa, warning documentali e confronto scenari salvati resta centrale la web app."
+    ws["A13"] = "Il workbook supporta simulazione offline con offerte, sub-criteri A-G e combinatorie. Per warning documentali avanzati, persistenza e confronto scenari salvati resta centrale la web app."
     ws.merge_cells("A13:H14")
     ws["A13"].alignment = Alignment(wrap_text=True, vertical="top")
     ws["A13"].fill = fill(AMBER)
@@ -413,7 +447,7 @@ def polish_offerte(wb):
         "BidderNome",
         "Lotto",
         "Attivo",
-        "PunteggioTecnicoRaw",
+        "TecnicoRiparametrato",
         "RibassoMedioPercento",
         "AmmessoFormula",
         "RMaxAmmessi",
@@ -422,31 +456,82 @@ def polish_offerte(wb):
         "Warning",
         "ChiaveOfferta",
         "ChiaveLottoTotale",
+        "TecnicoAggregatoFallback",
+        "TecnicoSogliaQT",
+        "FonteTecnico",
     ]
+    fallback_values = {}
+    for row in range(2, MAX_OFFER_ROWS + 1):
+        fallback_source = ws[f"E{row}"].value
+        if isinstance(fallback_source, str) and fallback_source.startswith("="):
+            fallback_source = ws[f"N{row}"].value
+        fallback_values[row] = coerce_number(fallback_source)
+    for row in range(2, MAX_OFFER_ROWS + 1):
+        for col in ["D", "E", "F"]:
+            ws[f"{col}{row}"].value = coerce_number(ws[f"{col}{row}"].value)
     for col, header in enumerate(headers, start=1):
         ws.cell(row=1, column=col).value = header
     style_header_row(ws, 1, len(headers))
-    style_cells(ws, f"A2:M{MAX_OFFER_ROWS}", WHITE)
+    style_cells(ws, f"A2:P{MAX_OFFER_ROWS}", WHITE)
+
+    criteria_end_row = TECHNICAL_START_ROW + (MAX_OFFER_ROWS - 1) * len(load_criteria()) - 1
+    criteria_score_sum = 'SUMIFS(CriteriTecnici!$O:$O,CriteriTecnici!$Q:$Q,$A{row}&"|"&$C{row})'
+    criteria_qt_sum = (
+        'SUMIFS(CriteriTecnici!$O:$O,CriteriTecnici!$Q:$Q,$A{row}&"|"&$C{row},CriteriTecnici!$F:$F,"Q")+'
+        'SUMIFS(CriteriTecnici!$O:$O,CriteriTecnici!$Q:$Q,$A{row}&"|"&$C{row},CriteriTecnici!$F:$F,"T")'
+    )
+    technical_ranges = {
+        "lot": f"CriteriTecnici!$C${TECHNICAL_START_ROW}:$C${criteria_end_row}",
+        "ambit": f"CriteriTecnici!$E${TECHNICAL_START_ROW}:$E${criteria_end_row}",
+        "score": f"CriteriTecnici!$O${TECHNICAL_START_ROW}:$O${criteria_end_row}",
+        "admitted": f"CriteriTecnici!$T${TECHNICAL_START_ROW}:$T${criteria_end_row}",
+    }
+
+    def riparam_expr(row: int, ambit: str, max_points: int) -> str:
+        raw = f'SUMIFS(CriteriTecnici!$O:$O,CriteriTecnici!$Q:$Q,$A{row}&"|"&$C{row},CriteriTecnici!$E:$E,"{ambit}")'
+        best = (
+            f'SUMPRODUCT(MAX(({technical_ranges["lot"]}=$C{row})*({technical_ranges["ambit"]}="{ambit}")*'
+            f'({technical_ranges["admitted"]}="SI")*IFERROR({technical_ranges["score"]}*1,0)))'
+        )
+        return f'IF({best}>0,MIN({max_points},{raw}*({max_points}/{best})),0)'
+
     for row in range(2, MAX_OFFER_ROWS + 1):
         for col in range(1, 7):
             ws.cell(row=row, column=col).fill = fill(INPUT)
-        for col in range(7, 14):
+        ws.cell(row=row, column=5).fill = fill(OUTPUT)
+        for col in range(7, 17):
             ws.cell(row=row, column=col).fill = fill(OUTPUT)
 
-        ws[f"G{row}"] = f'=IF($A{row}="","",IF(IFERROR(VALUE($D{row}),0)<>1,"NO",IF(IFERROR(VALUE($E{row}),0)>=Parametri!$B$2,"SI","NO")))'
+        criteria_total = criteria_score_sum.format(row=row)
+        criteria_qt = criteria_qt_sum.format(row=row)
+        riparam_total = "+".join(riparam_expr(row, ambit, max_points) for ambit, max_points in AMBIT_MAX_POINTS.items())
+        ws[f"E{row}"] = (
+            f'=IF($A{row}="",0,IFERROR(IF({criteria_total}>0,'
+            f'IF($G{row}="SI",ROUND({riparam_total},4),0),IFERROR($N{row}*1,0)),0))'
+        )
+        ws[f"G{row}"] = f'=IF($A{row}="","",IF(IFERROR(VALUE($D{row}),0)<>1,"NO",IF(IFERROR(VALUE($O{row}),0)>=Parametri!$B$2,"SI","NO")))'
         ws[f"H{row}"] = (
             f'=IF($G{row}="SI",'
             f'SUMPRODUCT(MAX(($C$2:$C${MAX_OFFER_ROWS}=$C{row})*(IFERROR($D$2:$D${MAX_OFFER_ROWS}*1,0)=1)*'
-            f'(IFERROR($E$2:$E${MAX_OFFER_ROWS}*1,0)>=Parametri!$B$2)*IFERROR($F$2:$F${MAX_OFFER_ROWS}*1,0))),0)'
+            f'(IFERROR($O$2:$O${MAX_OFFER_ROWS}*1,0)>=Parametri!$B$2)*IFERROR($F$2:$F${MAX_OFFER_ROWS}*1,0))),0)'
         )
-        ws[f"I{row}"] = f'=IF($G{row}="SI",IF($H{row}>0,30*(IFERROR(VALUE($F{row}),0)/$H{row}),0),0)'
-        ws[f"J{row}"] = f'=IF($A{row}="",0,IF($G{row}="SI",ROUND(IFERROR(VALUE($E{row}),0)+$I{row},4),ROUND(IFERROR(VALUE($E{row}),0),4)))'
+        ws[f"I{row}"] = f'=IF($G{row}="SI",IF($H{row}>0,30*(IFERROR($F{row}*1,0)/$H{row}),0),0)'
+        ws[f"J{row}"] = f'=IF($A{row}="",0,IF($G{row}="SI",ROUND(IFERROR($E{row}*1,0)+$I{row},4),ROUND(IFERROR($E{row}*1,0),4)))'
         ws[f"K{row}"] = (
             f'=IF($A{row}="","",'
-            f'IF(IFERROR(VALUE($D{row}),0)<>1,"Non attiva",IF(IFERROR(VALUE($E{row}),0)<Parametri!$B$2,"Sotto soglia","")))'
+            f'IF(IFERROR(VALUE($D{row}),0)<>1,"Non attiva",IF(IFERROR(VALUE($O{row}),0)<Parametri!$B$2,"Sotto soglia","")))'
         )
         ws[f"L{row}"] = f'=IF($A{row}="","",$A{row}&"|"&$C{row})'
         ws[f"M{row}"] = f'=IF($A{row}="","",$C{row}&"|"&TEXT($J{row},"0.0000"))'
+        if fallback_values.get(row) not in (None, "") and not str(fallback_values[row]).startswith("="):
+            ws[f"N{row}"] = fallback_values[row]
+        ws[f"O{row}"] = (
+            f'=IF($A{row}="",0,IFERROR(IF({criteria_total}>0,{criteria_qt},IFERROR($N{row}*1,0)),0))'
+        )
+        ws[f"P{row}"] = (
+            f'=IF($A{row}="","",IF({criteria_total}>0,'
+            f'"Criteri A-G","Aggregato"))'
+        )
     dv_lot = DataValidation(type="list", formula1='"L1,L2,L3,L4"', allow_blank=True)
     dv_active = DataValidation(type="list", formula1='"1,0"', allow_blank=True)
     dv_tech = DataValidation(type="decimal", operator="between", formula1="0", formula2="70", allow_blank=True)
@@ -455,16 +540,180 @@ def polish_offerte(wb):
         ws.add_data_validation(dv)
     dv_lot.add(f"C2:C{MAX_OFFER_ROWS}")
     dv_active.add(f"D2:D{MAX_OFFER_ROWS}")
-    dv_tech.add(f"E2:E{MAX_OFFER_ROWS}")
+    dv_tech.add(f"N2:N{MAX_OFFER_ROWS}")
     dv_discount.add(f"F2:F{MAX_OFFER_ROWS}")
     ws.conditional_formatting.add(f"D2:D{MAX_OFFER_ROWS}", CellIsRule(operator="equal", formula=['"0"'], fill=fill(RED)))
-    ws.conditional_formatting.add(f"E2:E{MAX_OFFER_ROWS}", FormulaRule(formula=['AND($E2<Parametri!$B$2,$A2<>"")'], fill=fill(AMBER)))
+    ws.conditional_formatting.add(f"O2:O{MAX_OFFER_ROWS}", FormulaRule(formula=['AND($O2<Parametri!$B$2,$A2<>"")'], fill=fill(AMBER)))
     ws.conditional_formatting.add(f"G2:G{MAX_OFFER_ROWS}", CellIsRule(operator="equal", formula=['"SI"'], fill=fill(GREEN)))
     ws.conditional_formatting.add(f"G2:G{MAX_OFFER_ROWS}", CellIsRule(operator="equal", formula=['"NO"'], fill=fill(RED)))
-    add_table(ws, "tblOfferte", f"A1:M{MAX_OFFER_ROWS}")
-    set_widths(ws, {"A": 16, "B": 26, "C": 12, "D": 12, "E": 24, "F": 24, "G": 18, "H": 14, "I": 18, "J": 18, "K": 22, "L": 22, "M": 18})
+    add_table(ws, "tblOfferte", f"A1:P{MAX_OFFER_ROWS}")
+    set_widths(ws, {"A": 16, "B": 26, "C": 12, "D": 12, "E": 22, "F": 24, "G": 18, "H": 14, "I": 18, "J": 18, "K": 22, "L": 22, "M": 18, "N": 26, "O": 18, "P": 16})
     ws.column_dimensions["M"].hidden = True
+    ws.column_dimensions["N"].hidden = True
+    ws.column_dimensions["O"].hidden = True
     ws.freeze_panes = "A2"
+
+
+def excel_sumproduct_max(condition_formula: str, value_range: str) -> str:
+    return f"SUMPRODUCT(MAX({condition_formula}*IFERROR({value_range}*1,0)))"
+
+
+def create_criteri_tecnici(wb):
+    criteria = load_criteria()
+    ws = reset_sheet(wb, "CriteriTecnici")
+    ws.sheet_properties.tabColor = "5B9BD5"
+    ws.sheet_view.showGridLines = False
+    title(
+        ws,
+        "Criteri tecnici A-G",
+        "Compila i sub-criteri tecnici per ogni offerta: il totale alimenta automaticamente Offerte!E:E.",
+    )
+
+    headers = [
+        "BidderId",
+        "BidderNome",
+        "Lotto",
+        "CriterioId",
+        "Ambito",
+        "Tipo",
+        "Formula",
+        "PuntiMax",
+        "Descrizione",
+        "Valore",
+        "Numeratore",
+        "Denominatore",
+        "Flag/Coeff",
+        "ValoreCalcolato",
+        "PunteggioRaw",
+        "Note",
+        "ChiaveOfferta",
+        "ChiaveCriterio",
+        "OffertaAttiva",
+        "OffertaAmmessa",
+    ]
+    header_row = 4
+    for col, header in enumerate(headers, start=1):
+        ws.cell(row=header_row, column=col).value = header
+    style_header_row(ws, header_row, len(headers))
+
+    total_rows = (MAX_OFFER_ROWS - 1) * len(criteria)
+    end_row = TECHNICAL_START_ROW + total_rows - 1
+    style_cells(ws, f"A{TECHNICAL_START_ROW}:T{end_row}", WHITE)
+
+    active_range = f"$S${TECHNICAL_START_ROW}:$S${end_row}"
+    lot_range = f"$C${TECHNICAL_START_ROW}:$C${end_row}"
+    criterion_range = f"$D${TECHNICAL_START_ROW}:$D${end_row}"
+    value_range = f"$N${TECHNICAL_START_ROW}:$N${end_row}"
+    key_range = f"$Q${TECHNICAL_START_ROW}:$Q${end_row}"
+
+    for index in range(total_rows):
+        row = TECHNICAL_START_ROW + index
+        offer_row = 2 + index // len(criteria)
+        criterion = criteria[index % len(criteria)]
+        criterion_id = criterion["CriterionId"]
+        kind = criterion["Kind"]
+        formula = criterion["Formula"]
+        max_points = float(criterion["MaxPoints"])
+        quantity_kind = criterion.get("QuantityKind", "")
+        dependency_criterion = criterion.get("DependencyCriterion", "")
+        dependency_min = criterion.get("DependencyMin", "")
+
+        ws[f"A{row}"] = f'=IF(Offerte!$A{offer_row}="","",Offerte!$A{offer_row})'
+        ws[f"B{row}"] = f'=IF(Offerte!$A{offer_row}="","",Offerte!$B{offer_row})'
+        ws[f"C{row}"] = f'=IF(Offerte!$A{offer_row}="","",Offerte!$C{offer_row})'
+        ws[f"D{row}"] = criterion_id
+        ws[f"E{row}"] = criterion["Ambit"]
+        ws[f"F{row}"] = kind
+        ws[f"G{row}"] = formula
+        ws[f"H{row}"] = max_points
+        ws[f"I{row}"] = criterion["Label"]
+        ws[f"P{row}"] = (
+            f'{criterion.get("NumeratorLabel", "")} / {criterion.get("DenominatorLabel", "")}'
+            if quantity_kind
+            else criterion.get("Unit", "")
+        )
+        ws[f"Q{row}"] = f'=IF($A{row}="","",$A{row}&"|"&$C{row})'
+        ws[f"R{row}"] = f'=IF($A{row}="","",$A{row}&"|"&$C{row}&"|"&$D{row})'
+        ws[f"S{row}"] = f'=IF($A{row}="","",IFERROR(INDEX(Offerte!$D$2:$D${MAX_OFFER_ROWS},MATCH($Q{row},Offerte!$L$2:$L${MAX_OFFER_ROWS},0)),0))'
+        ws[f"T{row}"] = f'=IF($A{row}="","",IFERROR(INDEX(Offerte!$G$2:$G${MAX_OFFER_ROWS},MATCH($Q{row},Offerte!$L$2:$L${MAX_OFFER_ROWS},0)),"NO"))'
+
+        if kind == "Q" and quantity_kind == "percent":
+            ws[f"N{row}"] = f'=IF($A{row}="","",IFERROR(VALUE($K{row})/VALUE($L{row})*100,IFERROR(VALUE($J{row}),0)))'
+        elif kind == "Q" and quantity_kind == "ratio":
+            ws[f"N{row}"] = f'=IF($A{row}="","",IFERROR(VALUE($K{row})/VALUE($L{row}),IFERROR(VALUE($J{row}),0)))'
+        elif kind == "Q":
+            ws[f"N{row}"] = f'=IF($A{row}="","",IFERROR(VALUE($J{row}),0))'
+        elif kind == "T":
+            ws[f"N{row}"] = f'=IF($A{row}="","",IF(IFERROR(VALUE($M{row}),0)=1,1,0))'
+        else:
+            ws[f"N{row}"] = f'=IF($A{row}="","",MAX(0,MIN(1,IFERROR(VALUE($M{row}),0))))'
+
+        condition = f"({lot_range}=$C{row})*({criterion_range}=$D{row})*({active_range}=1)"
+        max_value = excel_sumproduct_max(condition, value_range)
+        no_input = f"COUNTA($J{row}:$M{row})=0"
+        if kind == "Q" and formula == "higher":
+            ws[f"O{row}"] = f'=IF($A{row}="",0,IF(OR($S{row}<>1,{no_input}),0,IF({max_value}>0,ROUND($H{row}*($N{row}/{max_value}),4),0)))'
+        elif kind == "Q" and formula == "lower":
+            min_value = (
+                f'IFERROR(AGGREGATE(15,6,{value_range}/(({lot_range}=$C{row})*({criterion_range}=$D{row})*'
+                f'({active_range}=1)*({value_range}>0)),1),0)'
+            )
+            ws[f"O{row}"] = f'=IF($A{row}="",0,IF(OR($S{row}<>1,{no_input}),0,IF(AND({min_value}>0,$N{row}>0),ROUND($H{row}*({min_value}/$N{row}),4),0)))'
+        elif kind == "Q" and formula == "soil":
+            ws[f"O{row}"] = f'=IF($A{row}="",0,IF(OR($S{row}<>1,{no_input}),0,IF($N{row}<=0,$H{row},IF({max_value}>0,ROUND($H{row}*(({max_value}-$N{row})/{max_value}),4),0))))'
+        elif kind == "T" and dependency_criterion:
+            dependency_value = f'IFERROR(SUMIFS({value_range},{key_range},$Q{row},{criterion_range},"{dependency_criterion}"),0)'
+            ws[f"O{row}"] = f'=IF($A{row}="",0,IF(OR($S{row}<>1,{no_input}),0,IF(AND($N{row}=1,{dependency_value}>={dependency_min}),$H{row},0)))'
+            ws[f"P{row}"] = f'Dipende da {dependency_criterion} >= {dependency_min}'
+        elif kind == "T":
+            ws[f"O{row}"] = f'=IF($A{row}="",0,IF(OR($S{row}<>1,{no_input}),0,IF($N{row}=1,$H{row},0)))'
+        else:
+            max_coeff = excel_sumproduct_max(condition, value_range)
+            ws[f"O{row}"] = f'=IF($A{row}="",0,IF(OR($S{row}<>1,{no_input}),0,IF({max_coeff}>0,ROUND($H{row}*($N{row}/{max_coeff}),4),0)))'
+
+        for input_col in ["J", "K", "L", "M"]:
+            ws[f"{input_col}{row}"].fill = fill(INPUT)
+        for output_col in ["N", "O", "Q", "R", "S", "T"]:
+            ws[f"{output_col}{row}"].fill = fill(OUTPUT)
+
+    dv_number = DataValidation(type="decimal", operator="greaterThanOrEqual", formula1="0", allow_blank=True)
+    dv_ratio = DataValidation(type="decimal", operator="between", formula1="0", formula2="1", allow_blank=True)
+    ws.add_data_validation(dv_number)
+    ws.add_data_validation(dv_ratio)
+    dv_number.add(f"J{TECHNICAL_START_ROW}:L{end_row}")
+    dv_ratio.add(f"M{TECHNICAL_START_ROW}:M{end_row}")
+    ws.conditional_formatting.add(f"O{TECHNICAL_START_ROW}:O{end_row}", CellIsRule(operator="greaterThan", formula=["0"], fill=fill(GREEN)))
+    add_table(ws, "tblCriteriTecnici", f"A{header_row}:T{end_row}")
+    set_widths(
+        ws,
+        {
+            "A": 16,
+            "B": 24,
+            "C": 10,
+            "D": 12,
+            "E": 10,
+            "F": 8,
+            "G": 14,
+            "H": 10,
+            "I": 46,
+            "J": 14,
+            "K": 16,
+            "L": 16,
+            "M": 14,
+            "N": 18,
+            "O": 16,
+            "P": 38,
+            "Q": 18,
+            "R": 24,
+            "S": 12,
+            "T": 14,
+        },
+    )
+    ws.column_dimensions["Q"].hidden = True
+    ws.column_dimensions["R"].hidden = True
+    ws.column_dimensions["S"].hidden = True
+    ws.column_dimensions["T"].hidden = True
+    ws.freeze_panes = "A5"
 
 
 def create_combinatorie(wb):
@@ -474,7 +723,7 @@ def create_combinatorie(wb):
     title(
         ws,
         "Combinatorie",
-        "Input light per confrontare coppie L1+L2, L2+L3, L3+L4 e L1+L4 nella matrice scenario globale.",
+        "Input per confrontare coppie L1+L2, L2+L3, L3+L4 e L1+L4 nella matrice scenario globale.",
     )
     headers = [
         "BidderId",
@@ -560,7 +809,9 @@ def create_combinatorie(wb):
         ws[f"U{row}"] = f'=IF($A{row}="","",ROUND((IFERROR(VALUE($S{row}),0)+IFERROR(VALUE($T{row}),0))/2,4))'
         ws[f"N{row}"] = (
             f'=IF($A{row}="","",IF(IFERROR(VALUE($D{row}),0)<>1,"NO",'
-            f'IF(AND(IFERROR(VALUE($J{row}),0)=1,IFERROR(VALUE($K{row}),0)=1,IFERROR(VALUE($L{row}),0)>=Parametri!$B$2,IFERROR(VALUE($M{row}),0)>=Parametri!$B$2,'
+            f'IF(AND(IFERROR(VALUE($J{row}),0)=1,IFERROR(VALUE($K{row}),0)=1,'
+            f'IFERROR(INDEX(Offerte!$G$2:$G${MAX_OFFER_ROWS},MATCH($A{row}&"|"&$H{row},Offerte!$L$2:$L${MAX_OFFER_ROWS},0)),"NO")="SI",'
+            f'IFERROR(INDEX(Offerte!$G$2:$G${MAX_OFFER_ROWS},MATCH($A{row}&"|"&$I{row},Offerte!$L$2:$L${MAX_OFFER_ROWS},0)),"NO")="SI",'
             f'IFERROR(VALUE($F{row}),0)=1,IFERROR(VALUE($G{row}),0)=1,IFERROR(VALUE($E{row}),0)>$U{row}),"SI","NO")))'
         )
         ws[f"O{row}"] = (
@@ -581,7 +832,8 @@ def create_combinatorie(wb):
         ws[f"R{row}"] = (
             f'=IF($A{row}="","",IF(IFERROR(VALUE($D{row}),0)<>1,"Non attiva",'
             f'IF(OR(IFERROR(VALUE($J{row}),0)<>1,IFERROR(VALUE($K{row}),0)<>1),"Singoli non attivi",'
-            f'IF(OR(IFERROR(VALUE($L{row}),0)<Parametri!$B$2,IFERROR(VALUE($M{row}),0)<Parametri!$B$2),"Soglia non superata",'
+            f'IF(OR(IFERROR(INDEX(Offerte!$G$2:$G${MAX_OFFER_ROWS},MATCH($A{row}&"|"&$H{row},Offerte!$L$2:$L${MAX_OFFER_ROWS},0)),"NO")<>"SI",'
+            f'IFERROR(INDEX(Offerte!$G$2:$G${MAX_OFFER_ROWS},MATCH($A{row}&"|"&$I{row},Offerte!$L$2:$L${MAX_OFFER_ROWS},0)),"NO")<>"SI"),"Soglia non superata",'
             f'IF(OR(IFERROR(VALUE($F{row}),0)<>1,IFERROR(VALUE($G{row}),0)<>1),"Buste/PEF non confermati",'
             f'IF(IFERROR(VALUE($E{row}),0)<=$U{row},"Ribasso non migliorativo",""))))))'
         )
@@ -720,15 +972,27 @@ def create_scenario_globale(wb):
 
 
 def excel_json_text(ref: str) -> str:
-    return f'SUBSTITUTE({ref},"""","{chr(39)}")'
+    return f'SUBSTITUTE({ref},CHAR(34),"{chr(39)}")'
+
+
+def excel_number_value(ref: str) -> str:
+    return f'IFERROR({ref}*1,IFERROR(NUMBERVALUE({ref},".",","),IFERROR(NUMBERVALUE({ref},",","."),0)))'
 
 
 def excel_json_number(ref: str) -> str:
-    return f'SUBSTITUTE(TEXT(IFERROR(VALUE({ref}),0),"0.####"),",",".")'
+    return f'SUBSTITUTE(TRIM(ROUND({excel_number_value(ref)},4)&""),",",".")'
 
 
 def excel_json_boolean(ref: str) -> str:
-    return f'IF(IFERROR(VALUE({ref}),0)=1,"true","false")'
+    return f'IF({excel_number_value(ref)}=1,"true","false")'
+
+
+def excel_timestamp() -> str:
+    return 'YEAR(NOW())&TEXT(MONTH(NOW()),"00")&TEXT(DAY(NOW()),"00")&TEXT(HOUR(NOW()),"00")&TEXT(MINUTE(NOW()),"00")&TEXT(SECOND(NOW()),"00")'
+
+
+def excel_iso_date() -> str:
+    return 'YEAR(TODAY())&"-"&TEXT(MONTH(TODAY()),"00")&"-"&TEXT(DAY(TODAY()),"00")'
 
 
 def create_scambio_web(wb):
@@ -738,14 +1002,14 @@ def create_scambio_web(wb):
     title(
         ws,
         "Scambio web",
-        "JSON light copiabile fra Excel e web: conserva punteggio tecnico aggregato e ribassi, non ricostruisce i sub-criteri A-G.",
+        "JSON copiabile fra Excel e web: include offerte, sub-criteri A-G, ribassi e combinatorie.",
     )
 
     section_header(ws, 4, "Come usarlo", "H")
     steps = [
         ("1", "Compila Offerte e, se servono, Combinatorie."),
         ("2", "Esegui CheckBeforeRun e SimulaScenario per aggiornare formule e warning."),
-        ("3", "Copia le righe non vuote della colonna A dalla sezione JSON light generato."),
+        ("3", "Copia le righe non vuote della colonna A dalla sezione JSON generato."),
         ("4", "Salvale come file .json oppure incollale in un editor e importale dal simulatore web."),
     ]
     for row, (step, text) in enumerate(steps, start=5):
@@ -758,7 +1022,7 @@ def create_scambio_web(wb):
         ws[f"A{row}"].font = Font(color=WHITE, bold=True)
         ws[f"A{row}"].alignment = Alignment(horizontal="center")
 
-    section_header(ws, 10, "JSON light generato", "H")
+    section_header(ws, 10, "JSON generato", "H")
     ws["A11"] = "Copia la colonna A. Le righe vuote sono solo spazi bianchi JSON e possono essere ignorate."
     ws.merge_cells("A11:H11")
     ws["A11"].fill = fill(AMBER)
@@ -773,15 +1037,20 @@ def create_scambio_web(wb):
         row += 1
 
     put("{")
-    put('  "format": "glm-excel-light-v1",')
+    put('  "format": "glm-excel-v1",')
     put('  "schemaVersion": 1,')
-    put('="  ""id"": ""excel-light-""&TEXT(NOW(),""yyyymmddhhmmss"")&""","')
-    put('="  ""name"": ""Scenario Excel light ""&TEXT(TODAY(),""yyyy-mm-dd"")&""","')
+    put('="  "&CHAR(34)&"id"&CHAR(34)&": "&CHAR(34)&"excel-"&' + excel_timestamp() + '&CHAR(34)&","')
+    put('="  "&CHAR(34)&"name"&CHAR(34)&": "&CHAR(34)&"Scenario Excel "&' + excel_iso_date() + '&CHAR(34)&","')
     put('  "baseScenarioId": "market",')
-    put('="  ""settings"": {""threshold"": "&' + excel_json_number("Parametri!$B$2") + '&", ""applyAwardLimitDerogation"": false},"')
-    put('="  ""selectedLotId"": """&Parametri!$B$3&""","')
+    put(
+        '="  "&CHAR(34)&"settings"&CHAR(34)&": "&CHAR(123)&'
+        'CHAR(34)&"threshold"&CHAR(34)&": "&'
+        + excel_json_number("Parametri!$B$2")
+        + '&", "&CHAR(34)&"applyAwardLimitDerogation"&CHAR(34)&": false"&CHAR(125)&","'
+    )
+    put('="  "&CHAR(34)&"selectedLotId"&CHAR(34)&": "&CHAR(34)&Parametri!$B$3&CHAR(34)&","')
     put('  "selectedPairId": "L1+L2",')
-    put('  "notes": "Export light da Excel: tecnico aggregato e ribassi, senza sub-criteri A-G.",')
+    put('  "notes": "Export da Excel: offerte, sub-criteri A-G, ribassi e combinatorie.",')
     put('  "offers": [')
 
     for offer_row in range(2, MAX_OFFER_ROWS + 1):
@@ -794,11 +1063,45 @@ def create_scambio_web(wb):
         discount = excel_json_number(f"Offerte!$F{offer_row}")
         put(
             f'=IF(Offerte!$A{offer_row}="","",'
-            f'"    {{""bidderId"": """&{bidder_id}&""", ""bidderName"": """&{bidder_name}&""", ""lotId"": """&{lot_id}&""", '
-            f'""enabled"": "&{enabled}&", ""technicalRaw"": "&{technical}&", ""discount"": "&{discount}&"}}"'
+            f'"    "&CHAR(123)&CHAR(34)&"bidderId"&CHAR(34)&": "&CHAR(34)&{bidder_id}&CHAR(34)&", "&'
+            f'CHAR(34)&"bidderName"&CHAR(34)&": "&CHAR(34)&{bidder_name}&CHAR(34)&", "&'
+            f'CHAR(34)&"lotId"&CHAR(34)&": "&CHAR(34)&{lot_id}&CHAR(34)&", "&'
+            f'CHAR(34)&"enabled"&CHAR(34)&": "&{enabled}&", "&'
+            f'CHAR(34)&"technicalRaw"&CHAR(34)&": "&{technical}&", "&'
+            f'CHAR(34)&"discount"&CHAR(34)&": "&{discount}&CHAR(125)'
             f'&IF({has_more},",",""))'
         )
 
+    put("  ],")
+    put('  "criteria": [')
+    criteria_count = len(load_criteria())
+    criteria_rows_end = TECHNICAL_START_ROW + (MAX_OFFER_ROWS - 1) * criteria_count - 1
+    for technical_row in range(TECHNICAL_START_ROW, criteria_rows_end + 1):
+        criterion_index = (technical_row - TECHNICAL_START_ROW) % criteria_count
+        offer_row = 2 + (technical_row - TECHNICAL_START_ROW) // criteria_count
+        has_more = "TRUE" if criterion_index < criteria_count - 1 else f'COUNTA(Offerte!$A{offer_row + 1}:$A${MAX_OFFER_ROWS})>0'
+        bidder_id = excel_json_text(f"CriteriTecnici!$A{technical_row}")
+        lot_id = excel_json_text(f"CriteriTecnici!$C{technical_row}")
+        criterion_id = excel_json_text(f"CriteriTecnici!$D{technical_row}")
+        kind = excel_json_text(f"CriteriTecnici!$F{technical_row}")
+        value = excel_json_number(f"CriteriTecnici!$N{technical_row}")
+        numerator = excel_json_number(f"CriteriTecnici!$K{technical_row}")
+        denominator = excel_json_number(f"CriteriTecnici!$L{technical_row}")
+        flag = excel_json_number(f"CriteriTecnici!$M{technical_row}")
+        raw_score = excel_json_number(f"CriteriTecnici!$O{technical_row}")
+        put(
+            f'=IF(CriteriTecnici!$A{technical_row}="","",'
+            f'"    "&CHAR(123)&CHAR(34)&"bidderId"&CHAR(34)&": "&CHAR(34)&{bidder_id}&CHAR(34)&", "&'
+            f'CHAR(34)&"lotId"&CHAR(34)&": "&CHAR(34)&{lot_id}&CHAR(34)&", "&'
+            f'CHAR(34)&"criterionId"&CHAR(34)&": "&CHAR(34)&{criterion_id}&CHAR(34)&", "&'
+            f'CHAR(34)&"kind"&CHAR(34)&": "&CHAR(34)&{kind}&CHAR(34)&", "&'
+            f'CHAR(34)&"value"&CHAR(34)&": "&{value}&", "&'
+            f'CHAR(34)&"numerator"&CHAR(34)&": "&{numerator}&", "&'
+            f'CHAR(34)&"denominator"&CHAR(34)&": "&{denominator}&", "&'
+            f'CHAR(34)&"flag"&CHAR(34)&": "&{flag}&", "&'
+            f'CHAR(34)&"rawScore"&CHAR(34)&": "&{raw_score}&CHAR(125)'
+            f'&IF({has_more},",",""))'
+        )
     put("  ],")
     put('  "combos": [')
     for combo_row in range(5, MAX_COMBO_ROWS + 1):
@@ -812,8 +1115,13 @@ def create_scambio_web(wb):
         pef = excel_json_boolean(f"Combinatorie!$G{combo_row}")
         put(
             f'=IF(Combinatorie!$A{combo_row}="","",'
-            f'"    {{""bidderId"": """&{bidder_id}&""", ""bidderName"": """&{bidder_name}&""", ""pairId"": """&{pair_id}&""", '
-            f'""enabled"": "&{enabled}&", ""discount"": "&{discount}&", ""insertedInBothBuste"": "&{inserted}&", ""pefCoherent"": "&{pef}&"}}"'
+            f'"    "&CHAR(123)&CHAR(34)&"bidderId"&CHAR(34)&": "&CHAR(34)&{bidder_id}&CHAR(34)&", "&'
+            f'CHAR(34)&"bidderName"&CHAR(34)&": "&CHAR(34)&{bidder_name}&CHAR(34)&", "&'
+            f'CHAR(34)&"pairId"&CHAR(34)&": "&CHAR(34)&{pair_id}&CHAR(34)&", "&'
+            f'CHAR(34)&"enabled"&CHAR(34)&": "&{enabled}&", "&'
+            f'CHAR(34)&"discount"&CHAR(34)&": "&{discount}&", "&'
+            f'CHAR(34)&"insertedInBothBuste"&CHAR(34)&": "&{inserted}&", "&'
+            f'CHAR(34)&"pefCoherent"&CHAR(34)&": "&{pef}&CHAR(125)'
             f'&IF({has_more},",",""))'
         )
     put("  ]")
@@ -899,6 +1207,7 @@ def main():
     polish_parametri(wb)
     polish_ottimizzazione(wb)
     polish_offerte(wb)
+    create_criteri_tecnici(wb)
     create_combinatorie(wb)
     create_scenario_globale(wb)
     create_scambio_web(wb)
@@ -917,6 +1226,7 @@ def main():
             "Parametri",
             "Ottimizzazione",
             "Offerte",
+            "CriteriTecnici",
             "Combinatorie",
             "ScenarioGlobale",
             "ScambioWeb",

@@ -38,9 +38,9 @@ npm run preview -- --port 4173
 - Espone una pagina web di istruzioni raggiungibile dal pulsante `Istruzioni` nella testata e dall'URL `/istruzioni/`.
 - Supporta tema chiaro/scuro/automatico e layout responsive.
 
-## Toolkit Excel (modalità light)
+## Toolkit Excel
 
-Il pacchetto `Pacchetto Excel` scarica un file `.xlsm` unico in **modalità light**: aiuta simulazioni rapide, combinatorie configurabili, matrice di scenario globale, scambio JSON light con il web e confronti golden, ma non replica integralmente il motore web (scoring completo per sub-criterio, warning avanzati, persistenza/migrazioni e UX di confronto scenari salvati restano nel simulatore web). Il workbook è già macro-abilitato con fogli, intestazioni, README operativo integrato e moduli VBA incorporati. Lo scambio Excel-web preserva punteggio tecnico aggregato e ribassi, senza ricostruire i sub-criteri A-G.
+Il pacchetto `Pacchetto Excel` scarica un file `.xlsm` unico con macro, sub-criteri tecnici A-G, offerte singole, combinatorie configurabili, matrice di scenario globale, scambio JSON con il web e confronti golden. Il workbook è già macro-abilitato con fogli, intestazioni, README operativo integrato e moduli VBA incorporati. Lo scambio Excel-web include offerte, criteri A-G, ribassi e combinatorie; la web app resta la superficie più completa per warning documentali avanzati, persistenza/migrazioni e confronto scenari salvati.
 
 ## Scenari base
 

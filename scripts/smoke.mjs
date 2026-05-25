@@ -91,11 +91,11 @@ const verifyImportExportAndComparison = async (page, suffix) => {
     throw new Error(`${suffix}: nome export JSON inatteso ${download.suggestedFilename()}`);
   }
 
-  const excelLightDownloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Esporta scenario Excel light" }).click();
-  const excelLightDownload = await excelLightDownloadPromise;
-  if (!excelLightDownload.suggestedFilename().includes("excel-light") || !excelLightDownload.suggestedFilename().endsWith(".json")) {
-    throw new Error(`${suffix}: nome export Excel light inatteso ${excelLightDownload.suggestedFilename()}`);
+  const excelDownloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Esporta scenario Excel" }).click();
+  const excelDownload = await excelDownloadPromise;
+  if (!excelDownload.suggestedFilename().includes("excel") || !excelDownload.suggestedFilename().endsWith(".json")) {
+    throw new Error(`${suffix}: nome export Excel inatteso ${excelDownload.suggestedFilename()}`);
   }
 
   const tempDir = await mkdtemp(path.join(tmpdir(), "glm-smoke-"));
@@ -128,32 +128,33 @@ const verifyImportExportAndComparison = async (page, suffix) => {
       if (!noticeText.includes(expected)) throw new Error(`${suffix}: import senza dettaglio riparazione ${expected}`);
     }
 
-    const excelLightName = `Excel light ${suffix}`;
-    const excelLightPath = path.join(tempDir, `${excelLightName.replace(/\s+/g, "-").toLowerCase()}.json`);
+    const excelName = `Excel ${suffix}`;
+    const excelPath = path.join(tempDir, `${excelName.replace(/\s+/g, "-").toLowerCase()}.json`);
     await writeFile(
-      excelLightPath,
+      excelPath,
       JSON.stringify(
         {
-          format: "glm-excel-light-v1",
+          format: "glm-excel-v1",
           schemaVersion: 1,
-          id: `excel-light-${Date.now()}`,
-          name: excelLightName,
+          id: `excel-${Date.now()}`,
+          name: excelName,
           baseScenarioId: "market",
           settings: { threshold: 36, applyAwardLimitDerogation: false },
           selectedBidderId: "excel-a",
           selectedLotId: "L1",
           selectedPairId: "L1+L2",
           offers: [{ bidderId: "excel-a", bidderName: "Operatore Excel", lotId: "L1", enabled: true, technicalRaw: 45, discount: 5 }],
+          criteria: [{ bidderId: "excel-a", lotId: "L1", criterionId: "A.1.1", kind: "Q", value: 60, numerator: 60, denominator: 100 }],
           combos: [],
         },
         null,
         2,
       ),
     );
-    await page.locator('input[type="file"]').setInputFiles(excelLightPath);
+    await page.locator('input[type="file"]').setInputFiles(excelPath);
     await page.waitForFunction(
-      (name) => document.body.innerText.includes(`Importato: ${name}`) && document.body.innerText.includes("Formato Excel light importato"),
-      excelLightName,
+      (name) => document.body.innerText.includes(`Importato: ${name}`) && document.body.innerText.includes("Formato Excel importato"),
+      excelName,
     );
 
     await page.locator(".comparison-panel select").selectOption({ label: importName });
@@ -326,7 +327,7 @@ const main = async () => {
   const browser = await chromium.launch({ headless: true });
   try {
     const checks = [
-      { suffix: "desktop-light", viewport: { width: 1440, height: 1000 }, theme: "light" },
+      { suffix: "desktop-chiaro", viewport: { width: 1440, height: 1000 }, theme: "light" },
       { suffix: "mobile-dark", viewport: { width: 390, height: 844 }, theme: "dark" },
     ];
     for (const check of checks) {

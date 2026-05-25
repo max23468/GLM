@@ -36,7 +36,7 @@ function unzipList(filePath) {
 
 function unzipEntry(filePath, entry) {
   const escapedEntry = entry.replaceAll('[', '\\[').replaceAll(']', '\\]');
-  return execFileSync('unzip', ['-p', filePath, escapedEntry]);
+  return execFileSync('unzip', ['-p', filePath, escapedEntry], { maxBuffer: 64 * 1024 * 1024 });
 }
 
 if (!manifest.templateFile.endsWith('.xlsm')) {
@@ -74,6 +74,7 @@ const requiredSheets = [
   'Istruzioni',
   'Parametri',
   'Offerte',
+  'CriteriTecnici',
   'Combinatorie',
   'ScenarioGlobale',
   'ScambioWeb',

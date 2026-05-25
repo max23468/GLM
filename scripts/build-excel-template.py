@@ -36,7 +36,7 @@ wb = Workbook()
 wb.remove(wb.active)
 
 intro = wb.create_sheet("Istruzioni")
-intro["A1"] = "Simulatore gara TPL lotti 1-4 - Template Excel (modalità light)"
+intro["A1"] = "Simulatore gara TPL lotti 1-4 - Template Excel"
 intro["A1"].font = Font(size=14, bold=True)
 intro["A3"] = "Base tecnica per manutenzione: importa i moduli VBA da excel-vba/src, poi salva come template .xlsm."
 intro["A5"] = "Checklist rapida"

@@ -6,11 +6,17 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.5.0] — 2026-05-25
+
+### Novità
+
+- **Pacchetto Excel**: aggiunto il foglio `CriteriTecnici` per calcolare il tecnico dai sub-criteri A-G e aggiornato lo scambio Excel-web al formato `glm-excel-v1`.
+
 ## [1.4.0] — 2026-05-25
 
 ### Novità
 
-- **Scambio Excel-web**: il simulatore importa JSON Excel light e l'XLSM genera un payload copiabile nel foglio `ScambioWeb`, preservando tecnico aggregato e ribassi senza fingere di ricostruire i sub-criteri A-G.
+- **Scambio Excel-web**: il simulatore importa JSON Excel e l'XLSM genera un payload copiabile nel foglio `ScambioWeb`, preservando tecnico aggregato e ribassi quando un file non contiene ancora i sub-criteri A-G.
 
 ## [1.3.0] — 2026-05-25
 
@@ -70,7 +76,7 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 - **Pacchetto Excel**: lo ZIP include ora un template `.xlsm` già predisposto con fogli, intestazioni e configurazione base per partire più rapidamente.
 - **Pacchetto Excel**: aggiunti controlli setup e validazione dati pre-run, template golden con metadati fonte/verifica e tooltip hash sul badge versione.
-- **Pacchetto Excel**: definita modalità light e routine operativa golden/package per allineare più rapidamente Excel e simulatore web.
+- **Pacchetto Excel**: definita routine operativa golden/package per allineare più rapidamente Excel e simulatore web.
 - **Qualità decisionale**: il confronto scenari evidenzia delta totale, lotti cambiati, warning nuovi/risolti e dettaglio per lotto; i risultati includono lettura decisionale, scarto dal secondo e sensitività rapida su soglie e deroga.
 
 ## [0.2.12] — 2026-05-20
@@ -154,7 +160,7 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 - **Pacchetto Excel**: lo ZIP include ora un template `.xlsm` già predisposto con fogli, intestazioni e configurazione base per partire più rapidamente.
 - **Pacchetto Excel**: aggiunti controlli setup e validazione dati pre-run, template golden con metadati fonte/verifica e tooltip hash sul badge versione.
-- **Pacchetto Excel**: definita modalità light e routine operativa golden/package per allineare più rapidamente Excel e simulatore web.
+- **Pacchetto Excel**: definita routine operativa golden/package per allineare più rapidamente Excel e simulatore web.
 - **Versione e changelog**: la scheda nel simulatore mostra direttamente versione corrente, data build e note delle release, senza rimandi tecnici esterni.
 
 ## [0.1.0] — 2026-05-20
@@ -163,7 +169,7 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 - **Pacchetto Excel**: lo ZIP include ora un template `.xlsm` già predisposto con fogli, intestazioni e configurazione base per partire più rapidamente.
 - **Pacchetto Excel**: aggiunti controlli setup e validazione dati pre-run, template golden con metadati fonte/verifica e tooltip hash sul badge versione.
-- **Pacchetto Excel**: definita modalità light e routine operativa golden/package per allineare più rapidamente Excel e simulatore web.
+- **Pacchetto Excel**: definita routine operativa golden/package per allineare più rapidamente Excel e simulatore web.
 - **Console simulatore**: gestione workspace, concorrenti, lotti singoli e combinatorie ammesse per la gara TPL lotti 1-4.
 - **Motore di scoring**: calcolo locale di punteggi tecnici, soglie di sbarramento, riparametrazione, punteggio economico e scenario vincente.
 - **Scenari base**: profili simulati, fonti e warning documentali separati tra documento di gara, fonte pubblica e assunzione simulativa.

@@ -3,6 +3,7 @@ Option Explicit
 
 Public Const SHEET_PARAMETRI As String = "Parametri"
 Public Const SHEET_OFFERTE As String = "Offerte"
+Public Const SHEET_CRITERI As String = "CriteriTecnici"
 Public Const SHEET_RISULTATI As String = "Risultati"
 Public Const SHEET_OTTIMIZZAZIONE As String = "Ottimizzazione"
 Public Const SHEET_LOG As String = "LogOttimizzazione"

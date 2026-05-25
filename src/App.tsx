@@ -186,8 +186,8 @@ const currentView = (): AppView => {
 const makeDownloadName = (name: string) =>
   `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "scenario"}-${new Date().toISOString().slice(0, 10)}.json`;
 
-const makeExcelLightDownloadName = (name: string) =>
-  `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "scenario"}-excel-light-${new Date().toISOString().slice(0, 10)}.json`;
+const makeExcelDownloadName = (name: string) =>
+  `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "scenario"}-excel-${new Date().toISOString().slice(0, 10)}.json`;
 
 type TradeoffPreview = {
   nextValue: number | boolean;
@@ -947,20 +947,20 @@ function useSimulatorController() {
     setScenarioNotice(`Esportato: ${snapshot.name}`);
   };
 
-  const exportExcelLightScenario = () => {
+  const exportExcelScenario = () => {
     const savedAt = new Date().toISOString();
     const payload = {
-      format: "glm-excel-light-v1",
+      format: "glm-excel-v1",
       schemaVersion: 1,
-      id: activeSavedScenarioId ?? `excel-light-${Date.now()}`,
-      name: scenarioName.trim() || "Scenario Excel light",
+      id: activeSavedScenarioId ?? `excel-${Date.now()}`,
+      name: scenarioName.trim() || "Scenario Excel",
       savedAt,
       baseScenarioId,
       settings: { ...settings },
       selectedBidderId: selectedBidder?.id ?? bidders[0]?.id ?? "",
       selectedLotId,
       selectedPairId,
-      notes: "Export light per Excel: conserva tecnico aggregato e ribasso medio, non ricostruisce i sub-criteri A-G.",
+      notes: "Export per Excel: include offerte, sub-criteri A-G, ribassi e combinatorie.",
       offers: bidders.flatMap((bidder) =>
         LOTS.map((lot) => {
           const score = result.lotScores[bidder.id]?.[lot.id];
@@ -973,6 +973,30 @@ function useSimulatorController() {
             discount: round4((score?.singleRibasso ?? 0) * 100),
           };
         }),
+      ),
+      criteria: bidders.flatMap((bidder) =>
+        LOTS.flatMap((lot) =>
+          CRITERIA.map((criterion) => {
+            const offer = bidder.lots[lot.id];
+            const quantityInput = offer.quantityInputs[criterion.id];
+            const value =
+              criterion.kind === "Q"
+                ? getQuantitativeCriterionValue(offer, criterion)
+                : criterion.kind === "T"
+                  ? Number(Boolean(offer.tValues[criterion.id]))
+                  : round4(offer.dValues[criterion.id] ?? 0);
+            return {
+              bidderId: bidder.id,
+              lotId: lot.id,
+              criterionId: criterion.id,
+              kind: criterion.kind,
+              value: round4(Number(value) || 0),
+              numerator: quantityInput?.numerator,
+              denominator: quantityInput?.denominator,
+              flag: criterion.kind === "T" ? Number(Boolean(offer.tValues[criterion.id])) : criterion.kind === "D" ? round4(offer.dValues[criterion.id] ?? 0) : undefined,
+            };
+          }),
+        ),
       ),
       combos: bidders.flatMap((bidder) =>
         PAIRS.map((pair) => {
@@ -993,10 +1017,10 @@ function useSimulatorController() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = makeExcelLightDownloadName(payload.name);
+    link.download = makeExcelDownloadName(payload.name);
     link.click();
     URL.revokeObjectURL(url);
-    setScenarioNotice(`Esportato formato Excel light: ${payload.name}`);
+    setScenarioNotice(`Esportato formato Excel: ${payload.name}`);
   };
 
   const importScenarioFile = async (file: File) => {
@@ -1121,7 +1145,7 @@ function useSimulatorController() {
     duplicateCurrentScenario,
     deleteSavedScenario,
     exportCurrentScenario,
-    exportExcelLightScenario,
+    exportExcelScenario,
     importScenarioFile,
     loadSavedScenario,
     resetCurrentBaseScenario,
@@ -1296,7 +1320,7 @@ function SimulatorSidebar({ controller }: { controller: SimulatorController }) {
     duplicateCurrentScenario,
     deleteSavedScenario,
     exportCurrentScenario,
-    exportExcelLightScenario,
+    exportExcelScenario,
     importScenarioFile,
     loadSavedScenario,
     resetCurrentBaseScenario,
@@ -1333,7 +1357,7 @@ function SimulatorSidebar({ controller }: { controller: SimulatorController }) {
       onDelete={() => deleteSavedScenario()}
       onDeleteSaved={deleteSavedScenario}
       onExport={exportCurrentScenario}
-      onExportExcelLight={exportExcelLightScenario}
+      onExportExcel={exportExcelScenario}
       onImportFile={importScenarioFile}
       onLoadSaved={loadSavedScenario}
       onResetBaseScenario={resetCurrentBaseScenario}
