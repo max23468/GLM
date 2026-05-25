@@ -6,6 +6,13 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+### Novità
+
+- **Pacchetto Excel**: aggiunti controlli setup e validazione dati pre-run, template golden con metadati fonte/verifica e tooltip hash sul badge versione.
+- **Pacchetto Excel**: definita modalità light e routine operativa golden/package per allineare più rapidamente Excel e simulatore web.
+- **Download Excel**: aggiunto in testata il pulsante `Pacchetto Excel` accanto a `Istruzioni`, per scaricare subito il toolkit VBA del simulatore.
+- **Download Excel**: il badge accanto al pulsante mostra ora versione e data lette dal manifest del pacchetto, così resta allineato agli aggiornamenti del file scaricabile.
+
 ## [1.1.1] — 2026-05-23
 
 ### Correzioni
@@ -16,6 +23,8 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ### Novità
 
+- **Pacchetto Excel**: aggiunti controlli setup e validazione dati pre-run, template golden con metadati fonte/verifica e tooltip hash sul badge versione.
+- **Pacchetto Excel**: definita modalità light e routine operativa golden/package per allineare più rapidamente Excel e simulatore web.
 - **Lotto di lavoro**: il simulatore permette di lavorare solo sui lotti a cui partecipa il concorrente selezionato e riallinea il focus quando la partecipazione cambia.
 - **Economica**: aggiunta una lettura PEF/CEA con stress rapido sui ribassi, scostamento €/km fra fasi e margine simulato dopo i costi puntuali.
 - **Risultati**: aggiunta una matrice batch che incrocia soglie, deroga e stress ribasso per individuare lotti fragili e varianti ancora stabili.
@@ -31,6 +40,8 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ### Novità
 
+- **Pacchetto Excel**: aggiunti controlli setup e validazione dati pre-run, template golden con metadati fonte/verifica e tooltip hash sul badge versione.
+- **Pacchetto Excel**: definita modalità light e routine operativa golden/package per allineare più rapidamente Excel e simulatore web.
 - **Qualità decisionale**: il confronto scenari evidenzia delta totale, lotti cambiati, warning nuovi/risolti e dettaglio per lotto; i risultati includono lettura decisionale, scarto dal secondo e sensitività rapida su soglie e deroga.
 
 ## [0.2.12] — 2026-05-20
@@ -112,12 +123,16 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ### Novità
 
+- **Pacchetto Excel**: aggiunti controlli setup e validazione dati pre-run, template golden con metadati fonte/verifica e tooltip hash sul badge versione.
+- **Pacchetto Excel**: definita modalità light e routine operativa golden/package per allineare più rapidamente Excel e simulatore web.
 - **Versione e changelog**: la scheda nel simulatore mostra direttamente versione corrente, data build e note delle release, senza rimandi tecnici esterni.
 
 ## [0.1.0] — 2026-05-20
 
 ### Novità
 
+- **Pacchetto Excel**: aggiunti controlli setup e validazione dati pre-run, template golden con metadati fonte/verifica e tooltip hash sul badge versione.
+- **Pacchetto Excel**: definita modalità light e routine operativa golden/package per allineare più rapidamente Excel e simulatore web.
 - **Console simulatore**: gestione workspace, concorrenti, lotti singoli e combinatorie ammesse per la gara TPL lotti 1-4.
 - **Motore di scoring**: calcolo locale di punteggi tecnici, soglie di sbarramento, riparametrazione, punteggio economico e scenario vincente.
 - **Scenari base**: profili simulati, fonti e warning documentali separati tra documento di gara, fonte pubblica e assunzione simulativa.

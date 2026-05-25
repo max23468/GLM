@@ -200,6 +200,20 @@ button {
   background: var(--teal-soft);
 }
 
+
+.doc-meta {
+  display: inline-flex;
+  align-items: center;
+  min-width: max-content;
+  padding: 7px 10px;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
 .guide-page {
   min-height: 100vh;
   padding: 18px;

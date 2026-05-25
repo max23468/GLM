@@ -38,6 +38,10 @@ npm run preview -- --port 4173
 - Espone una pagina web di istruzioni raggiungibile dal pulsante `Istruzioni` nella testata e dall'URL `/istruzioni/`.
 - Supporta tema chiaro/scuro/automatico e layout responsive.
 
+## Toolkit Excel (modalità light)
+
+Il pacchetto `Pacchetto Excel` è un supporto operativo offline in **modalità light**: aiuta simulazioni rapide e confronti golden, ma non replica integralmente il motore web (scoring completo, warning avanzati, persistenza/migrazioni e UX di confronto scenari restano nel simulatore web).
+
 ## Scenari base
 
 Gli scenari precompilati sono basi di lavoro, non simulazioni certificate:

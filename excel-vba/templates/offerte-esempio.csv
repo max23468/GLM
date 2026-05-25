@@ -1,0 +1,13 @@
+BidderId,BidderNome,Lotto,Attivo,PunteggioTecnicoRaw,RibassoMedioPercento
+B1,Operatore A,L1,1,42,6.1
+B1,Operatore A,L2,1,45,5.2
+B1,Operatore A,L3,0,0,0
+B1,Operatore A,L4,1,39,4.7
+B2,Operatore B,L1,1,38,6.4
+B2,Operatore B,L2,1,41,5.8
+B2,Operatore B,L3,1,43,5.1
+B2,Operatore B,L4,1,40,4.9
+B3,Operatore C,L1,1,33,7.2
+B3,Operatore C,L2,1,37,6.8
+B3,Operatore C,L3,1,36,6.3
+B3,Operatore C,L4,1,35,6.0

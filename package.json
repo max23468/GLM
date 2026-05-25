@@ -19,7 +19,9 @@
     "smoke": "node scripts/smoke.mjs",
     "test": "vitest run",
     "validate:data": "vitest run src/data/tender.validation.test.ts src/data/base-scenarios.validation.test.ts",
-    "validate:base": "vitest run src/data/base-scenarios.validation.test.ts"
+    "validate:base": "vitest run src/data/base-scenarios.validation.test.ts",
+    "package:excel": "node scripts/package-excel-vba.mjs",
+    "prepublish:excel": "npm run package:excel && npm run build"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^6.0.2",

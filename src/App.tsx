@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   BarChart3,
   BookOpen,
+  Download,
   CheckCircle2,
   CircleDollarSign,
   ClipboardList,
@@ -103,6 +104,13 @@ const euroPerKmFormatter = new Intl.NumberFormat("it-IT", {
 type ThemePreference = "auto" | "light" | "dark";
 type WorkspaceTab = "tecnica" | "economica" | "ottimizza" | "combinatorie" | "risultati";
 type AppView = "simulatore" | "istruzioni";
+
+type ExcelPackageManifest = {
+  version: string;
+  builtAt: string;
+  sha256: string;
+  file: string;
+};
 
 const themeOptions: { value: ThemePreference; label: string; icon: LucideIcon }[] = [
   { value: "auto", label: "Auto", icon: Monitor },
@@ -1139,6 +1147,24 @@ function SimulatorApp({ controller }: { controller: SimulatorController }) {
 
 function SimulatorHeader({ controller }: { controller: SimulatorController }) {
   const { navigateToInstructions, themePreference, setThemePreference, resolvedTheme } = controller;
+  const [excelBadge, setExcelBadge] = useState("v0.1 · 25/05/2026");
+  const [excelHashShort, setExcelHashShort] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/downloads/pacchetto-excel-vba.manifest.json")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((manifest: ExcelPackageManifest | null) => {
+        if (cancelled || !manifest?.version || !manifest?.builtAt) return;
+        setExcelBadge(`${manifest.version} · ${manifest.builtAt}`);
+        if (manifest.sha256) setExcelHashShort(manifest.sha256.slice(0, 8));
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <header className="topbar">
@@ -1173,6 +1199,17 @@ function SimulatorHeader({ controller }: { controller: SimulatorController }) {
           <BookOpen size={16} />
           Istruzioni
         </button>
+        <a className="doc-link" href="/downloads/pacchetto-excel-vba.zip" download>
+          <Download size={16} />
+          Pacchetto Excel
+        </a>
+        <span
+          className="doc-meta"
+          aria-label="Versione pacchetto Excel"
+          title={excelHashShort ? `SHA-256: ${excelHashShort}` : "Versione pacchetto Excel"}
+        >
+          {excelBadge}
+        </span>
       </div>
     </header>
   );
