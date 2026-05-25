@@ -10,15 +10,18 @@ Implementazione Excel + VBA del simulatore con estensioni avanzate:
 - ottimizzazione iterativa su lotto attivo con leve separate Q/T (escluso D);
 - foglio di confronto golden con expected dal web.
 
-## Struttura workbook consigliata
+## Template pronto all'uso
 
-Crea un file `simulatore_tpl.xlsm` con i fogli:
-1. `Parametri`
-2. `Offerte`
-3. `Risultati`
-4. `Ottimizzazione`
-5. `LogOttimizzazione`
-6. `ConfrontoWeb`
+Nel pacchetto è incluso `templates/Simulatore-TPL-Lotti-1-4-template.xlsm`, già predisposto con fogli, intestazioni, parametri base, log ottimizzazione e sezione confronto web.
+
+Fogli inclusi nel template:
+1. `Istruzioni`
+2. `Parametri`
+3. `Offerte`
+4. `Risultati`
+5. `Ottimizzazione`
+6. `LogOttimizzazione`
+7. `ConfrontoWeb`
 
 ## Mappatura minima celle
 
@@ -44,11 +47,19 @@ Crea un file `simulatore_tpl.xlsm` con i fogli:
 - `B9`: Tetto tecnico leva T
 
 ## Macro principali
+- `CheckBeforeRun`
 - `SimulaScenario`
 - `ValutaCombinatorie`
 - `OttimizzaLottoAttivo`
 - `ResetLogOttimizzazione`
 - `ConfrontoWebGolden`
+
+## Avvio rapido (ready to use)
+1. Apri `templates/Simulatore-TPL-Lotti-1-4-template.xlsm`.
+2. Premi `ALT+F11` e importa tutti i moduli `.bas` da `src/`.
+3. Verifica `Parametri` e aggiorna `Offerte` (puoi partire da `templates/offerte-esempio.csv`).
+4. Esegui in ordine: `CheckBeforeRun`, `SimulaScenario`, `OttimizzaLottoAttivo`, `ConfrontoWebGolden`.
+5. Per uso quotidiano, assegna queste macro alla Barra di accesso rapido di Excel (File > Opzioni > Barra di accesso rapido).
 
 ## Come usare il confronto golden
 1. Esegui `SimulaScenario`.
@@ -88,7 +99,7 @@ Crea un file `simulatore_tpl.xlsm` con i fogli:
 ## Versione pacchetto web
 
 Il sito legge il badge versione da `public/downloads/pacchetto-excel-vba.manifest.json`.
-Quando aggiorni lo ZIP, aggiorna anche il manifest (`version`, `builtAt`, `sha256`).
+Quando aggiorni lo ZIP, aggiorna anche il manifest (`version`, `builtAt`, `sha256`, `templateFile`, `minAppVersion`, `generatedBy`).
 
 
 ## Priorità implementate
@@ -120,3 +131,8 @@ Questa implementazione segue modalità **light**: supporto operativo offline e c
 4. Sul web replica lo stesso scenario e annota i totali migliori lotto.
 5. Inserisci gli expected nel file `templates/golden-cases.csv` e in `ConfrontoWeb!J2:J5`.
 6. Esegui `ConfrontoWebGolden` e salva esiti `OK/KO`.
+
+
+## Verifica pacchetto
+
+Dopo `npm run package:excel`, esegui `npm run validate:excel-package` per verificare hash, schema manifest e presenza del template XLSM nello ZIP.

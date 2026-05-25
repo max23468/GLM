@@ -21,7 +21,8 @@
     "validate:data": "vitest run src/data/tender.validation.test.ts src/data/base-scenarios.validation.test.ts",
     "validate:base": "vitest run src/data/base-scenarios.validation.test.ts",
     "package:excel": "node scripts/package-excel-vba.mjs",
-    "prepublish:excel": "npm run package:excel && npm run build"
+    "prepublish:excel": "npm run package:excel && npm run validate:excel-package && npm run build",
+    "validate:excel-package": "node scripts/validate-excel-package.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^6.0.2",

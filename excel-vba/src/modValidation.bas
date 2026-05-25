@@ -24,6 +24,14 @@ Public Sub ConfrontoWebGolden()
     ws.Range("I4").Value = "Web L3"
     ws.Range("I5").Value = "Web L4"
 
+    Dim passCount As Long, failCount As Long
+    CountGoldenResults ws, passCount, failCount
+    ws.Range("A7").Value = "Riepilogo golden"
+    ws.Range("A8:C8").Value = Array("Pass", "Fail", "Esito complessivo")
+    ws.Range("A9").Value = passCount
+    ws.Range("B9").Value = failCount
+    ws.Range("C9").Value = IIf(failCount = 0, "PASS", "FAIL")
+
     ws.Columns("A:J").AutoFit
 End Sub
 
@@ -59,3 +67,15 @@ Private Function BestTotalForLot(ByVal wsRes As Worksheet, ByVal lotId As String
     If best < 0 Then best = 0
     BestTotalForLot = Round4(best)
 End Function
+
+Private Sub CountGoldenResults(ByVal ws As Worksheet, ByRef passCount As Long, ByRef failCount As Long)
+    Dim r As Long
+    passCount = 0
+    failCount = 0
+    For r = 2 To 5
+        Select Case Trim$(CStr(ws.Cells(r, "G").Value))
+            Case "OK": passCount = passCount + 1
+            Case "KO": failCount = failCount + 1
+        End Select
+    Next r
+End Sub

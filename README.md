@@ -40,7 +40,7 @@ npm run preview -- --port 4173
 
 ## Toolkit Excel (modalità light)
 
-Il pacchetto `Pacchetto Excel` è un supporto operativo offline in **modalità light**: aiuta simulazioni rapide e confronti golden, ma non replica integralmente il motore web (scoring completo, warning avanzati, persistenza/migrazioni e UX di confronto scenari restano nel simulatore web).
+Il pacchetto `Pacchetto Excel` è un supporto operativo offline in **modalità light**: aiuta simulazioni rapide e confronti golden, ma non replica integralmente il motore web (scoring completo, warning avanzati, persistenza/migrazioni e UX di confronto scenari restano nel simulatore web). Include anche il file pronto `excel-vba/templates/Simulatore-TPL-Lotti-1-4-template.xlsm` con fogli e intestazioni già predisposte, per ridurre il setup iniziale.
 
 ## Scenari base
 
