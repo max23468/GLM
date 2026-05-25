@@ -19,6 +19,14 @@ function resolveVersion() {
   }
 }
 
+function resolveMinAppVersion() {
+  try {
+    return JSON.parse(readFileSync('package.json', 'utf8')).version ?? '1.4.0';
+  } catch {
+    return '1.4.0';
+  }
+}
+
 function unzipList(filePath) {
   return execFileSync('unzip', ['-Z1', filePath], { encoding: 'utf8' })
     .trim()
@@ -56,8 +64,8 @@ const manifest = {
   sha256,
   file: `/downloads/${workbookFile}`,
   templateFile: workbookFile,
-  minAppVersion: '1.1.1',
-  notes: 'File XLSM unico con macro integrate; modalità light',
+  minAppVersion: resolveMinAppVersion(),
+  notes: 'File XLSM unico con macro integrate, ScambioWeb e modalità light',
   generatedBy: 'scripts/package-excel-vba.mjs',
 };
 writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');

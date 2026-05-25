@@ -19,6 +19,7 @@ type WorkspaceSidebarProps = {
   onDelete: () => void;
   onDeleteSaved: (scenarioId: string) => void;
   onExport: () => void;
+  onExportExcelLight: () => void;
   onImportFile: (file: File) => void;
   onLoadSaved: (scenarioId: string) => void;
   onResetBaseScenario: () => void;
@@ -55,6 +56,7 @@ export function WorkspaceSidebar({
   onDelete,
   onDeleteSaved,
   onExport,
+  onExportExcelLight,
   onImportFile,
   onLoadSaved,
   onResetBaseScenario,
@@ -102,6 +104,7 @@ export function WorkspaceSidebar({
         onDelete={onDelete}
         onDeleteSaved={onDeleteSaved}
         onExport={onExport}
+        onExportExcelLight={onExportExcelLight}
         onImportFile={onImportFile}
         onLoadSaved={onLoadSaved}
         onResetBaseScenario={onResetBaseScenario}

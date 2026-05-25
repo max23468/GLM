@@ -76,6 +76,7 @@ const requiredSheets = [
   'Offerte',
   'Combinatorie',
   'ScenarioGlobale',
+  'ScambioWeb',
   'Risultati',
   'Ottimizzazione',
   'LogOttimizzazione',

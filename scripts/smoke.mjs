@@ -85,10 +85,17 @@ const verifyPublicRoutes = async (page, suffix) => {
 
 const verifyImportExportAndComparison = async (page, suffix) => {
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Esporta scenario JSON" }).click();
+  await page.getByRole("button", { name: "Esporta scenario JSON completo" }).click();
   const download = await downloadPromise;
   if (!download.suggestedFilename().endsWith(".json")) {
     throw new Error(`${suffix}: nome export JSON inatteso ${download.suggestedFilename()}`);
+  }
+
+  const excelLightDownloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Esporta scenario Excel light" }).click();
+  const excelLightDownload = await excelLightDownloadPromise;
+  if (!excelLightDownload.suggestedFilename().includes("excel-light") || !excelLightDownload.suggestedFilename().endsWith(".json")) {
+    throw new Error(`${suffix}: nome export Excel light inatteso ${excelLightDownload.suggestedFilename()}`);
   }
 
   const tempDir = await mkdtemp(path.join(tmpdir(), "glm-smoke-"));
@@ -120,6 +127,34 @@ const verifyImportExportAndComparison = async (page, suffix) => {
     for (const expected of ["Schema aggiornato", "demoScenarioId", "Configurazione Ottimizzazione"]) {
       if (!noticeText.includes(expected)) throw new Error(`${suffix}: import senza dettaglio riparazione ${expected}`);
     }
+
+    const excelLightName = `Excel light ${suffix}`;
+    const excelLightPath = path.join(tempDir, `${excelLightName.replace(/\s+/g, "-").toLowerCase()}.json`);
+    await writeFile(
+      excelLightPath,
+      JSON.stringify(
+        {
+          format: "glm-excel-light-v1",
+          schemaVersion: 1,
+          id: `excel-light-${Date.now()}`,
+          name: excelLightName,
+          baseScenarioId: "market",
+          settings: { threshold: 36, applyAwardLimitDerogation: false },
+          selectedBidderId: "excel-a",
+          selectedLotId: "L1",
+          selectedPairId: "L1+L2",
+          offers: [{ bidderId: "excel-a", bidderName: "Operatore Excel", lotId: "L1", enabled: true, technicalRaw: 45, discount: 5 }],
+          combos: [],
+        },
+        null,
+        2,
+      ),
+    );
+    await page.locator('input[type="file"]').setInputFiles(excelLightPath);
+    await page.waitForFunction(
+      (name) => document.body.innerText.includes(`Importato: ${name}`) && document.body.innerText.includes("Formato Excel light importato"),
+      excelLightName,
+    );
 
     await page.locator(".comparison-panel select").selectOption({ label: importName });
     const comparisonText = await page.locator(".comparison-panel").innerText();

@@ -186,6 +186,9 @@ const currentView = (): AppView => {
 const makeDownloadName = (name: string) =>
   `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "scenario"}-${new Date().toISOString().slice(0, 10)}.json`;
 
+const makeExcelLightDownloadName = (name: string) =>
+  `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "scenario"}-excel-light-${new Date().toISOString().slice(0, 10)}.json`;
+
 type TradeoffPreview = {
   nextValue: number | boolean;
   totalCost: number;
@@ -944,6 +947,58 @@ function useSimulatorController() {
     setScenarioNotice(`Esportato: ${snapshot.name}`);
   };
 
+  const exportExcelLightScenario = () => {
+    const savedAt = new Date().toISOString();
+    const payload = {
+      format: "glm-excel-light-v1",
+      schemaVersion: 1,
+      id: activeSavedScenarioId ?? `excel-light-${Date.now()}`,
+      name: scenarioName.trim() || "Scenario Excel light",
+      savedAt,
+      baseScenarioId,
+      settings: { ...settings },
+      selectedBidderId: selectedBidder?.id ?? bidders[0]?.id ?? "",
+      selectedLotId,
+      selectedPairId,
+      notes: "Export light per Excel: conserva tecnico aggregato e ribasso medio, non ricostruisce i sub-criteri A-G.",
+      offers: bidders.flatMap((bidder) =>
+        LOTS.map((lot) => {
+          const score = result.lotScores[bidder.id]?.[lot.id];
+          return {
+            bidderId: bidder.id,
+            bidderName: bidder.name,
+            lotId: lot.id,
+            enabled: bidder.lots[lot.id].enabled,
+            technicalRaw: round4(score?.technical ?? 0),
+            discount: round4((score?.singleRibasso ?? 0) * 100),
+          };
+        }),
+      ),
+      combos: bidders.flatMap((bidder) =>
+        PAIRS.map((pair) => {
+          const score = result.comboScores[bidder.id]?.[pair.id];
+          return {
+            bidderId: bidder.id,
+            bidderName: bidder.name,
+            pairId: pair.id,
+            enabled: bidder.combos[pair.id].enabled,
+            discount: round4((score?.ribasso ?? 0) * 100),
+            insertedInBothBuste: bidder.combos[pair.id].insertedInBothBuste,
+            pefCoherent: bidder.combos[pair.id].pefCoherent,
+          };
+        }),
+      ),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = makeExcelLightDownloadName(payload.name);
+    link.click();
+    URL.revokeObjectURL(url);
+    setScenarioNotice(`Esportato formato Excel light: ${payload.name}`);
+  };
+
   const importScenarioFile = async (file: File) => {
     try {
       const parsed = JSON.parse(await file.text());
@@ -1066,6 +1121,7 @@ function useSimulatorController() {
     duplicateCurrentScenario,
     deleteSavedScenario,
     exportCurrentScenario,
+    exportExcelLightScenario,
     importScenarioFile,
     loadSavedScenario,
     resetCurrentBaseScenario,
@@ -1240,6 +1296,7 @@ function SimulatorSidebar({ controller }: { controller: SimulatorController }) {
     duplicateCurrentScenario,
     deleteSavedScenario,
     exportCurrentScenario,
+    exportExcelLightScenario,
     importScenarioFile,
     loadSavedScenario,
     resetCurrentBaseScenario,
@@ -1276,6 +1333,7 @@ function SimulatorSidebar({ controller }: { controller: SimulatorController }) {
       onDelete={() => deleteSavedScenario()}
       onDeleteSaved={deleteSavedScenario}
       onExport={exportCurrentScenario}
+      onExportExcelLight={exportExcelLightScenario}
       onImportFile={importScenarioFile}
       onLoadSaved={loadSavedScenario}
       onResetBaseScenario={resetCurrentBaseScenario}

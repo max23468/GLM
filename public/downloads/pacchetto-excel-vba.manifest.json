@@ -1,10 +1,10 @@
 {
-  "version": "v0.5",
+  "version": "v0.6",
   "builtAt": "2026-05-25",
-  "sha256": "3bb0173962b21a5592089016bcb7c19de38ac2e89e9dc396423dc2964b5f1cb1",
+  "sha256": "45a3dfb9d43a8f0d23f1f922a4741e3b70cb8adb9290b4c0d5909d20b0daa5c0",
   "file": "/downloads/Simulatore-TPL-Lotti-1-4.xlsm",
   "templateFile": "Simulatore-TPL-Lotti-1-4.xlsm",
-  "minAppVersion": "1.1.1",
-  "notes": "File XLSM unico con macro integrate; modalità light",
+  "minAppVersion": "1.4.0",
+  "notes": "File XLSM unico con macro integrate, ScambioWeb e modalità light",
   "generatedBy": "scripts/package-excel-vba.mjs"
 }

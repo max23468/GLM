@@ -29,6 +29,7 @@ type ScenarioToolsProps = {
   onDelete: () => void;
   onDeleteSaved: (scenarioId: string) => void;
   onExport: () => void;
+  onExportExcelLight: () => void;
   onImportFile: (file: File) => void;
   onLoadSaved: (scenarioId: string) => void;
   onResetBaseScenario: () => void;
@@ -47,6 +48,7 @@ export function ScenarioTools({
   onDelete,
   onDeleteSaved,
   onExport,
+  onExportExcelLight,
   onImportFile,
   onLoadSaved,
   onResetBaseScenario,
@@ -81,8 +83,11 @@ export function ScenarioTools({
           <button className="icon-button danger" type="button" onClick={onDelete} disabled={!activeSavedScenarioId} aria-label="Elimina scenario attivo" title="Elimina scenario attivo">
           <X size={16} />
         </button>
-          <button className="icon-button" type="button" onClick={onExport} aria-label="Esporta scenario JSON" title="Esporta JSON">
+          <button className="icon-button" type="button" onClick={onExport} aria-label="Esporta scenario JSON completo" title="Esporta JSON completo">
           <Download size={16} />
+        </button>
+          <button className="icon-button" type="button" onClick={onExportExcelLight} aria-label="Esporta scenario Excel light" title="Esporta Excel light">
+          <FileJson size={16} />
         </button>
           <button className="icon-button" type="button" onClick={() => fileInputRef.current?.click()} aria-label="Importa scenario JSON" title="Importa JSON">
           <Upload size={16} />

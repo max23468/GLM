@@ -63,6 +63,21 @@ type LegacyWorkspaceLike = Partial<StoredWorkspace> & {
   baseScenarioId?: unknown;
 };
 
+type ExcelLightScenarioLike = {
+  format?: unknown;
+  source?: unknown;
+  id?: unknown;
+  name?: unknown;
+  savedAt?: unknown;
+  baseScenarioId?: unknown;
+  settings?: unknown;
+  selectedBidderId?: unknown;
+  selectedLotId?: unknown;
+  selectedPairId?: unknown;
+  offers?: unknown;
+  combos?: unknown;
+};
+
 export type ScenarioImportReport = {
   snapshot?: SavedScenarioSnapshot;
   messages: string[];
@@ -91,6 +106,11 @@ const finiteNumber = (value: unknown, fallback = 0) => {
 };
 
 const nonNegativeNumber = (value: unknown, fallback = 0) => Math.max(0, finiteNumber(value, fallback));
+const boundedNumber = (value: unknown, min: number, max: number, fallback?: number) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.min(max, Math.max(min, numeric));
+};
 
 const normalizedId = (value: unknown, fallback: string) => {
   if (typeof value !== "string") return fallback;
@@ -121,6 +141,15 @@ const extractScenarioImportCandidate = (value: unknown) => {
   }
   if (Array.isArray(value.scenarios)) return value.scenarios.find(isRecord);
   return value;
+};
+
+const isExcelLightImport = (value: unknown): value is ExcelLightScenarioLike =>
+  isRecord(value) && (value.format === "glm-excel-light-v1" || value.source === "excel-light");
+
+const extractExcelLightImportCandidate = (value: unknown) => {
+  if (isExcelLightImport(value)) return value;
+  if (isRecord(value) && isExcelLightImport(value.excelLight)) return value.excelLight;
+  return undefined;
 };
 
 const normalizePhaseDiscounts = (value: unknown): [number, number, number] => {
@@ -237,6 +266,7 @@ export const normalizeLotOffer = (value: unknown, fallbackOffer?: LotOffer): Lot
 
   return {
     enabled: normalizeBoolean(source.enabled, fallback.enabled),
+    technicalOverrideRaw: boundedNumber(source.technicalOverrideRaw, 0, 70, fallback.technicalOverrideRaw),
     qValues,
     quantityInputs,
     tValues,
@@ -254,6 +284,79 @@ export const normalizeComboOffer = (value: unknown): ComboOffer => {
     phaseDiscounts: normalizePhaseDiscounts(source.phaseDiscounts),
     insertedInBothBuste: normalizeBoolean(source.insertedInBothBuste, fallback.insertedInBothBuste),
     pefCoherent: normalizeBoolean(source.pefCoherent, fallback.pefCoherent),
+  };
+};
+
+const normalizeExcelLightScenarioSnapshot = (value: ExcelLightScenarioLike): SavedScenarioSnapshot | undefined => {
+  const baseScenarioId = normalizeBaseScenarioId(value.baseScenarioId);
+  const fallbackScenario = getBaseScenario(baseScenarioId);
+  const bidderMap = new Map<string, Bidder>();
+
+  const ensureBidder = (idValue: unknown, nameValue?: unknown) => {
+    const fallbackId = `excel-${bidderMap.size + 1}`;
+    const id = normalizedId(idValue, fallbackId);
+    const existing = bidderMap.get(id);
+    if (existing) {
+      const normalized = normalizedName(nameValue, existing.name);
+      if (normalized && normalized !== existing.name) existing.name = normalized;
+      return existing;
+    }
+    const bidder = createBidder(id, normalizedName(nameValue, id));
+    bidderMap.set(id, bidder);
+    return bidder;
+  };
+
+  const offers = Array.isArray(value.offers) ? value.offers : [];
+  for (const row of offers) {
+    if (!isRecord(row)) continue;
+    const lotId = recordValue(row, "lotId") ?? recordValue(row, "lotto");
+    if (!isLotId(lotId)) continue;
+    const bidder = ensureBidder(recordValue(row, "bidderId"), recordValue(row, "bidderName") ?? recordValue(row, "bidderNome"));
+    const offer = bidder.lots[lotId];
+    offer.enabled = normalizeBoolean(recordValue(row, "enabled") ?? recordValue(row, "attivo"), true);
+    offer.technicalOverrideRaw = boundedNumber(
+      recordValue(row, "technicalRaw") ?? recordValue(row, "technicalOverrideRaw") ?? recordValue(row, "punteggioTecnicoRaw"),
+      0,
+      70,
+      0,
+    );
+    const discount = boundedNumber(recordValue(row, "discount") ?? recordValue(row, "ribasso") ?? recordValue(row, "ribassoMedioPercento"), 0, 100, 0) ?? 0;
+    offer.phaseDiscounts = [discount, discount, discount];
+  }
+
+  const combos = Array.isArray(value.combos) ? value.combos : [];
+  for (const row of combos) {
+    if (!isRecord(row)) continue;
+    const pairId = recordValue(row, "pairId") ?? recordValue(row, "coppia");
+    if (!isPairId(pairId)) continue;
+    const bidder = ensureBidder(recordValue(row, "bidderId"), recordValue(row, "bidderName") ?? recordValue(row, "bidderNome"));
+    const combo = bidder.combos[pairId];
+    combo.enabled = normalizeBoolean(recordValue(row, "enabled") ?? recordValue(row, "attivo"), false);
+    const discount = boundedNumber(recordValue(row, "discount") ?? recordValue(row, "ribasso") ?? recordValue(row, "ribassoCombinatoria"), 0, 100, 0) ?? 0;
+    combo.phaseDiscounts = [discount, discount, discount];
+    combo.insertedInBothBuste = normalizeBoolean(recordValue(row, "insertedInBothBuste") ?? recordValue(row, "inseritoBuste"), true);
+    combo.pefCoherent = normalizeBoolean(recordValue(row, "pefCoherent") ?? recordValue(row, "pefCoerente"), true);
+  }
+
+  const bidders = Array.from(bidderMap.values());
+  if (!bidders.length) return undefined;
+  const firstBidderId = bidders[0]?.id ?? fallbackScenario.defaultBidderId;
+
+  return {
+    schemaVersion: 7,
+    id: normalizedId(value.id, `excel-light-${Date.now()}`),
+    name: normalizedName(value.name, "Scenario Excel light"),
+    savedAt: typeof value.savedAt === "string" ? value.savedAt : new Date().toISOString(),
+    baseScenarioId,
+    bidders,
+    settings: normalizeSettings(value.settings),
+    optimization: fallbackScenario.buildOptimizationConfig(),
+    selectedBidderId:
+      typeof value.selectedBidderId === "string" && bidders.some((bidder) => bidder.id === value.selectedBidderId)
+        ? value.selectedBidderId
+        : firstBidderId,
+    selectedLotId: isLotId(value.selectedLotId) ? value.selectedLotId : fallbackScenario.defaultLotId,
+    selectedPairId: isPairId(value.selectedPairId) ? value.selectedPairId : fallbackScenario.defaultPairId,
   };
 };
 
@@ -353,6 +456,17 @@ const hasDuplicateBidderIds = (value: unknown) => {
 };
 
 export const normalizeScenarioSnapshotWithReport = (value: unknown): ScenarioImportReport => {
+  const excelLightCandidate = extractExcelLightImportCandidate(value);
+  if (excelLightCandidate) {
+    const snapshot = normalizeExcelLightScenarioSnapshot(excelLightCandidate);
+    return {
+      snapshot,
+      messages: snapshot
+        ? ["Formato Excel light importato: il tecnico aggregato è conservato come override, i sub-criteri non sono ricostruiti."]
+        : ["Il JSON Excel light non contiene offerte importabili."],
+    };
+  }
+
   const importCandidate = extractScenarioImportCandidate(value);
   if (!isRecord(importCandidate)) {
     return {

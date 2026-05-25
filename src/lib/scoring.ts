@@ -12,6 +12,7 @@ import {
 
 export type LotOffer = {
   enabled: boolean;
+  technicalOverrideRaw?: number;
   qValues: Record<string, number>;
   quantityInputs: Record<string, QuantityInputValue>;
   tValues: Record<string, boolean>;
@@ -151,6 +152,7 @@ export type EconomicBreakdown = {
 
 const criterionById = new Map(CRITERIA.map((criterion) => [criterion.id, criterion]));
 const compatiblePairSetKeys = new Set(COMPATIBLE_PAIR_SETS.map((set) => Array.from(set).sort().join("|")));
+const MAX_TECH_POINTS = AMBITS.reduce((sum, ambit) => sum + ambit.maxPoints, 0);
 
 export const emptyQuantityInputs = () => {
   const inputs: Record<string, QuantityInputValue> = {};
@@ -224,6 +226,11 @@ export const formatPoints = (value: number) => round2(value).toLocaleString("it-
 export const formatPercent = (value: number) => (value * 100).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const technicalOverrideRaw = (offer: LotOffer) => {
+  if (typeof offer.technicalOverrideRaw !== "number" || !Number.isFinite(offer.technicalOverrideRaw)) return undefined;
+  return round4(clamp(offer.technicalOverrideRaw, 0, MAX_TECH_POINTS));
+};
 
 export const computeQuantityInputValue = (criterion: Criterion, input?: QuantityInputValue) => {
   if (!criterion.quantityInput || !input) return 0;
@@ -414,6 +421,11 @@ const computeTechnicalRawScores = (bidders: Bidder[], settings: Settings): Recor
 
     for (const bidder of bidders) {
       const score = result[bidder.id][lot.id];
+      const overrideRaw = score.participates ? technicalOverrideRaw(bidder.lots[lot.id]) : undefined;
+      if (typeof overrideRaw === "number") {
+        score.qtRaw = overrideRaw;
+        score.warnings.push("Tecnico aggregato import Excel light: sub-criteri non ricostruiti.");
+      }
       score.admitted = score.participates && score.qtRaw >= settings.threshold;
       if (score.participates && !score.admitted) {
         score.warnings.push(`Sotto soglia di sbarramento: ${formatPoints(score.qtRaw)} < ${formatPoints(settings.threshold)}.`);
@@ -435,7 +447,15 @@ const computeTechnicalRawScores = (bidders: Bidder[], settings: Settings): Recor
 
     for (const bidder of bidders) {
       const score = result[bidder.id][lot.id];
-      score.technical = round4(Object.values(score.riparamByAmbit).reduce((sum, value) => sum + value, 0));
+      const overrideRaw = score.participates ? technicalOverrideRaw(bidder.lots[lot.id]) : undefined;
+      if (typeof overrideRaw === "number") {
+        score.technical = overrideRaw;
+        score.riparamByAmbit = Object.fromEntries(
+          AMBITS.map((ambit) => [ambit.id, round4((overrideRaw / MAX_TECH_POINTS) * ambit.maxPoints)]),
+        );
+      } else {
+        score.technical = round4(Object.values(score.riparamByAmbit).reduce((sum, value) => sum + value, 0));
+      }
     }
   }
 

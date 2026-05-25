@@ -6,6 +6,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.4.0] — 2026-05-25
+
+### Novità
+
+- **Scambio Excel-web**: il simulatore importa JSON Excel light e l'XLSM genera un payload copiabile nel foglio `ScambioWeb`, preservando tecnico aggregato e ribassi senza fingere di ricostruire i sub-criteri A-G.
+
 ## [1.3.0] — 2026-05-25
 
 ### Novità

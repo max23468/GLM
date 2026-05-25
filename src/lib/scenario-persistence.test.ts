@@ -212,4 +212,48 @@ describe("scenario persistence normalization", () => {
     expect(library.snapshot?.baseScenarioId).toBe("local");
     expect(library.messages).toContain("Struttura JSON riconosciuta: importato il primo scenario disponibile.");
   });
+
+  it("importa il formato Excel light conservando tecnico aggregato e ribassi", () => {
+    const report = normalizeScenarioSnapshotWithReport({
+      format: "glm-excel-light-v1",
+      schemaVersion: 1,
+      id: "excel-light",
+      name: "Scenario Excel",
+      baseScenarioId: "market",
+      settings: { threshold: 36, applyAwardLimitDerogation: false },
+      selectedBidderId: "excel-a",
+      selectedLotId: "L1",
+      selectedPairId: "L1+L2",
+      offers: [
+        { bidderId: "excel-a", bidderName: "Operatore Excel", lotId: "L1", enabled: true, technicalRaw: 42.5, discount: 5.5 },
+        { bidderId: "excel-a", bidderName: "Operatore Excel", lotId: "L2", enabled: true, technicalRaw: 41, discount: 4.75 },
+      ],
+      combos: [
+        {
+          bidderId: "excel-a",
+          bidderName: "Operatore Excel",
+          pairId: "L1+L2",
+          enabled: true,
+          discount: 6.25,
+          insertedInBothBuste: true,
+          pefCoherent: true,
+        },
+      ],
+    });
+
+    expect(report.snapshot).toBeDefined();
+    expect(report.messages).toContain("Formato Excel light importato: il tecnico aggregato è conservato come override, i sub-criteri non sono ricostruiti.");
+
+    const snapshot = report.snapshot!;
+    const bidder = snapshot.bidders[0];
+    expect(bidder.name).toBe("Operatore Excel");
+    expect(bidder.lots.L1.technicalOverrideRaw).toBe(42.5);
+    expect(bidder.lots.L1.phaseDiscounts).toEqual([5.5, 5.5, 5.5]);
+    expect(bidder.combos["L1+L2"].enabled).toBe(true);
+    expect(bidder.combos["L1+L2"].phaseDiscounts).toEqual([6.25, 6.25, 6.25]);
+
+    const result = simulate(snapshot.bidders, snapshot.settings, snapshot.selectedBidderId);
+    expect(result.lotScores["excel-a"].L1.technical).toBe(42.5);
+    expect(result.lotScores["excel-a"].L1.admitted).toBe(true);
+  });
 });

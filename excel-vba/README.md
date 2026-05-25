@@ -9,6 +9,7 @@ Implementazione Excel + VBA del simulatore con estensioni avanzate:
 - scenario vincente per lotti singoli con tie-break su punteggio tecnico;
 - foglio `Combinatorie` con input espliciti per coppie, buste, PEF e ribasso migliorativo;
 - foglio `ScenarioGlobale` con matrice indicativa singoli/combinatorie compatibili;
+- foglio `ScambioWeb` con JSON light copiabile per import/export con il simulatore web;
 - ottimizzazione iterativa su lotto attivo con leve separate Q/T (escluso D);
 - foglio di confronto golden con expected dal web.
 
@@ -24,11 +25,12 @@ Fogli inclusi nel template:
 5. `Offerte`
 6. `Combinatorie`
 7. `ScenarioGlobale`
-8. `Risultati`
-9. `ConfrontoWeb`
-10. `LogOttimizzazione`
-11. `Guida`
-12. `Glossario`
+8. `ScambioWeb`
+9. `Risultati`
+10. `ConfrontoWeb`
+11. `LogOttimizzazione`
+12. `Guida`
+13. `Glossario`
 
 ## Mappatura minima celle
 
@@ -54,6 +56,13 @@ Fogli inclusi nel template:
 - `G`: PEFCoerente (`1/0`)
 - `H:W`: colonne calcolate per lotti, soglia, ammissibilità, punteggio, note e chiavi.
 
+### Foglio `ScambioWeb`
+- `A`: JSON light generato dal workbook.
+- Formato: `glm-excel-light-v1`.
+- Campi offerta: `bidderId`, `bidderName`, `lotId`, `enabled`, `technicalRaw`, `discount`.
+- Campi combinatoria: `bidderId`, `bidderName`, `pairId`, `enabled`, `discount`, `insertedInBothBuste`, `pefCoherent`.
+- Limite intenzionale: conserva tecnico aggregato e ribassi, ma non ricostruisce i sub-criteri A-G.
+
 ### Foglio `Ottimizzazione`
 - `B2`: BidderId selezionato
 - `B3`: Max iterazioni
@@ -76,7 +85,8 @@ Fogli inclusi nel template:
 2. Abilita le macro se Excel lo richiede.
 3. Verifica `Parametri` e aggiorna `Offerte` (puoi partire da `templates/offerte-esempio.csv`).
 4. Esegui in ordine: `CheckBeforeRun`, `SimulaScenario`, `OttimizzaLottoAttivo`, `ConfrontoWebGolden`.
-5. Per uso quotidiano, assegna queste macro alla Barra di accesso rapido di Excel (File > Opzioni > Barra di accesso rapido).
+5. Se devi passare al web, copia il JSON light generato in `ScambioWeb`.
+6. Per uso quotidiano, assegna queste macro alla Barra di accesso rapido di Excel (File > Opzioni > Barra di accesso rapido).
 
 ## Come usare il confronto golden
 1. Esegui `SimulaScenario`.
@@ -92,13 +102,14 @@ Fogli inclusi nel template:
 - Simulazione per lotto con soglia tecnica e punteggio economico.
 - Valutazione combinatorie principali (`L1+L2`, `L2+L3`, `L3+L4`, `L1+L4`).
 - Ottimizzazione iterativa su lotto attivo con log iterazioni.
+- Scambio JSON light con il simulatore web tramite foglio `ScambioWeb`.
 - Confronto golden con valori attesi dal tool web.
 
 ### Gap funzionali rispetto al tool Web
 - **Modello criteri**: Excel usa leve aggregate e non replica ancora tutti i sub-criteri A-G con pari granularità.
 - **Combinatorie**: la logica Excel è semplificata e non copre integralmente tutti i vincoli documentali e i warning avanzati.
 - **Scenario globale**: la matrice Excel confronta singoli e coppie compatibili principali, ma non replica ancora enumerazione completa, deroga al limite di due lotti e batch/stress test del web.
-- **Persistenza**: non ci sono migrazioni schema/versioni snapshot e compatibilità legacy come nel web.
+- **Persistenza**: lo scambio `glm-excel-light-v1` è supportato, ma non sostituisce snapshot completi, migrazioni schema/versioni e compatibilità legacy del web.
 - **UX operativa**: assenti confronto scenari salvati, report estesi, pannelli insight e filtri completi della UI React.
 
 ### Gap non funzionali
@@ -109,7 +120,7 @@ Fogli inclusi nel template:
 ### Priorità di chiusura gap consigliata
 1. Allineare formule di scoring e warning critici con casi golden versionati.
 2. Portare le leve da aggregate a struttura per criterio (Q/T), mantenendo esclusione discrezionali `D`.
-3. Introdurre export/import snapshot Excel stabile e controlli di validazione in macro.
+3. Estendere lo scambio Excel-web dai valori aggregati ai sub-criteri quando il workbook adotterà una struttura tecnica completa.
 4. Aggiungere batteria di test regressivi macro (casi campione su file dedicato).
 
 
@@ -131,6 +142,7 @@ Quando modifichi i sorgenti `src/*.bas`, apri `templates/Simulatore-TPL-Lotti-1-
 4. **Packaging ripetibile**: aggiunto script `scripts/package-excel-vba.mjs` per rigenerare workbook pubblico + manifest + hash dal template `.xlsm` macro-abilitato.
 5. **Confronto strutturato**: `ConfrontoWebGolden` ora include colonna lotto e output tabellare più esplicito.
 6. **Matrice scenario globale**: aggiunti `Combinatorie` e `ScenarioGlobale` per leggere in Excel singoli e coppie compatibili senza file esterni.
+7. **Scambio Excel-web**: aggiunto `ScambioWeb` con payload `glm-excel-light-v1` copiabile e importabile dalla web app.
 
 
 ## Modalità di prodotto

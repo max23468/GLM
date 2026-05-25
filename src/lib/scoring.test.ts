@@ -161,6 +161,21 @@ describe("TPL tender scoring", () => {
     expect(result.warnings.some((warning) => warning.includes("Sotto soglia di sbarramento"))).toBe(true);
   });
 
+  it("uses the Excel light aggregate technical override without reconstructing sub-criteria", () => {
+    const bidder = createBidder("a", "A");
+    bidder.lots.L1.enabled = true;
+    bidder.lots.L1.technicalOverrideRaw = 42;
+    bidder.lots.L1.phaseDiscounts = [5, 5, 5];
+
+    const result = simulate([bidder], { ...settings, threshold: 36 }, bidder.id);
+    const score = result.lotScores[bidder.id].L1;
+
+    expect(score.qtRaw).toBe(42);
+    expect(score.technical).toBe(42);
+    expect(score.admitted).toBe(true);
+    expect(score.warnings).toContain("Tecnico aggregato import Excel light: sub-criteri non ricostruiti.");
+  });
+
   it("includes admissible combinatory discounts in rMax for both lots", () => {
     const bidder = createBidder("a", "A");
     fillOffer(bidder, "L1", 2, 80);

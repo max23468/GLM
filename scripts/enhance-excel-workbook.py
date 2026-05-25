@@ -162,7 +162,7 @@ def create_dashboard(wb):
         ("2", "Compila Offerte", "Una riga per concorrente e lotto."),
         ("3", "Esegui SimulaScenario", "Popola risultati, combinatorie e vincitori."),
         ("4", "Rifinisci con OttimizzaLottoAttivo", "Usa leve Q/T sul concorrente selezionato."),
-        ("5", "Confronta con web", "Incolla expected in ConfrontoWeb!J2:J5."),
+        ("5", "Scambia con web", "Usa ScambioWeb o incolla expected in ConfrontoWeb!J2:J5."),
     ]
     ws.append([])
     start = 11
@@ -189,7 +189,8 @@ def create_dashboard(wb):
         ("C21", "Glossario", "Glossario"),
         ("E21", "Risultati", "Risultati"),
         ("G21", "Confronto web", "ConfrontoWeb"),
-        ("A22", "Log ottimizzazione", "LogOttimizzazione"),
+        ("A22", "Scambio web", "ScambioWeb"),
+        ("C22", "Log ottimizzazione", "LogOttimizzazione"),
     ]
     for ref, label, sheet_name in links:
         add_sheet_link(ws[ref], label, sheet_name)
@@ -211,6 +212,7 @@ def create_dashboard(wb):
     section_header(ws, 29, "Limiti da ricordare", "H")
     limits = [
         "Excel resta in modalità light: il web conserva scoring completo, warning avanzati, persistenza e confronto scenari.",
+        "Il foglio ScambioWeb produce un JSON light: conserva tecnico aggregato e ribassi, non ricostruisce i sub-criteri A-G.",
         "I costi e le leve sono ipotesi operative: non sono dati ufficiali di gara.",
         "Se Excel blocca le macro dopo il download, sblocca il file dalle proprietà del sistema prima dell'uso.",
     ]
@@ -284,6 +286,7 @@ def create_glossary(wb):
         ("Combinatorie", "Attivo", "Combinatorie!D:D", "1 include la coppia nella matrice scenario.", "Richiede lotti singoli ammessi."),
         ("Combinatorie", "RibassoCombinatoria", "Combinatorie!E:E", "Ribasso medio della coppia.", "Deve migliorare il riferimento singolo indicativo."),
         ("Scenario globale", "Matrice scenari", "ScenarioGlobale", "Confronta singoli e combinatorie compatibili.", "Indicativa: per vincoli avanzati resta centrale la web app."),
+        ("Scambio web", "JSON light", "ScambioWeb!A:A", "Payload copiabile per import/export con il simulatore web.", "Conserva tecnico aggregato e ribassi, non sub-criteri A-G."),
         ("Ottimizzazione", "BidderId", "Ottimizzazione!B2", "Concorrente target.", "Deve esistere in Offerte."),
         ("Macro", "CheckBeforeRun", "Macro", "Controllo input e struttura workbook.", "Eseguire prima di simulare."),
         ("Macro", "SimulaScenario", "Macro", "Calcola risultati, combinatorie e vincitori.", "Aggiorna Risultati."),
@@ -716,6 +719,115 @@ def create_scenario_globale(wb):
     ws.freeze_panes = "A5"
 
 
+def excel_json_text(ref: str) -> str:
+    return f'SUBSTITUTE({ref},"""","{chr(39)}")'
+
+
+def excel_json_number(ref: str) -> str:
+    return f'SUBSTITUTE(TEXT(IFERROR(VALUE({ref}),0),"0.####"),",",".")'
+
+
+def excel_json_boolean(ref: str) -> str:
+    return f'IF(IFERROR(VALUE({ref}),0)=1,"true","false")'
+
+
+def create_scambio_web(wb):
+    ws = reset_sheet(wb, "ScambioWeb")
+    ws.sheet_properties.tabColor = "00B0F0"
+    ws.sheet_view.showGridLines = False
+    title(
+        ws,
+        "Scambio web",
+        "JSON light copiabile fra Excel e web: conserva punteggio tecnico aggregato e ribassi, non ricostruisce i sub-criteri A-G.",
+    )
+
+    section_header(ws, 4, "Come usarlo", "H")
+    steps = [
+        ("1", "Compila Offerte e, se servono, Combinatorie."),
+        ("2", "Esegui CheckBeforeRun e SimulaScenario per aggiornare formule e warning."),
+        ("3", "Copia le righe non vuote della colonna A dalla sezione JSON light generato."),
+        ("4", "Salvale come file .json oppure incollale in un editor e importale dal simulatore web."),
+    ]
+    for row, (step, text) in enumerate(steps, start=5):
+        ws[f"A{row}"] = step
+        ws[f"B{row}"] = text
+        ws.merge_cells(f"B{row}:H{row}")
+    style_cells(ws, "A5:H8", WHITE)
+    for row in range(5, 9):
+        ws[f"A{row}"].fill = fill(NAVY)
+        ws[f"A{row}"].font = Font(color=WHITE, bold=True)
+        ws[f"A{row}"].alignment = Alignment(horizontal="center")
+
+    section_header(ws, 10, "JSON light generato", "H")
+    ws["A11"] = "Copia la colonna A. Le righe vuote sono solo spazi bianchi JSON e possono essere ignorate."
+    ws.merge_cells("A11:H11")
+    ws["A11"].fill = fill(AMBER)
+    ws["A11"].border = BORDER
+    ws["A11"].alignment = Alignment(wrap_text=True)
+
+    row = 13
+
+    def put(value):
+        nonlocal row
+        ws[f"A{row}"] = value
+        row += 1
+
+    put("{")
+    put('  "format": "glm-excel-light-v1",')
+    put('  "schemaVersion": 1,')
+    put('="  ""id"": ""excel-light-""&TEXT(NOW(),""yyyymmddhhmmss"")&""","')
+    put('="  ""name"": ""Scenario Excel light ""&TEXT(TODAY(),""yyyy-mm-dd"")&""","')
+    put('  "baseScenarioId": "market",')
+    put('="  ""settings"": {""threshold"": "&' + excel_json_number("Parametri!$B$2") + '&", ""applyAwardLimitDerogation"": false},"')
+    put('="  ""selectedLotId"": """&Parametri!$B$3&""","')
+    put('  "selectedPairId": "L1+L2",')
+    put('  "notes": "Export light da Excel: tecnico aggregato e ribassi, senza sub-criteri A-G.",')
+    put('  "offers": [')
+
+    for offer_row in range(2, MAX_OFFER_ROWS + 1):
+        has_more = f'COUNTA(Offerte!$A{offer_row + 1}:$A${MAX_OFFER_ROWS})>0' if offer_row < MAX_OFFER_ROWS else "FALSE"
+        bidder_id = excel_json_text(f"Offerte!$A{offer_row}")
+        bidder_name = excel_json_text(f"Offerte!$B{offer_row}")
+        lot_id = excel_json_text(f"Offerte!$C{offer_row}")
+        enabled = excel_json_boolean(f"Offerte!$D{offer_row}")
+        technical = excel_json_number(f"Offerte!$E{offer_row}")
+        discount = excel_json_number(f"Offerte!$F{offer_row}")
+        put(
+            f'=IF(Offerte!$A{offer_row}="","",'
+            f'"    {{""bidderId"": """&{bidder_id}&""", ""bidderName"": """&{bidder_name}&""", ""lotId"": """&{lot_id}&""", '
+            f'""enabled"": "&{enabled}&", ""technicalRaw"": "&{technical}&", ""discount"": "&{discount}&"}}"'
+            f'&IF({has_more},",",""))'
+        )
+
+    put("  ],")
+    put('  "combos": [')
+    for combo_row in range(5, MAX_COMBO_ROWS + 1):
+        has_more = f'COUNTA(Combinatorie!$A{combo_row + 1}:$A${MAX_COMBO_ROWS})>0' if combo_row < MAX_COMBO_ROWS else "FALSE"
+        bidder_id = excel_json_text(f"Combinatorie!$A{combo_row}")
+        bidder_name = excel_json_text(f"Combinatorie!$B{combo_row}")
+        pair_id = excel_json_text(f"Combinatorie!$C{combo_row}")
+        enabled = excel_json_boolean(f"Combinatorie!$D{combo_row}")
+        discount = excel_json_number(f"Combinatorie!$E{combo_row}")
+        inserted = excel_json_boolean(f"Combinatorie!$F{combo_row}")
+        pef = excel_json_boolean(f"Combinatorie!$G{combo_row}")
+        put(
+            f'=IF(Combinatorie!$A{combo_row}="","",'
+            f'"    {{""bidderId"": """&{bidder_id}&""", ""bidderName"": """&{bidder_name}&""", ""pairId"": """&{pair_id}&""", '
+            f'""enabled"": "&{enabled}&", ""discount"": "&{discount}&", ""insertedInBothBuste"": "&{inserted}&", ""pefCoherent"": "&{pef}&"}}"'
+            f'&IF({has_more},",",""))'
+        )
+    put("  ]")
+    put("}")
+
+    style_cells(ws, f"A13:A{row - 1}", WHITE)
+    for json_row in range(13, row):
+        ws[f"A{json_row}"].font = Font(name="Menlo", size=9, color=INK)
+        ws[f"A{json_row}"].alignment = Alignment(wrap_text=False, vertical="top")
+    ws.column_dimensions["A"].width = 145
+    set_widths(ws, {"B": 12, "C": 12, "D": 12, "E": 12, "F": 12, "G": 12, "H": 12})
+    ws.freeze_panes = "A13"
+
+
 def polish_results(wb):
     ws = wb["Risultati"]
     clear_layout_helpers(ws)
@@ -789,6 +901,7 @@ def main():
     polish_offerte(wb)
     create_combinatorie(wb)
     create_scenario_globale(wb)
+    create_scambio_web(wb)
     polish_results(wb)
     polish_confronto(wb)
     polish_log(wb)
@@ -806,6 +919,7 @@ def main():
             "Offerte",
             "Combinatorie",
             "ScenarioGlobale",
+            "ScambioWeb",
             "Risultati",
             "ConfrontoWeb",
             "LogOttimizzazione",
