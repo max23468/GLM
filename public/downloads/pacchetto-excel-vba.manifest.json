@@ -1,6 +1,10 @@
 {
   "version": "v0.1",
   "builtAt": "2026-05-25",
-  "sha256": "90544f5e73dc52f45d86f557f234b70bc54f29c8a61279e7f153305f6bc30456",
-  "file": "/downloads/pacchetto-excel-vba.zip"
+  "sha256": "a2a111260deed3fcff17ad468c6139d335b49ea5627ee565b501e165942938a6",
+  "file": "/downloads/pacchetto-excel-vba.zip",
+  "templateFile": "templates/Simulatore-TPL-Lotti-1-4-template.xlsm",
+  "minAppVersion": "1.1.1",
+  "notes": "Modalità light: allineamento tramite golden test",
+  "generatedBy": "scripts/package-excel-vba.mjs"
 }

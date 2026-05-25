@@ -3745,3 +3745,11 @@ input[type="checkbox"] {
     justify-self: end;
   }
 }
+
+.doc-meta--subtle {
+  opacity: 0.85;
+  max-width: 22rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

@@ -110,6 +110,10 @@ type ExcelPackageManifest = {
   builtAt: string;
   sha256: string;
   file: string;
+  templateFile?: string;
+  minAppVersion?: string;
+  notes?: string;
+  generatedBy?: string;
 };
 
 const themeOptions: { value: ThemePreference; label: string; icon: LucideIcon }[] = [
@@ -1149,6 +1153,7 @@ function SimulatorHeader({ controller }: { controller: SimulatorController }) {
   const { navigateToInstructions, themePreference, setThemePreference, resolvedTheme } = controller;
   const [excelBadge, setExcelBadge] = useState("v0.1 · 25/05/2026");
   const [excelHashShort, setExcelHashShort] = useState("");
+  const [excelPackageNote, setExcelPackageNote] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -1158,6 +1163,11 @@ function SimulatorHeader({ controller }: { controller: SimulatorController }) {
         if (cancelled || !manifest?.version || !manifest?.builtAt) return;
         setExcelBadge(`${manifest.version} · ${manifest.builtAt}`);
         if (manifest.sha256) setExcelHashShort(manifest.sha256.slice(0, 8));
+        const noteParts: string[] = [];
+        if (manifest.templateFile) noteParts.push("Template XLSM incluso");
+        if (manifest.minAppVersion) noteParts.push(`Compatibile da web v${manifest.minAppVersion}`);
+        if (manifest.notes) noteParts.push(manifest.notes);
+        setExcelPackageNote(noteParts.join(" · "));
       })
       .catch(() => undefined);
 
@@ -1210,6 +1220,7 @@ function SimulatorHeader({ controller }: { controller: SimulatorController }) {
         >
           {excelBadge}
         </span>
+        {excelPackageNote ? <span className="doc-meta doc-meta--subtle">{excelPackageNote}</span> : null}
       </div>
     </header>
   );
