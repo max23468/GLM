@@ -6,6 +6,8 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.2.0] — 2026-05-25
+
 ### Novità
 
 - **Download Excel**: aggiunto in testata il pulsante `Pacchetto Excel` accanto a `Istruzioni`, per scaricare subito il toolkit VBA del simulatore.
