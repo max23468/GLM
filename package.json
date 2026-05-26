@@ -36,9 +36,9 @@
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
     "playwright": "^1.60.0",
-    "react-doctor": "0.2.3",
+    "react-doctor": "^0.2.8",
     "vitest": "^4.1.7",
-    "wrangler": "^4.93.0"
+    "wrangler": "^4.95.0"
   },
   "overrides": {
     "ws": "8.20.1"

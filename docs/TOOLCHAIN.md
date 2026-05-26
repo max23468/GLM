@@ -23,8 +23,8 @@
 | --- | --- | --- |
 | `git` | locale | stato repository, branch e commit |
 | `gh` | locale | GitHub, PR, issue e Codex feedback inbox |
-| `wrangler` | `^4.93.0` | Cloudflare Pages deploy e diagnosi |
-| `react-doctor` | `0.2.3` | qualità React dopo release minor o modifiche React trasversali |
+| `wrangler` | `^4.95.0` | Cloudflare Pages deploy e diagnosi |
+| `react-doctor` | `^0.2.8` | qualità React dopo release minor o modifiche React trasversali |
 | Playwright | `^1.60.0` | smoke browser |
 
 ## Comandi
