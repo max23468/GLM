@@ -4,11 +4,12 @@ from __future__ import annotations
 from pathlib import Path
 import csv
 import sys
+import zipfile
 
 from openpyxl import load_workbook
 from openpyxl.comments import Comment
 from openpyxl.formatting.rule import CellIsRule, FormulaRule
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Protection, Side
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.table import Table, TableStyleInfo
 
@@ -17,6 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_WORKBOOK = ROOT / "excel-vba" / "templates" / "Simulatore-TPL-Lotti-1-4-template.xlsm"
 EXCEL_README = ROOT / "excel-vba" / "README.md"
 CRITERIA_CSV = ROOT / "excel-vba" / "templates" / "criteria.csv"
+OFFERS_CSV = ROOT / "excel-vba" / "templates" / "offerte-esempio.csv"
 
 # Palette derivata dai token CSS della web app GLM.
 NAVY = "172124"
@@ -37,8 +39,12 @@ INPUT = "FFF6DF"
 OUTPUT = "E6F4F1"
 SECTION = "EDF3F2"
 
-MAX_OFFER_ROWS = 200
+# Ultima riga del foglio tecnico Offerte. Riga 1 = intestazioni, quindi
+# 81 copre 80 righe concorrente-lotto: abbastanza per 20 operatori su 4 lotti,
+# senza rendere il file Excel lento o troppo pesante.
+MAX_OFFER_ROWS = 81
 MAX_COMBO_ROWS = 80
+COMPILA_OFFER_START_ROW = 12
 TECHNICAL_START_ROW = 5
 AMBIT_MAX_POINTS = {
     "A": 7,
@@ -52,6 +58,8 @@ AMBIT_MAX_POINTS = {
 
 THIN_GRID = Side(style="thin", color=GRID)
 BORDER = Border(left=THIN_GRID, right=THIN_GRID, top=THIN_GRID, bottom=THIN_GRID)
+
+
 def workbook_path() -> Path:
     if len(sys.argv) > 1:
         return Path(sys.argv[1]).resolve()
@@ -90,6 +98,32 @@ def clear_layout_helpers(ws):
 def load_criteria() -> list[dict[str, str]]:
     with CRITERIA_CSV.open(newline="", encoding="utf-8") as fh:
         return list(csv.DictReader(fh))
+
+
+def load_seed_offers() -> list[dict[str, str]]:
+    with OFFERS_CSV.open(newline="", encoding="utf-8") as fh:
+        return list(csv.DictReader(fh))
+
+
+def dedupe_zip_entries(path: Path):
+    with zipfile.ZipFile(path, "r") as zin:
+        infos = zin.infolist()
+        order: list[str] = []
+        latest: dict[str, tuple[zipfile.ZipInfo, bytes]] = {}
+        for info in infos:
+            if info.filename not in latest:
+                order.append(info.filename)
+            latest[info.filename] = (info, zin.read(info.filename))
+
+    if len(order) == len(infos):
+        return
+
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    with zipfile.ZipFile(tmp_path, "w") as zout:
+        for name in order:
+            info, data = latest[name]
+            zout.writestr(info, data)
+    tmp_path.replace(path)
 
 
 def title(ws, text: str, subtitle: str | None = None, end_col: str = "H"):
@@ -165,6 +199,25 @@ def add_header_comment(ws, ref: str, text: str):
     ws[ref].comment = Comment(text, "GLM")
 
 
+def unlock_range(ws, cell_range: str):
+    for row in ws[cell_range]:
+        for cell in row:
+            cell.protection = Protection(locked=False)
+
+
+def protect_sheet(ws):
+    ws.protection.sheet = True
+    ws.protection.formatCells = False
+    ws.protection.formatColumns = False
+    ws.protection.formatRows = False
+    ws.protection.insertRows = False
+    ws.protection.deleteRows = False
+    ws.protection.sort = False
+    ws.protection.autoFilter = False
+    ws.protection.selectLockedCells = False
+    ws.protection.selectUnlockedCells = False
+
+
 def hide_columns(ws, columns: list[str]):
     for column in columns:
         ws.column_dimensions[column].hidden = True
@@ -173,12 +226,11 @@ def hide_columns(ws, columns: list[str]):
 def apply_workbook_visibility(wb):
     visible = {
         "Dashboard",
-        "Parametri",
-        "Offerte",
+        "Compila",
         "CriteriTecnici",
         "Ottimizzazione",
         "Combinatorie",
-        "Risultati",
+        "Report",
         "Guida",
     }
     for ws in wb.worksheets:
@@ -198,9 +250,9 @@ def create_dashboard(wb):
     section_header(ws, 4, "Stato scenario", "H")
     cards = [
         ("A5:B7", "Scenario", '=IF(Parametri!B3="","Da impostare","Lotto "&Parametri!B3)', "Lotto attivo per analisi e ottimizzazione"),
-        ("C5:D7", "Offerte", "=COUNTA(Offerte!A2:A200)", "Righe concorrente-lotto compilate"),
-        ("E5:F7", "Attive", '=COUNTIF(Offerte!D2:D200,"1")+COUNTIF(Offerte!D2:D200,1)', "Righe incluse nel calcolo"),
-        ("G5:H7", "Soglia", '=Parametri!B2&" punti"', "Minimo tecnico di ammissibilità"),
+        ("C5:D7", "Offerte", f"=COUNTA(Compila!A{COMPILA_OFFER_START_ROW}:A{COMPILA_OFFER_START_ROW + MAX_OFFER_ROWS - 2})", "Righe concorrente-lotto compilate"),
+        ("E5:F7", "Attive", f'=COUNTIF(Offerte!D2:D{MAX_OFFER_ROWS},"1")+COUNTIF(Offerte!D2:D{MAX_OFFER_ROWS},1)', "Righe incluse nel calcolo"),
+        ("G5:H7", "Avvisi", '=SUM(Compila!M6:M10)', "Criticità aperte prima della simulazione"),
     ]
     for cell_range, label, formula, note in cards:
         start_ref, end_ref = cell_range.split(":")
@@ -223,12 +275,12 @@ def create_dashboard(wb):
 
     section_header(ws, 10, "Organizzazione come nella web app", "H")
     workflow = [
-        ("1", "Scenario", "Parametri", "Soglia tecnica, lotto attivo e impostazioni di base."),
+        ("1", "Scenario", "Compila", "Soglia, lotto attivo, concorrenti, lotti e ribassi."),
         ("2", "Tecnica", "CriteriTecnici", "Sub-criteri A-G, con input evidenziati e punteggio alimentato in Offerte."),
-        ("3", "Economica", "Offerte", "Concorrenti, lotti, attivazione righe e ribasso medio."),
+        ("3", "Economica", "Compila", "Ribasso medio e stato ammissibilità per ogni riga."),
         ("4", "Ottimizzazione", "Ottimizzazione", "Bidder target, leve Q/T e iterazioni controllate."),
         ("5", "Combinatorie", "Combinatorie", "Coppie principali, buste, PEF e ribasso migliorativo."),
-        ("6", "Risultati", "Risultati", "Ranking generato dalla macro SimulaScenario."),
+        ("6", "Risultati", "Report", "Report leggibile alimentato dai calcoli e dalle macro."),
     ]
     start = 11
     for idx, (step, area, sheet_name, detail) in enumerate(workflow, start=start):
@@ -245,60 +297,67 @@ def create_dashboard(wb):
         ws[f"B{row}"].fill = fill(SECTION)
         ws[f"B{row}"].font = Font(bold=True, color=INK)
 
-    section_header(ws, 20, "Azioni principali", "H")
+    section_header(ws, 20, "Navigazione", "H")
     links = [
-        ("A21", "Parametri", "Parametri"),
-        ("C21", "Offerte", "Offerte"),
+        ("A21", "Compila", "Compila"),
+        ("C21", "Report", "Report"),
         ("E21", "Criteri tecnici", "CriteriTecnici"),
-        ("G21", "Risultati", "Risultati"),
+        ("G21", "Combinatorie", "Combinatorie"),
         ("A23", "Ottimizzazione", "Ottimizzazione"),
-        ("C23", "Combinatorie", "Combinatorie"),
-        ("E23", "Guida", "Guida"),
+        ("C23", "Guida", "Guida"),
     ]
     for ref, label, sheet_name in links:
         add_sheet_link(ws[ref], label, sheet_name)
-    macro_rows = [
-        ("CheckBeforeRun", "Controlla setup e dati prima di simulare."),
-        ("SimulaScenario", "Calcola punteggi, combinatorie e vincitori."),
-        ("OttimizzaLottoAttivo", "Applica iterazioni Q/T al bidder indicato."),
-        ("ConfrontoWebGolden", "Verifica i totali attesi copiati dal web."),
-    ]
-    for row, (macro, description) in enumerate(macro_rows, start=25):
-        ws[f"A{row}"] = macro
-        ws[f"C{row}"] = description
-        ws.merge_cells(f"C{row}:H{row}")
-    style_cells(ws, "A25:H28", WHITE)
-    for row in range(25, 29):
-        ws[f"A{row}"].fill = fill(GREEN)
-        ws[f"A{row}"].font = Font(bold=True, color=INK)
 
-    section_header(ws, 31, "Fogli avanzati nascosti", "H")
+    section_header(ws, 25, "Pulsanti operativi", "H")
+    macro_rows = [
+        ("A26:B27", "Controlla", "CheckBeforeRun", "Valida setup e input."),
+        ("C26:D27", "Simula", "SimulaScenario", "Aggiorna risultati e combinatorie."),
+        ("E26:F27", "Ottimizza", "OttimizzaLottoAttivo", "Lavora sul bidder target."),
+        ("G26:H27", "Confronto web", "ConfrontoWebGolden", "Verifica expected dal web."),
+    ]
+    for cell_range, label, macro, detail in macro_rows:
+        start_ref, end_ref = cell_range.split(":")
+        start_cell = ws[start_ref]
+        end_cell = ws[end_ref]
+        ws.merge_cells(cell_range)
+        start_cell.value = f"{label}\n{macro}\n{detail}"
+        start_cell.fill = fill(TEAL_SOFT)
+        start_cell.border = BORDER
+        start_cell.font = Font(bold=True, color=TEAL_DARK)
+        start_cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        start_cell.comment = Comment(f"Esegui la macro {macro} dal menu Macro di Excel o dalla Barra di accesso rapido.", "GLM")
+        for row in range(start_cell.row, end_cell.row + 1):
+            ws.row_dimensions[row].height = 32
+
+    section_header(ws, 30, "Fogli avanzati nascosti", "H")
     advanced = [
-        "I fogli ScambioWeb, ScenarioGlobale, ConfrontoWeb, LogOttimizzazione, Glossario e Istruzioni restano nel file, ma sono nascosti per non appesantire il lavoro quotidiano.",
+        "Parametri, Offerte, Risultati raw, ScambioWeb, ScenarioGlobale, ConfrontoWeb, LogOttimizzazione, Glossario e Istruzioni restano nel file, ma sono nascosti per non appesantire il lavoro quotidiano.",
         "Usali solo per audit, export JSON verso web, confronto golden, log macro o manutenzione. Puoi riattivarli da Excel con Mostra foglio.",
     ]
-    for row, text in enumerate(advanced, start=32):
+    for row, text in enumerate(advanced, start=31):
         ws[f"A{row}"] = text
         ws.merge_cells(f"A{row}:H{row}")
         ws[f"A{row}"].fill = fill(SURFACE_SOFT if row == 32 else WHITE)
         ws[f"A{row}"].border = BORDER
         ws[f"A{row}"].alignment = Alignment(wrap_text=True)
 
-    section_header(ws, 35, "Limiti da ricordare", "H")
+    section_header(ws, 34, "Limiti da ricordare", "H")
     limits = [
         "Il foglio CriteriTecnici calcola il tecnico dai sub-criteri A-G; il valore aggregato resta solo come fallback di compatibilità.",
         "Il foglio ScambioWeb produce un JSON completo con offerte, sub-criteri, ribassi e combinatorie, ma resta nascosto finché non serve.",
         "I costi e le leve sono ipotesi operative: non sono dati ufficiali di gara.",
         "Se Excel blocca le macro dopo il download, sblocca il file dalle proprietà del sistema prima dell'uso.",
     ]
-    for row, text in enumerate(limits, start=36):
+    for row, text in enumerate(limits, start=35):
         ws[f"A{row}"] = text
         ws.merge_cells(f"A{row}:H{row}")
-        ws[f"A{row}"].fill = fill(AMBER if row == 36 else WHITE)
+        ws[f"A{row}"].fill = fill(AMBER if row == 35 else WHITE)
         ws[f"A{row}"].border = BORDER
         ws[f"A{row}"].alignment = Alignment(wrap_text=True)
 
     set_widths(ws, {"A": 14, "B": 22, "C": 18, "D": 18, "E": 18, "F": 18, "G": 18, "H": 18})
+    protect_sheet(ws)
     ws.freeze_panes = "A4"
 
 
@@ -308,9 +367,9 @@ def create_guide(wb):
     title(ws, "Guida operativa", "Percorso d'uso, mappa dei fogli e README incorporato nel workbook.")
 
     rows = [
-        ("Avvio rapido", "1. Apri Dashboard e controlla lo stato scenario.\n2. In Parametri imposta soglia e lotto attivo.\n3. In Offerte compila concorrenti, lotti, attivo e ribasso.\n4. In CriteriTecnici compila solo le celle evidenziate in giallo.\n5. Esegui CheckBeforeRun e poi SimulaScenario.\n6. Leggi Risultati."),
-        ("Mappa rispetto alla web app", "Scenario = Parametri.\nTecnica = CriteriTecnici.\nEconomica = Offerte.\nOttimizzazione = Ottimizzazione.\nCombinatorie = Combinatorie.\nRisultati = Risultati."),
-        ("Cosa non devi toccare", "Le colonne nascoste e i fogli nascosti servono a formule, macro, scambio dati e audit. Restano nel file per completezza, ma non fanno parte del percorso quotidiano."),
+        ("Avvio rapido", "1. Apri Compila e imposta soglia, lotto attivo, concorrenti, lotti e ribassi.\n2. Usa i link Dettaglio A-G per completare i criteri tecnici.\n3. Controlla la sezione Cosa manca.\n4. Esegui CheckBeforeRun e poi SimulaScenario.\n5. Leggi il Report."),
+        ("Mappa rispetto alla web app", "Scenario + Economica = Compila.\nTecnica = CriteriTecnici.\nOttimizzazione = Ottimizzazione.\nCombinatorie = Combinatorie.\nRisultati = Report."),
+        ("Cosa non devi toccare", "Parametri, Offerte e Risultati raw sono fogli tecnici collegati a Compila e Report. Le colonne nascoste e i fogli nascosti servono a formule, macro, scambio dati e audit."),
         ("Macro principali", "CheckBeforeRun: valida setup e input.\nSimulaScenario: calcola risultati.\nOttimizzaLottoAttivo: lavora sul bidder e lotto selezionati.\nConfrontoWebGolden: confronta i totali Excel con valori web incollati nel foglio nascosto ConfrontoWeb."),
         ("Sicurezza macro", "Dopo download da web Excel può bloccare le macro. Su macOS/Windows può servire sbloccare il file o spostarlo in una posizione attendibile."),
     ]
@@ -340,6 +399,7 @@ def create_guide(wb):
         row += 1
 
     set_widths(ws, {"A": 18, "B": 16, "C": 16, "D": 16, "E": 16, "F": 16, "G": 16, "H": 16})
+    protect_sheet(ws)
     ws.freeze_panes = "A4"
 
 
@@ -408,10 +468,10 @@ def polish_instruction_sheet(wb):
     title(ws, "Istruzioni rapide", "Punto di partenza per usare il file senza leggere documenti esterni.")
     rows = [
         ("1", "Dashboard", "Apri la dashboard per orientarti e passare ai fogli principali."),
-        ("2", "Parametri", "Imposta soglia tecnica e lotto attivo."),
-        ("3", "Offerte", "Compila concorrenti, lotti attivi, tecnico e ribasso."),
+        ("2", "Compila", "Imposta soglia, lotto attivo, concorrenti, lotti e ribassi."),
+        ("3", "CriteriTecnici", "Completa i sub-criteri A-G quando servono punteggi tecnici dettagliati."),
         ("4", "Macro", "Esegui CheckBeforeRun, SimulaScenario e, se serve, OttimizzaLottoAttivo."),
-        ("5", "Confronto web", "Incolla i valori attesi in ConfrontoWeb!J2:J5 e lancia ConfrontoWebGolden."),
+        ("5", "Report", "Leggi vincitori, combinatorie e stato scenario in forma sintetica."),
     ]
     section_header(ws, 4, "Percorso consigliato", "H")
     for row, item in enumerate(rows, start=5):
@@ -433,14 +493,179 @@ def polish_instruction_sheet(wb):
     ws.freeze_panes = "A4"
 
 
+def create_compila(wb):
+    ws = reset_sheet(wb, "Compila")
+    apply_sheet_chrome(ws, TEAL)
+    title(ws, "Compila scenario", "Foglio unico per il lavoro quotidiano: parametri, offerte e stato di compilazione.")
+
+    ws_param = wb["Parametri"]
+    seed_offers = load_seed_offers()
+    threshold = coerce_number(ws_param["B2"].value)
+    if threshold in (None, "") or isinstance(threshold, str):
+        threshold = 36
+    active_lot = ws_param["B3"].value
+    if active_lot not in {"L1", "L2", "L3", "L4"}:
+        active_lot = "L1"
+
+    section_header(ws, 4, "Scenario", "H")
+    scenario_rows = [
+        ("Soglia tecnica", threshold, "Minimo Q/T per ammissibilità, 0-70."),
+        ("Lotto attivo", active_lot, "Lotto usato da analisi e ottimizzazione."),
+        ("Bidder ottimizzazione", '=IF(Ottimizzazione!B2="","",Ottimizzazione!B2)', "Concorrente target per OttimizzaLottoAttivo."),
+        ("Stato compilazione", '=IF(SUM($M$6:$M$11)=0,"Pronto",SUM($M$6:$M$11)&" avvisi")', "Sintesi controlli a destra."),
+    ]
+    for row, (label, value, note) in enumerate(scenario_rows, start=5):
+        ws[f"A{row}"] = label
+        ws[f"B{row}"] = value
+        ws[f"C{row}"] = note
+        ws.merge_cells(f"C{row}:H{row}")
+    style_cells(ws, "A5:H8", WHITE)
+    for row in range(5, 9):
+        ws[f"A{row}"].fill = fill(SECTION)
+        ws[f"A{row}"].font = Font(bold=True, color=INK)
+    for ref in ["B5", "B6"]:
+        ws[ref].fill = fill(INPUT)
+        ws[ref].font = Font(bold=True, color=INK)
+    for ref in ["B7", "B8"]:
+        ws[ref].fill = fill(OUTPUT)
+    ws["B8"].font = Font(bold=True, color=TEAL_DARK)
+
+    section_header(ws, 10, "Offerte", "K")
+    headers = [
+        "BidderId",
+        "BidderNome",
+        "Lotto",
+        "Attivo",
+        "Ribasso %",
+        "Tecnico A-G",
+        "Ammesso",
+        "Economico",
+        "Totale",
+        "Stato",
+        "Dettaglio A-G",
+    ]
+    header_row = COMPILA_OFFER_START_ROW - 1
+    for col, header in enumerate(headers, start=1):
+        ws.cell(row=header_row, column=col).value = header
+    style_header_row(ws, header_row, len(headers))
+    add_header_comment(ws, "A11", "Identificativo breve del concorrente, uguale per tutti i lotti dello stesso operatore.")
+    add_header_comment(ws, "D11", "1 include la riga nella simulazione, 0 la esclude.")
+    add_header_comment(ws, "E11", "Ribasso medio in percentuale.")
+    add_header_comment(ws, "F11", "Totale tecnico calcolato dal foglio CriteriTecnici.")
+
+    end_row = COMPILA_OFFER_START_ROW + MAX_OFFER_ROWS - 2
+    style_cells(ws, f"A{COMPILA_OFFER_START_ROW}:K{end_row}", WHITE)
+    for row in range(COMPILA_OFFER_START_ROW, end_row + 1):
+        offer_row = row - COMPILA_OFFER_START_ROW + 2
+        for col in range(1, 6):
+            ws.cell(row=row, column=col).fill = fill(INPUT)
+        for col in range(6, 11):
+            ws.cell(row=row, column=col).fill = fill(OUTPUT)
+
+        seed = seed_offers[offer_row - 2] if offer_row - 2 < len(seed_offers) else {}
+        ws.cell(row=row, column=1).value = seed.get("BidderId", "")
+        ws.cell(row=row, column=2).value = seed.get("BidderNome", "")
+        ws.cell(row=row, column=3).value = seed.get("Lotto", "")
+        ws.cell(row=row, column=4).value = coerce_number(seed.get("Attivo", ""))
+        ws.cell(row=row, column=5).value = coerce_number(seed.get("RibassoMedioPercento", ""))
+
+        ws[f"F{row}"] = f'=IF($A{row}="","",Offerte!$E{offer_row})'
+        ws[f"G{row}"] = f'=IF($A{row}="","",Offerte!$G{offer_row})'
+        ws[f"H{row}"] = f'=IF($A{row}="","",Offerte!$I{offer_row})'
+        ws[f"I{row}"] = f'=IF($A{row}="","",Offerte!$J{offer_row})'
+        ws[f"J{row}"] = f'=IF($A{row}="","",IF($D{row}<>1,"Non attiva",IF($G{row}="NO","Sotto soglia",IF(Offerte!$P{offer_row}="Aggregato","Compila criteri A-G","OK"))))'
+        ws[f"K{row}"] = "Apri criteri"
+        ws[f"K{row}"].hyperlink = f"#'CriteriTecnici'!A{TECHNICAL_START_ROW + (offer_row - 2) * len(load_criteria())}"
+        ws[f"K{row}"].style = "Hyperlink"
+        ws[f"K{row}"].font = Font(color=BLUE, underline="single", bold=True)
+
+    dv_lot = DataValidation(type="list", formula1='"L1,L2,L3,L4"', allow_blank=True)
+    dv_active = DataValidation(type="list", formula1='"1,0"', allow_blank=True)
+    dv_discount = DataValidation(type="decimal", operator="between", formula1="0", formula2="100", allow_blank=True)
+    dv_threshold = DataValidation(type="decimal", operator="between", formula1="0", formula2="70", allow_blank=False)
+    for dv in [dv_lot, dv_active, dv_discount, dv_threshold]:
+        ws.add_data_validation(dv)
+    dv_threshold.add("B5")
+    dv_lot.add("B6")
+    dv_lot.add(f"C{COMPILA_OFFER_START_ROW}:C{end_row}")
+    dv_active.add(f"D{COMPILA_OFFER_START_ROW}:D{end_row}")
+    dv_discount.add(f"E{COMPILA_OFFER_START_ROW}:E{end_row}")
+
+    ws.conditional_formatting.add(f"G{COMPILA_OFFER_START_ROW}:G{end_row}", CellIsRule(operator="equal", formula=['"SI"'], fill=fill(GREEN)))
+    ws.conditional_formatting.add(f"G{COMPILA_OFFER_START_ROW}:G{end_row}", CellIsRule(operator="equal", formula=['"NO"'], fill=fill(RED)))
+    ws.conditional_formatting.add(f"J{COMPILA_OFFER_START_ROW}:J{end_row}", CellIsRule(operator="equal", formula=['"OK"'], fill=fill(GREEN)))
+    ws.conditional_formatting.add(f"J{COMPILA_OFFER_START_ROW}:J{end_row}", FormulaRule(formula=[f'AND($J{COMPILA_OFFER_START_ROW}<>"OK",$J{COMPILA_OFFER_START_ROW}<>"")'], fill=fill(AMBER)))
+
+    add_table(ws, "tblCompilaOfferte", f"A{header_row}:K{end_row}")
+
+    ws["L4"] = "Cosa manca"
+    ws.merge_cells("L4:N4")
+    ws["L4"].fill = fill(TEAL)
+    ws["L4"].font = Font(bold=True, color=WHITE)
+    ws["L4"].alignment = Alignment(vertical="center")
+    ws.row_dimensions[4].height = 22
+    ws["L5"] = "Controllo"
+    ws["M5"] = "N."
+    ws["N5"] = "Azione"
+    for col in range(12, 15):
+        cell = ws.cell(row=5, column=col)
+        cell.fill = fill(NAVY)
+        cell.font = Font(bold=True, color=WHITE)
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = BORDER
+    checks = [
+        ("Offerte senza lotto", f'=COUNTIFS($A${COMPILA_OFFER_START_ROW}:$A${end_row},"<>",$C${COMPILA_OFFER_START_ROW}:$C${end_row},"")', "Aggiungi lotto L1-L4."),
+        ("Offerte senza nome", f'=COUNTIFS($A${COMPILA_OFFER_START_ROW}:$A${end_row},"<>",$B${COMPILA_OFFER_START_ROW}:$B${end_row},"")', "Completa BidderNome."),
+        ("Attive sotto soglia", f'=COUNTIFS(Offerte!$G$2:$G${MAX_OFFER_ROWS},"NO",Offerte!$D$2:$D${MAX_OFFER_ROWS},1,Offerte!$A$2:$A${MAX_OFFER_ROWS},"<>")', "Controlla Q/T o soglia tecnica."),
+        ("Criteri A-G mancanti", f'=COUNTIFS(Offerte!$P$2:$P${MAX_OFFER_ROWS},"Aggregato",Offerte!$A$2:$A${MAX_OFFER_ROWS},"<>")', "Compila il dettaglio tecnico."),
+        ("Combinatorie incoerenti", '=COUNTIFS(Combinatorie!$R$5:$R$80,"<>",Combinatorie!$A$5:$A$80,"<>")', "Controlla buste, PEF e ribasso migliorativo."),
+        ("Righe pronte", f'=COUNTIFS($A${COMPILA_OFFER_START_ROW}:$A${end_row},"<>",$J${COMPILA_OFFER_START_ROW}:$J${end_row},"OK")', "Righe offerta senza avvisi."),
+    ]
+    for row, (label, formula, action) in enumerate(checks, start=6):
+        ws[f"L{row}"] = label
+        ws[f"M{row}"] = formula
+        ws[f"N{row}"] = action
+    style_cells(ws, "L6:N11", WHITE)
+    for row in range(6, 12):
+        ws[f"L{row}"].fill = fill(SECTION)
+        ws[f"M{row}"].font = Font(bold=True, color=TEAL_DARK)
+    ws.conditional_formatting.add("M6:M10", CellIsRule(operator="greaterThan", formula=["0"], fill=fill(AMBER)))
+
+    set_widths(
+        ws,
+        {
+            "A": 16,
+            "B": 26,
+            "C": 10,
+            "D": 10,
+            "E": 12,
+            "F": 13,
+            "G": 12,
+            "H": 12,
+            "I": 12,
+            "J": 20,
+            "K": 16,
+            "L": 24,
+            "M": 9,
+            "N": 34,
+        },
+    )
+    unlock_range(ws, "B5:B6")
+    unlock_range(ws, f"A{COMPILA_OFFER_START_ROW}:E{end_row}")
+    protect_sheet(ws)
+    ws.freeze_panes = f"A{COMPILA_OFFER_START_ROW}"
+
+
 def polish_parametri(wb):
     ws = wb["Parametri"]
     clear_layout_helpers(ws)
     apply_sheet_chrome(ws, AMBER_TEXT)
     style_header_row(ws, 1, 3)
     style_cells(ws, f"A2:C{ws.max_row}", WHITE)
+    ws["B2"] = "=Compila!B5"
+    ws["B3"] = "=Compila!B6"
     for row in range(2, ws.max_row + 1):
-        ws[f"B{row}"].fill = fill(INPUT)
+        ws[f"B{row}"].fill = fill(OUTPUT if row in [2, 3] else INPUT)
         ws[f"B{row}"].font = Font(bold=True, color=INK)
     dv_lot = DataValidation(type="list", formula1='"L1,L2,L3,L4"', allow_blank=False)
     ws.add_data_validation(dv_lot)
@@ -452,6 +677,7 @@ def polish_parametri(wb):
     ws["B3"].comment = Comment("Lotto attivo per OttimizzaLottoAttivo.", "Codex")
     add_table(ws, "tblParametri", f"A1:C{ws.max_row}")
     set_widths(ws, {"A": 24, "B": 16, "C": 60})
+    protect_sheet(ws)
     ws.freeze_panes = "A2"
 
 
@@ -473,6 +699,8 @@ def polish_ottimizzazione(wb):
         dv_decimal.add(ws[ref])
     add_table(ws, "tblOttimizzazione", f"A1:C{ws.max_row}")
     set_widths(ws, {"A": 24, "B": 16, "C": 64})
+    unlock_range(ws, "B2:B9")
+    protect_sheet(ws)
     ws.freeze_panes = "A2"
 
 
@@ -499,11 +727,15 @@ def polish_offerte(wb):
         "FonteTecnico",
     ]
     fallback_values = {}
+    seed_offers = load_seed_offers()
     for row in range(2, MAX_OFFER_ROWS + 1):
         fallback_source = ws[f"E{row}"].value
         if isinstance(fallback_source, str) and fallback_source.startswith("="):
             fallback_source = ws[f"N{row}"].value
-        fallback_values[row] = coerce_number(fallback_source)
+        fallback_value = coerce_number(fallback_source)
+        if isinstance(fallback_value, str) and row - 2 < len(seed_offers):
+            fallback_value = coerce_number(seed_offers[row - 2].get("PunteggioTecnicoRaw", ""))
+        fallback_values[row] = fallback_value
     for row in range(2, MAX_OFFER_ROWS + 1):
         for col in ["D", "E", "F"]:
             ws[f"{col}{row}"].value = coerce_number(ws[f"{col}{row}"].value)
@@ -542,11 +774,18 @@ def polish_offerte(wb):
         return f'IF({best}>0,MIN({max_points},{raw}*({max_points}/{best})),0)'
 
     for row in range(2, MAX_OFFER_ROWS + 1):
+        compila_row = COMPILA_OFFER_START_ROW + row - 2
         for col in range(1, 7):
             ws.cell(row=row, column=col).fill = fill(INPUT)
         ws.cell(row=row, column=5).fill = fill(OUTPUT)
         for col in range(7, 17):
             ws.cell(row=row, column=col).fill = fill(OUTPUT)
+
+        ws[f"A{row}"] = f'=IF(Compila!$A{compila_row}="","",Compila!$A{compila_row})'
+        ws[f"B{row}"] = f'=IF(Compila!$A{compila_row}="","",Compila!$B{compila_row})'
+        ws[f"C{row}"] = f'=IF(Compila!$A{compila_row}="","",Compila!$C{compila_row})'
+        ws[f"D{row}"] = f'=IF(Compila!$A{compila_row}="","",Compila!$D{compila_row})'
+        ws[f"F{row}"] = f'=IF(Compila!$A{compila_row}="","",Compila!$E{compila_row})'
 
         criteria_total = criteria_score_sum.format(row=row)
         criteria_qt = criteria_qt_sum.format(row=row)
@@ -595,6 +834,7 @@ def polish_offerte(wb):
     add_table(ws, "tblOfferte", f"A1:P{MAX_OFFER_ROWS}")
     set_widths(ws, {"A": 16, "B": 26, "C": 12, "D": 12, "E": 22, "F": 24, "G": 18, "H": 14, "I": 18, "J": 18, "K": 22, "L": 22, "M": 18, "N": 26, "O": 18, "P": 16})
     hide_columns(ws, ["L", "M", "N", "O", "P"])
+    protect_sheet(ws)
     ws.freeze_panes = "A2"
 
 
@@ -758,6 +998,8 @@ def create_criteri_tecnici(wb):
         },
     )
     hide_columns(ws, ["G", "H", "N", "Q", "R", "S", "T"])
+    unlock_range(ws, f"J{TECHNICAL_START_ROW}:M{end_row}")
+    protect_sheet(ws)
     ws.freeze_panes = "A5"
 
 
@@ -811,16 +1053,16 @@ def create_combinatorie(wb):
 
     offer_rows: dict[tuple[str, str], float] = {}
     bidders: dict[str, str] = {}
-    ws_off = wb["Offerte"]
-    for offer_row in range(2, MAX_OFFER_ROWS + 1):
-        bidder_id = str(ws_off[f"A{offer_row}"].value or "").strip()
-        bidder_name = str(ws_off[f"B{offer_row}"].value or "").strip()
-        lot_id = str(ws_off[f"C{offer_row}"].value or "").strip()
+    ws_compila = wb["Compila"]
+    for compila_row in range(COMPILA_OFFER_START_ROW, COMPILA_OFFER_START_ROW + MAX_OFFER_ROWS - 1):
+        bidder_id = str(ws_compila[f"A{compila_row}"].value or "").strip()
+        bidder_name = str(ws_compila[f"B{compila_row}"].value or "").strip()
+        lot_id = str(ws_compila[f"C{compila_row}"].value or "").strip()
         if not bidder_id or lot_id not in {"L1", "L2", "L3", "L4"}:
             continue
         bidders.setdefault(bidder_id, bidder_name)
         try:
-            offer_rows[(bidder_id, lot_id)] = float(ws_off[f"F{offer_row}"].value or 0)
+            offer_rows[(bidder_id, lot_id)] = float(ws_compila[f"E{compila_row}"].value or 0)
         except (TypeError, ValueError):
             offer_rows[(bidder_id, lot_id)] = 0
 
@@ -931,6 +1173,8 @@ def create_combinatorie(wb):
         },
     )
     hide_columns(ws, ["H", "I", "J", "K", "L", "M", "O", "P", "S", "T", "U", "V", "W"])
+    unlock_range(ws, f"A5:G{MAX_COMBO_ROWS}")
+    protect_sheet(ws)
     ws.freeze_panes = "A5"
 
 
@@ -1054,7 +1298,7 @@ def create_scambio_web(wb):
 
     section_header(ws, 4, "Come usarlo", "H")
     steps = [
-        ("1", "Compila Offerte e, se servono, Combinatorie."),
+        ("1", "Compila il foglio Compila e, se servono, Combinatorie."),
         ("2", "Esegui CheckBeforeRun e SimulaScenario per aggiornare formule e warning."),
         ("3", "Copia le righe non vuote della colonna A dalla sezione JSON generato."),
         ("4", "Salvale come file .json oppure incollale in un editor e importale dal simulatore web."),
@@ -1183,6 +1427,78 @@ def create_scambio_web(wb):
     ws.freeze_panes = "A13"
 
 
+def create_report(wb):
+    ws = reset_sheet(wb, "Report")
+    apply_sheet_chrome(ws, TEAL_DARK)
+    title(ws, "Report risultati", "Vista leggibile per lotto, combinatorie e stato scenario. Le tabelle raw restano nei fogli tecnici.")
+
+    section_header(ws, 4, "Vincitori per lotto", "H")
+    headers = ["Lotto", "BidderId", "BidderNome", "Totale", "Tecnico", "Economico", "Warning", "Origine"]
+    for col, header in enumerate(headers, start=1):
+        ws.cell(row=5, column=col).value = header
+    style_header_row(ws, 5, len(headers))
+    for row in range(6, 10):
+        source_row = row
+        ws[f"A{row}"] = f"=ScenarioGlobale!A{source_row}"
+        ws[f"B{row}"] = f"=ScenarioGlobale!B{source_row}"
+        ws[f"C{row}"] = f"=ScenarioGlobale!C{source_row}"
+        ws[f"D{row}"] = f"=ScenarioGlobale!D{source_row}"
+        ws[f"E{row}"] = f"=ScenarioGlobale!E{source_row}"
+        ws[f"F{row}"] = f"=ScenarioGlobale!F{source_row}"
+        ws[f"G{row}"] = f"=ScenarioGlobale!G{source_row}"
+        ws[f"H{row}"] = f"=ScenarioGlobale!H{source_row}"
+    style_cells(ws, "A6:H9", OUTPUT)
+    ws.conditional_formatting.add("G6:G9", FormulaRule(formula=['$G6<>""'], fill=fill(AMBER)))
+
+    section_header(ws, 12, "Combinatorie principali", "H")
+    combo_headers = ["Coppia", "BidderId", "BidderNome", "Totale", "Ammissibile", "Ribasso", "Note", "Origine"]
+    for col, header in enumerate(combo_headers, start=1):
+        ws.cell(row=13, column=col).value = header
+    style_header_row(ws, 13, len(combo_headers))
+    for row in range(14, 18):
+        source_row = row
+        for col in range(1, 9):
+            ws.cell(row=row, column=col).value = f"=ScenarioGlobale!{ws.cell(row=source_row, column=col).coordinate}"
+    style_cells(ws, "A14:H17", OUTPUT)
+    ws.conditional_formatting.add("E14:E17", CellIsRule(operator="equal", formula=['"SI"'], fill=fill(GREEN)))
+    ws.conditional_formatting.add("E14:E17", CellIsRule(operator="equal", formula=['"NO"'], fill=fill(RED)))
+
+    section_header(ws, 20, "Scenario complessivo", "H")
+    scenario_headers = ["Scenario", "L1", "L2", "L3", "L4", "Totale", "Nota", "Rank"]
+    for col, header in enumerate(scenario_headers, start=1):
+        ws.cell(row=21, column=col).value = header
+    style_header_row(ws, 21, len(scenario_headers))
+    for row in range(22, 29):
+        source_row = row
+        for col in range(1, 9):
+            ws.cell(row=row, column=col).value = f"=ScenarioGlobale!{ws.cell(row=source_row, column=col).coordinate}"
+    style_cells(ws, "A22:H28", WHITE)
+    ws.conditional_formatting.add("H22:H28", CellIsRule(operator="equal", formula=["1"], fill=fill(GREEN)))
+
+    section_header(ws, 31, "Stato compilazione", "H")
+    status_rows = [
+        ("Offerte totali", f"=COUNTA(Compila!A{COMPILA_OFFER_START_ROW}:A{COMPILA_OFFER_START_ROW + MAX_OFFER_ROWS - 2})", "Righe concorrente-lotto compilate."),
+        ("Offerte pronte", "=Compila!M11", "Righe senza avvisi nel foglio Compila."),
+        ("Avvisi aperti", "=SUM(Compila!M6:M10)", "Zero significa scenario pronto per simulazione."),
+        ("Pacchetto JSON", "ScambioWeb", "Foglio nascosto con payload importabile nel web."),
+    ]
+    for row, (label, value, note) in enumerate(status_rows, start=32):
+        ws[f"A{row}"] = label
+        ws[f"B{row}"] = value
+        ws[f"C{row}"] = note
+        ws.merge_cells(f"C{row}:H{row}")
+    style_cells(ws, "A32:H35", WHITE)
+    for row in range(32, 36):
+        ws[f"A{row}"].fill = fill(SECTION)
+        ws[f"A{row}"].font = Font(bold=True, color=INK)
+        ws[f"B{row}"].fill = fill(OUTPUT)
+        ws[f"B{row}"].font = Font(bold=True, color=TEAL_DARK)
+
+    set_widths(ws, {"A": 24, "B": 18, "C": 26, "D": 14, "E": 14, "F": 14, "G": 34, "H": 14})
+    protect_sheet(ws)
+    ws.freeze_panes = "A5"
+
+
 def polish_results(wb):
     ws = wb["Risultati"]
     clear_layout_helpers(ws)
@@ -1190,8 +1506,8 @@ def polish_results(wb):
     if ws.max_row >= 1:
         style_header_row(ws, 1, min(ws.max_column, 8))
     style_cells(ws, f"A2:H{max(ws.max_row, 30)}", OUTPUT)
-    ws.conditional_formatting.add("D2:D200", CellIsRule(operator="equal", formula=['"NO"'], fill=fill(RED)))
-    ws.conditional_formatting.add("D2:D200", CellIsRule(operator="equal", formula=['"SI"'], fill=fill(GREEN)))
+    ws.conditional_formatting.add(f"D2:D{MAX_OFFER_ROWS}", CellIsRule(operator="equal", formula=['"NO"'], fill=fill(RED)))
+    ws.conditional_formatting.add(f"D2:D{MAX_OFFER_ROWS}", CellIsRule(operator="equal", formula=['"SI"'], fill=fill(GREEN)))
     set_widths(ws, {"A": 18, "B": 16, "C": 24, "D": 14, "E": 14, "F": 14, "G": 14, "H": 30})
     ws.freeze_panes = "A2"
 
@@ -1240,6 +1556,19 @@ def add_common_footer(wb):
         ws.page_setup.fitToHeight = 0
 
 
+def clear_comments(wb):
+    for ws in wb.worksheets:
+        for row in ws.iter_rows():
+            for cell in row:
+                if cell.comment is not None:
+                    cell.comment = None
+        # openpyxl clears cell comments but can keep the old VML drawing
+        # relationship around. Excel treats that dangling reference as a
+        # workbook-recovery error, so remove the worksheet-level pointer too.
+        if hasattr(ws, "legacy_drawing"):
+            ws.legacy_drawing = None
+
+
 def main():
     path = workbook_path()
     wb = load_workbook(path, keep_vba=True)
@@ -1248,6 +1577,7 @@ def main():
     create_guide(wb)
     create_glossary(wb)
     polish_instruction_sheet(wb)
+    create_compila(wb)
     polish_parametri(wb)
     polish_ottimizzazione(wb)
     polish_offerte(wb)
@@ -1255,10 +1585,12 @@ def main():
     create_combinatorie(wb)
     create_scenario_globale(wb)
     create_scambio_web(wb)
+    create_report(wb)
     polish_results(wb)
     polish_confronto(wb)
     polish_log(wb)
     add_common_footer(wb)
+    clear_comments(wb)
     wb.calculation.calcMode = "auto"
     wb.calculation.fullCalcOnLoad = True
     wb.calculation.forceFullCalc = True
@@ -1266,13 +1598,15 @@ def main():
         wb,
         [
             "Dashboard",
-            "Parametri",
+            "Compila",
             "CriteriTecnici",
-            "Offerte",
             "Ottimizzazione",
             "Combinatorie",
-            "Risultati",
+            "Report",
             "Guida",
+            "Parametri",
+            "Offerte",
+            "Risultati",
             "Istruzioni",
             "ScenarioGlobale",
             "ScambioWeb",
@@ -1288,6 +1622,7 @@ def main():
     wb["Dashboard"].sheet_view.tabSelected = True
     wb.active = wb.sheetnames.index("Dashboard")
     wb.save(path)
+    dedupe_zip_entries(path)
     print(f"Workbook Excel migliorato: {path}")
 
 

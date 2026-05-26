@@ -44,6 +44,10 @@ if (!manifest.templateFile.endsWith('.xlsm')) {
 }
 
 const templateEntries = unzipList(workbookPath);
+const duplicateEntries = templateEntries.filter((entry, index) => templateEntries.indexOf(entry) !== index);
+if (duplicateEntries.length) {
+  throw new Error(`Template Excel con entry ZIP duplicate: ${[...new Set(duplicateEntries)].join(', ')}`);
+}
 if (!templateEntries.includes('[Content_Types].xml')) {
   throw new Error('Template Excel non valido: [Content_Types].xml mancante');
 }
@@ -75,6 +79,8 @@ const sheetEntries = [...workbookXml.matchAll(/<sheet\b[^>]*\/>/g)].map((match) 
 const sheetNames = sheetEntries.map((sheet) => sheet.name);
 const requiredSheets = [
   'Dashboard',
+  'Compila',
+  'Report',
   'Guida',
   'Glossario',
   'Istruzioni',
@@ -94,8 +100,8 @@ for (const sheetName of requiredSheets) {
   if (!sheetNames.includes(sheetName)) throw new Error(`Foglio mancante nel template: ${sheetName}`);
 }
 
-const expectedVisibleSheets = ['Dashboard', 'Parametri', 'CriteriTecnici', 'Offerte', 'Ottimizzazione', 'Combinatorie', 'Risultati', 'Guida'];
-const expectedHiddenSheets = ['Istruzioni', 'ScenarioGlobale', 'ScambioWeb', 'ConfrontoWeb', 'LogOttimizzazione', 'Glossario'];
+const expectedVisibleSheets = ['Dashboard', 'Compila', 'CriteriTecnici', 'Ottimizzazione', 'Combinatorie', 'Report', 'Guida'];
+const expectedHiddenSheets = ['Parametri', 'Offerte', 'Risultati', 'Istruzioni', 'ScenarioGlobale', 'ScambioWeb', 'ConfrontoWeb', 'LogOttimizzazione', 'Glossario'];
 for (const sheetName of expectedVisibleSheets) {
   const sheet = sheetEntries.find((entry) => entry.name === sheetName);
   if (sheet?.state !== 'visible') throw new Error(`Foglio operativo non visibile: ${sheetName}`);
@@ -106,7 +112,47 @@ for (const sheetName of expectedHiddenSheets) {
 }
 
 const worksheetEntries = templateEntries.filter((entry) => /^xl\/worksheets\/sheet\d+\.xml$/.test(entry));
-const workbookFormulaXml = worksheetEntries.map((entry) => unzipEntry(workbookPath, entry).toString('utf8')).join('\n');
+const workbookExtraEntries = templateEntries.filter((entry) => /^xl\/(tables\/table\d+|comments\d+|drawings\/drawing\d+)\.xml$/.test(entry));
+const workbookFormulaXml = [...worksheetEntries, ...workbookExtraEntries].map((entry) => unzipEntry(workbookPath, entry).toString('utf8')).join('\n');
+const worksheetRelEntries = templateEntries.filter((entry) => /^xl\/worksheets\/_rels\/sheet\d+\.xml\.rels$/.test(entry));
+const commentDrawingTargets = new Map();
+function resolveRelationshipTarget(relEntry, target) {
+  if (target.startsWith('/')) return target.slice(1);
+  const sourceEntry = relEntry.replace('/_rels/', '/').replace(/\.rels$/, '');
+  const sourceDir = sourceEntry.slice(0, sourceEntry.lastIndexOf('/'));
+  const parts = `${sourceDir}/${target}`.split('/');
+  const resolved = [];
+  for (const part of parts) {
+    if (!part || part === '.') continue;
+    if (part === '..') resolved.pop();
+    else resolved.push(part);
+  }
+  return resolved.join('/');
+}
+
+for (const entry of worksheetRelEntries) {
+  const xml = unzipEntry(workbookPath, entry).toString('utf8');
+  const relationships = [...xml.matchAll(/<Relationship\b[^>]*>/g)].map((match) => match[0]);
+  for (const relationship of relationships) {
+    const type = relationship.match(/\bType="([^"]+)"/)?.[1] ?? '';
+    const targetMode = relationship.match(/\bTargetMode="([^"]+)"/)?.[1] ?? '';
+    const target = relationship.match(/\bTarget="([^"]+)"/)?.[1];
+    if (target && targetMode !== 'External') {
+      const resolvedTarget = resolveRelationshipTarget(entry, target);
+      if (!templateEntries.includes(resolvedTarget)) {
+        throw new Error(`Relazione worksheet pendente: ${entry} punta a ${target} (${resolvedTarget})`);
+      }
+    }
+    if (!/\/(comments|vmlDrawing)$/.test(type)) continue;
+    if (!target) continue;
+    const key = `${type}:${target}`;
+    const previous = commentDrawingTargets.get(key);
+    if (previous) {
+      throw new Error(`Relazione commenti/VML riusata da più fogli: ${target} in ${previous} e ${entry}`);
+    }
+    commentDrawingTargets.set(key, entry);
+  }
+}
 const unsupportedFormulaTokens = ['MAXIFS', 'RANK.EQ'];
 for (const token of unsupportedFormulaTokens) {
   if (workbookFormulaXml.includes(token)) {
@@ -124,6 +170,17 @@ for (const pattern of forbiddenVisibleCopy) {
 const selectedTabs = (workbookFormulaXml.match(/tabSelected="1"/g) ?? []).length;
 if (selectedTabs > 1) {
   throw new Error(`Il workbook apre ${selectedTabs} fogli selezionati: deve aprirne uno solo`);
+}
+
+const protectedSheets = (workbookFormulaXml.match(/<sheetProtection\b/g) ?? []).length;
+if (protectedSheets < 6) {
+  throw new Error(`Protezione selettiva insufficiente: trovati ${protectedSheets} fogli protetti`);
+}
+
+for (const token of ['tblCompilaOfferte', 'Cosa manca', 'Pulsanti operativi', 'Report risultati']) {
+  if (!workbookFormulaXml.includes(token)) {
+    throw new Error(`Elemento UX atteso assente nel workbook: ${token}`);
+  }
 }
 
 console.log('Pacchetto Excel valido');

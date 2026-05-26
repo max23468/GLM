@@ -6,6 +6,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.6.0] — 2026-05-26
+
+### Novità
+
+- **Pacchetto Excel**: aggiunti il foglio guidato `Compila`, il `Report` leggibile, controlli `Cosa manca`, fogli tecnici nascosti/protetti e una validazione più severa del workbook.
+
 ## [1.5.1] — 2026-05-26
 
 ### Correzioni

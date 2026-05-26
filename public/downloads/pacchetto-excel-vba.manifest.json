@@ -1,10 +1,10 @@
 {
-  "version": "v0.8",
+  "version": "v0.9",
   "builtAt": "2026-05-26",
-  "sha256": "baf2a6fa127e421f2e365678e54b10bd767d89b51c99910d8c867c59bb1a4010",
+  "sha256": "06c0d884a90255dc5f9020fa48df1d4777b5526faf048b3c30d8ffa3eb177859",
   "file": "/downloads/Simulatore-TPL-Lotti-1-4.xlsm",
   "templateFile": "Simulatore-TPL-Lotti-1-4.xlsm",
-  "minAppVersion": "1.5.1",
-  "notes": "File XLSM unico con macro integrate, UI guidata GLM, criteri tecnici A-G e fogli avanzati nascosti",
+  "minAppVersion": "1.6.0",
+  "notes": "File XLSM unico con Compila guidato, Report leggibile, macro integrate, UI GLM, criteri A-G e fogli tecnici protetti",
   "generatedBy": "scripts/package-excel-vba.mjs"
 }
