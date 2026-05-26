@@ -4,7 +4,9 @@ Questo indice raccoglie le decisioni stabili del `Simulatore gara TPL lotti 1-4`
 
 ## Decisioni attive
 
-Nessuna ADR autonoma ancora registrata.
+- [0001 - Tag e GitHub Release](decisions/0001-tag-e-github-release.md): policy
+  per tag `vX.Y.Z`, GitHub Release e rapporto con release locale e deploy
+  Cloudflare Pages.
 
 Decisioni operative già effettive sono documentate in:
 

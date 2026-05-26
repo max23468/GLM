@@ -8,9 +8,12 @@ ADR.
 
 Decisioni aperte:
 
-- Tag e GitHub Release: definire se e quando affiancare tag/GitHub Release al
-  versioning locale (`package.json`, `CHANGELOG.md`, `npm run release`),
-  mantenendo separati release prodotto e deploy Cloudflare Pages.
+- Nessuna decisione strutturale aperta al momento.
+
+Decisioni chiuse:
+
+- Tag e GitHub Release: chiusa con
+  `docs/decisions/0001-tag-e-github-release.md`.
 
 Quando una decisione viene approvata:
 
