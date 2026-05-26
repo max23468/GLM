@@ -6,6 +6,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.5.1] — 2026-05-26
+
+### Correzioni
+
+- **Pacchetto Excel**: riorganizzati i fogli visibili secondo il flusso della web app, con dashboard più guidata, palette GLM e fogli tecnici nascosti per ridurre complessità.
+
 ## [1.5.0] — 2026-05-25
 
 ### Novità

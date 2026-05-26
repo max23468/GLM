@@ -16,23 +16,27 @@ Implementazione Excel + VBA del simulatore con estensioni avanzate:
 
 ## Template pronto all'uso
 
-Nel pacchetto è incluso `templates/Simulatore-TPL-Lotti-1-4-template.xlsm`, già predisposto con fogli, intestazioni, parametri base, log ottimizzazione, sezione confronto web e moduli VBA incorporati. I sorgenti `.bas` restano in `src/` per audit e manutenzione, ma non devono essere importati dall'utente finale.
+Nel pacchetto è incluso `templates/Simulatore-TPL-Lotti-1-4-template.xlsm`, già predisposto con dashboard, guida integrata, fogli operativi allineati all'organizzazione della web app e moduli VBA incorporati. I sorgenti `.bas` restano in `src/` per audit e manutenzione, ma non devono essere importati dall'utente finale.
 
-Fogli inclusi nel template:
+Fogli visibili nel percorso quotidiano:
 1. `Dashboard`
-2. `Istruzioni`
-3. `Parametri`
-4. `Ottimizzazione`
-5. `Offerte`
-6. `CriteriTecnici`
-7. `Combinatorie`
-8. `ScenarioGlobale`
-9. `ScambioWeb`
-10. `Risultati`
-11. `ConfrontoWeb`
-12. `LogOttimizzazione`
-13. `Guida`
-14. `Glossario`
+2. `Parametri` (area Scenario)
+3. `CriteriTecnici` (area Tecnica)
+4. `Offerte` (area Economica)
+5. `Ottimizzazione`
+6. `Combinatorie`
+7. `Risultati`
+8. `Guida`
+
+Fogli avanzati presenti ma nascosti per ridurre complessità:
+- `Istruzioni`
+- `ScenarioGlobale`
+- `ScambioWeb`
+- `ConfrontoWeb`
+- `LogOttimizzazione`
+- `Glossario`
+
+Questi fogli restano nel file per formule, macro, audit, scambio JSON con il web e manutenzione. Se servono, possono essere riattivati da Excel con `Mostra foglio`.
 
 ## Mappatura minima celle
 

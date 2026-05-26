@@ -66,7 +66,13 @@ if (!workbookXml.includes('activeTab="0"')) {
   throw new Error('Il workbook deve aprirsi sulla Dashboard senza fogli raggruppati');
 }
 
-const sheetNames = [...workbookXml.matchAll(/<sheet[^>]* name="([^"]+)"/g)].map((match) => match[1]);
+const sheetEntries = [...workbookXml.matchAll(/<sheet\b[^>]*\/>/g)].map((match) => {
+  const tag = match[0];
+  const name = tag.match(/\bname="([^"]+)"/)?.[1];
+  const state = tag.match(/\bstate="([^"]+)"/)?.[1] ?? 'visible';
+  return { name, state };
+}).filter((sheet) => sheet.name);
+const sheetNames = sheetEntries.map((sheet) => sheet.name);
 const requiredSheets = [
   'Dashboard',
   'Guida',
@@ -88,12 +94,30 @@ for (const sheetName of requiredSheets) {
   if (!sheetNames.includes(sheetName)) throw new Error(`Foglio mancante nel template: ${sheetName}`);
 }
 
+const expectedVisibleSheets = ['Dashboard', 'Parametri', 'CriteriTecnici', 'Offerte', 'Ottimizzazione', 'Combinatorie', 'Risultati', 'Guida'];
+const expectedHiddenSheets = ['Istruzioni', 'ScenarioGlobale', 'ScambioWeb', 'ConfrontoWeb', 'LogOttimizzazione', 'Glossario'];
+for (const sheetName of expectedVisibleSheets) {
+  const sheet = sheetEntries.find((entry) => entry.name === sheetName);
+  if (sheet?.state !== 'visible') throw new Error(`Foglio operativo non visibile: ${sheetName}`);
+}
+for (const sheetName of expectedHiddenSheets) {
+  const sheet = sheetEntries.find((entry) => entry.name === sheetName);
+  if (sheet?.state !== 'hidden') throw new Error(`Foglio avanzato non nascosto: ${sheetName}`);
+}
+
 const worksheetEntries = templateEntries.filter((entry) => /^xl\/worksheets\/sheet\d+\.xml$/.test(entry));
 const workbookFormulaXml = worksheetEntries.map((entry) => unzipEntry(workbookPath, entry).toString('utf8')).join('\n');
 const unsupportedFormulaTokens = ['MAXIFS', 'RANK.EQ'];
 for (const token of unsupportedFormulaTokens) {
   if (workbookFormulaXml.includes(token)) {
     throw new Error(`Formula Excel non compatibile nel pacchetto: ${token}`);
+  }
+}
+
+const forbiddenVisibleCopy = [/excel\s+light/i, /json\s+light/i, /glm-excel-light/i, /modalit[aà]\s+light/i];
+for (const pattern of forbiddenVisibleCopy) {
+  if (pattern.test(workbookXml) || pattern.test(workbookFormulaXml)) {
+    throw new Error(`Copy Excel obsoleto nel workbook: ${pattern}`);
   }
 }
 

@@ -65,7 +65,7 @@ const manifest = {
   file: `/downloads/${workbookFile}`,
   templateFile: workbookFile,
   minAppVersion: resolveMinAppVersion(),
-  notes: 'File XLSM unico con macro integrate, criteri tecnici A-G e ScambioWeb',
+  notes: 'File XLSM unico con macro integrate, UI guidata GLM, criteri tecnici A-G e fogli avanzati nascosti',
   generatedBy: 'scripts/package-excel-vba.mjs',
 };
 writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');

@@ -40,7 +40,7 @@ npm run preview -- --port 4173
 
 ## Toolkit Excel
 
-Il pacchetto `Pacchetto Excel` scarica un file `.xlsm` unico con macro, sub-criteri tecnici A-G, offerte singole, combinatorie configurabili, matrice di scenario globale, scambio JSON con il web e confronti golden. Il workbook è già macro-abilitato con fogli, intestazioni, README operativo integrato e moduli VBA incorporati. Lo scambio Excel-web include offerte, criteri A-G, ribassi e combinatorie; la web app resta la superficie più completa per warning documentali avanzati, persistenza/migrazioni e confronto scenari salvati.
+Il pacchetto `Pacchetto Excel` scarica un file `.xlsm` unico con macro, dashboard guidata, sub-criteri tecnici A-G, offerte singole, ottimizzazione, combinatorie configurabili, scambio JSON con il web e confronti golden. Il workbook è già macro-abilitato con fogli operativi coerenti con l'organizzazione della web app (`Scenario`, `Tecnica`, `Economica`, `Ottimizzazione`, `Combinatorie`, `Risultati`), README operativo integrato e moduli VBA incorporati. I fogli tecnici di supporto restano nel file ma sono nascosti per ridurre rumore; la web app resta la superficie più completa per warning documentali avanzati, persistenza/migrazioni e confronto scenari salvati.
 
 ## Scenari base
 

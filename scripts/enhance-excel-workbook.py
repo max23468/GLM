@@ -18,20 +18,24 @@ DEFAULT_WORKBOOK = ROOT / "excel-vba" / "templates" / "Simulatore-TPL-Lotti-1-4-
 EXCEL_README = ROOT / "excel-vba" / "README.md"
 CRITERIA_CSV = ROOT / "excel-vba" / "templates" / "criteria.csv"
 
-NAVY = "1F4E78"
-BLUE = "2563EB"
-SKY = "DCEBFF"
-CYAN = "CFFAFE"
-GREEN = "D9EAD3"
-AMBER = "FFF2CC"
-RED = "FCE4D6"
-INK = "1F2937"
-MUTED = "6B7280"
-GRID = "D9E2F3"
+# Palette derivata dai token CSS della web app GLM.
+NAVY = "172124"
+BLUE = "315A8A"
+TEAL = "0F766E"
+TEAL_DARK = "183B38"
+TEAL_SOFT = "E6F4F1"
+SURFACE_SOFT = "F8FAF9"
+AMBER = "FFF6DF"
+AMBER_TEXT = "80510F"
+RED = "FFF0ED"
+GREEN = TEAL_SOFT
+INK = "172124"
+MUTED = "657176"
+GRID = "DCE5E4"
 WHITE = "FFFFFF"
-INPUT = "FFF8CC"
-OUTPUT = "EAF7EA"
-SECTION = "E8EEF8"
+INPUT = "FFF6DF"
+OUTPUT = "E6F4F1"
+SECTION = "EDF3F2"
 
 MAX_OFFER_ROWS = 200
 MAX_COMBO_ROWS = 80
@@ -48,8 +52,6 @@ AMBIT_MAX_POINTS = {
 
 THIN_GRID = Side(style="thin", color=GRID)
 BORDER = Border(left=THIN_GRID, right=THIN_GRID, top=THIN_GRID, bottom=THIN_GRID)
-
-
 def workbook_path() -> Path:
     if len(sys.argv) > 1:
         return Path(sys.argv[1]).resolve()
@@ -90,19 +92,19 @@ def load_criteria() -> list[dict[str, str]]:
         return list(csv.DictReader(fh))
 
 
-def title(ws, text: str, subtitle: str | None = None):
+def title(ws, text: str, subtitle: str | None = None, end_col: str = "H"):
     ws["A1"] = text
     ws["A1"].font = Font(size=18, bold=True, color=WHITE)
-    ws["A1"].fill = fill(NAVY)
+    ws["A1"].fill = fill(TEAL_DARK)
     ws["A1"].alignment = Alignment(vertical="center")
-    ws.merge_cells("A1:H1")
+    ws.merge_cells(f"A1:{end_col}1")
     ws.row_dimensions[1].height = 28
 
     if subtitle:
         ws["A2"] = subtitle
         ws["A2"].font = Font(size=11, color=MUTED)
         ws["A2"].alignment = Alignment(wrap_text=True)
-        ws.merge_cells("A2:H2")
+        ws.merge_cells(f"A2:{end_col}2")
 
 
 def style_cells(ws, cell_range: str, fill_color: str | None = None, bold: bool = False, font_color: str = INK):
@@ -118,7 +120,7 @@ def style_cells(ws, cell_range: str, fill_color: str | None = None, bold: bool =
 def section_header(ws, row: int, text: str, end_col: str = "H"):
     ws[f"A{row}"] = text
     ws[f"A{row}"].font = Font(size=12, bold=True, color=WHITE)
-    ws[f"A{row}"].fill = fill(BLUE)
+    ws[f"A{row}"].fill = fill(TEAL)
     ws[f"A{row}"].alignment = Alignment(vertical="center")
     ws.merge_cells(f"A{row}:{end_col}{row}")
     ws.row_dimensions[row].height = 22
@@ -150,23 +152,55 @@ def add_sheet_link(cell, label: str, sheet_name: str):
     cell.font = Font(color=BLUE, underline="single", bold=True)
 
 
+def apply_sheet_chrome(ws, tab_color: str = TEAL):
+    ws.sheet_properties.tabColor = tab_color
+    ws.sheet_view.showGridLines = False
+    for row in ws.iter_rows():
+        for cell in row:
+            if cell.value is not None and not cell.font.color:
+                cell.font = Font(color=INK)
+
+
+def add_header_comment(ws, ref: str, text: str):
+    ws[ref].comment = Comment(text, "GLM")
+
+
+def hide_columns(ws, columns: list[str]):
+    for column in columns:
+        ws.column_dimensions[column].hidden = True
+
+
+def apply_workbook_visibility(wb):
+    visible = {
+        "Dashboard",
+        "Parametri",
+        "Offerte",
+        "CriteriTecnici",
+        "Ottimizzazione",
+        "Combinatorie",
+        "Risultati",
+        "Guida",
+    }
+    for ws in wb.worksheets:
+        ws.sheet_state = "visible" if ws.title in visible else "hidden"
+
+
 def create_dashboard(wb):
     ws = reset_sheet(wb, "Dashboard")
     move_sheet_first(wb, ws)
-    ws.sheet_properties.tabColor = NAVY
-    ws.sheet_view.showGridLines = False
+    apply_sheet_chrome(ws, TEAL_DARK)
     title(
         ws,
         "Simulatore gara TPL lotti 1-4",
-        "Console Excel completa: compila offerte, sub-criteri A-G, combinatorie e scambio dati con il web.",
+        "Workbook operativo allineato alla web app: parti da qui, poi entra solo nei fogli necessari.",
     )
 
-    section_header(ws, 4, "Stato rapido", "H")
+    section_header(ws, 4, "Stato scenario", "H")
     cards = [
-        ("A5:B7", "Righe offerte", "=COUNTA(Offerte!A2:A200)", "Righe compilate in Offerte"),
-        ("C5:D7", "Offerte attive", '=COUNTIF(Offerte!D2:D200,"1")+COUNTIF(Offerte!D2:D200,1)', "Righe abilitate"),
-        ("E5:F7", "Lotto attivo", "=Parametri!B3", "Usato da ottimizzazione"),
-        ("G5:H7", "Soglia tecnica", "=Parametri!B2", "Minimo ammissibilità"),
+        ("A5:B7", "Scenario", '=IF(Parametri!B3="","Da impostare","Lotto "&Parametri!B3)', "Lotto attivo per analisi e ottimizzazione"),
+        ("C5:D7", "Offerte", "=COUNTA(Offerte!A2:A200)", "Righe concorrente-lotto compilate"),
+        ("E5:F7", "Attive", '=COUNTIF(Offerte!D2:D200,"1")+COUNTIF(Offerte!D2:D200,1)', "Righe incluse nel calcolo"),
+        ("G5:H7", "Soglia", '=Parametri!B2&" punti"', "Minimo tecnico di ammissibilità"),
     ]
     for cell_range, label, formula, note in cards:
         start_ref, end_ref = cell_range.split(":")
@@ -175,54 +209,51 @@ def create_dashboard(wb):
         for row in range(start.row, end.row + 1):
             ws.merge_cells(start_row=row, start_column=start.column, end_row=row, end_column=end.column)
             cell = ws.cell(row=row, column=start.column)
-            cell.fill = fill(SKY)
+            cell.fill = fill(TEAL_SOFT)
             cell.border = BORDER
             cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         ws.cell(row=start.row, column=start.column).value = label
         ws.cell(row=start.row, column=start.column).font = Font(color=INK, bold=True, size=10)
         ws.cell(row=start.row + 1, column=start.column).value = formula
-        ws.cell(row=start.row + 1, column=start.column).font = Font(color=NAVY, bold=True, size=16)
+        ws.cell(row=start.row + 1, column=start.column).font = Font(color=TEAL_DARK, bold=True, size=16)
         ws.cell(row=start.row + 2, column=start.column).value = note
         ws.cell(row=start.row + 2, column=start.column).font = Font(color=MUTED, size=9)
         for row in range(start.row, end.row + 1):
             ws.row_dimensions[row].height = 24
 
-    section_header(ws, 10, "Flusso operativo", "H")
+    section_header(ws, 10, "Organizzazione come nella web app", "H")
     workflow = [
-        ("1", "Controlla Parametri", "Soglia tecnica e lotto attivo."),
-        ("2", "Compila Offerte", "Una riga per concorrente e lotto."),
-        ("3", "Esegui SimulaScenario", "Popola risultati, combinatorie e vincitori."),
-        ("4", "Rifinisci con OttimizzaLottoAttivo", "Usa leve Q/T sul concorrente selezionato."),
-        ("5", "Scambia con web", "Usa ScambioWeb o incolla expected in ConfrontoWeb!J2:J5."),
+        ("1", "Scenario", "Parametri", "Soglia tecnica, lotto attivo e impostazioni di base."),
+        ("2", "Tecnica", "CriteriTecnici", "Sub-criteri A-G, con input evidenziati e punteggio alimentato in Offerte."),
+        ("3", "Economica", "Offerte", "Concorrenti, lotti, attivazione righe e ribasso medio."),
+        ("4", "Ottimizzazione", "Ottimizzazione", "Bidder target, leve Q/T e iterazioni controllate."),
+        ("5", "Combinatorie", "Combinatorie", "Coppie principali, buste, PEF e ribasso migliorativo."),
+        ("6", "Risultati", "Risultati", "Ranking generato dalla macro SimulaScenario."),
     ]
-    ws.append([])
     start = 11
-    for idx, (step, action, detail) in enumerate(workflow, start=start):
+    for idx, (step, area, sheet_name, detail) in enumerate(workflow, start=start):
         ws[f"A{idx}"] = step
-        ws[f"B{idx}"] = action
-        ws[f"C{idx}"] = detail
-        ws.merge_cells(f"C{idx}:H{idx}")
+        ws[f"B{idx}"] = area
+        add_sheet_link(ws[f"C{idx}"], sheet_name, sheet_name)
+        ws[f"D{idx}"] = detail
+        ws.merge_cells(f"D{idx}:H{idx}")
     style_cells(ws, f"A{start}:H{start + len(workflow) - 1}", WHITE)
     for row in range(start, start + len(workflow)):
-        ws[f"A{row}"].fill = fill(NAVY)
+        ws[f"A{row}"].fill = fill(TEAL_DARK)
         ws[f"A{row}"].font = Font(color=WHITE, bold=True)
         ws[f"A{row}"].alignment = Alignment(horizontal="center")
         ws[f"B{row}"].fill = fill(SECTION)
         ws[f"B{row}"].font = Font(bold=True, color=INK)
 
-    section_header(ws, 18, "Navigazione e macro", "H")
+    section_header(ws, 20, "Azioni principali", "H")
     links = [
-        ("A19", "Parametri", "Parametri"),
-        ("C19", "Offerte", "Offerte"),
-        ("E19", "Criteri tecnici", "CriteriTecnici"),
-        ("G19", "Combinatorie", "Combinatorie"),
-        ("A21", "Scenario globale", "ScenarioGlobale"),
-        ("C21", "Scambio web", "ScambioWeb"),
-        ("E21", "Risultati", "Risultati"),
-        ("G21", "Confronto web", "ConfrontoWeb"),
-        ("A22", "Guida", "Guida"),
-        ("C22", "Glossario", "Glossario"),
-        ("E22", "Log ottimizzazione", "LogOttimizzazione"),
+        ("A21", "Parametri", "Parametri"),
+        ("C21", "Offerte", "Offerte"),
+        ("E21", "Criteri tecnici", "CriteriTecnici"),
+        ("G21", "Risultati", "Risultati"),
+        ("A23", "Ottimizzazione", "Ottimizzazione"),
+        ("C23", "Combinatorie", "Combinatorie"),
+        ("E23", "Guida", "Guida"),
     ]
     for ref, label, sheet_name in links:
         add_sheet_link(ws[ref], label, sheet_name)
@@ -232,26 +263,38 @@ def create_dashboard(wb):
         ("OttimizzaLottoAttivo", "Applica iterazioni Q/T al bidder indicato."),
         ("ConfrontoWebGolden", "Verifica i totali attesi copiati dal web."),
     ]
-    for row, (macro, description) in enumerate(macro_rows, start=23):
+    for row, (macro, description) in enumerate(macro_rows, start=25):
         ws[f"A{row}"] = macro
         ws[f"C{row}"] = description
         ws.merge_cells(f"C{row}:H{row}")
-    style_cells(ws, "A23:H26", WHITE)
-    for row in range(23, 27):
+    style_cells(ws, "A25:H28", WHITE)
+    for row in range(25, 29):
         ws[f"A{row}"].fill = fill(GREEN)
         ws[f"A{row}"].font = Font(bold=True, color=INK)
 
-    section_header(ws, 29, "Limiti da ricordare", "H")
+    section_header(ws, 31, "Fogli avanzati nascosti", "H")
+    advanced = [
+        "I fogli ScambioWeb, ScenarioGlobale, ConfrontoWeb, LogOttimizzazione, Glossario e Istruzioni restano nel file, ma sono nascosti per non appesantire il lavoro quotidiano.",
+        "Usali solo per audit, export JSON verso web, confronto golden, log macro o manutenzione. Puoi riattivarli da Excel con Mostra foglio.",
+    ]
+    for row, text in enumerate(advanced, start=32):
+        ws[f"A{row}"] = text
+        ws.merge_cells(f"A{row}:H{row}")
+        ws[f"A{row}"].fill = fill(SURFACE_SOFT if row == 32 else WHITE)
+        ws[f"A{row}"].border = BORDER
+        ws[f"A{row}"].alignment = Alignment(wrap_text=True)
+
+    section_header(ws, 35, "Limiti da ricordare", "H")
     limits = [
         "Il foglio CriteriTecnici calcola il tecnico dai sub-criteri A-G; il valore aggregato resta solo come fallback di compatibilità.",
-        "Il foglio ScambioWeb produce un JSON completo con offerte, sub-criteri, ribassi e combinatorie.",
+        "Il foglio ScambioWeb produce un JSON completo con offerte, sub-criteri, ribassi e combinatorie, ma resta nascosto finché non serve.",
         "I costi e le leve sono ipotesi operative: non sono dati ufficiali di gara.",
         "Se Excel blocca le macro dopo il download, sblocca il file dalle proprietà del sistema prima dell'uso.",
     ]
-    for row, text in enumerate(limits, start=30):
+    for row, text in enumerate(limits, start=36):
         ws[f"A{row}"] = text
         ws.merge_cells(f"A{row}:H{row}")
-        ws[f"A{row}"].fill = fill(AMBER if row == 30 else WHITE)
+        ws[f"A{row}"].fill = fill(AMBER if row == 36 else WHITE)
         ws[f"A{row}"].border = BORDER
         ws[f"A{row}"].alignment = Alignment(wrap_text=True)
 
@@ -261,14 +304,14 @@ def create_dashboard(wb):
 
 def create_guide(wb):
     ws = reset_sheet(wb, "Guida")
-    ws.sheet_properties.tabColor = BLUE
-    ws.sheet_view.showGridLines = False
-    title(ws, "Guida integrata", "README operativo incorporato nel workbook: niente file esterni necessari per iniziare.")
+    apply_sheet_chrome(ws, BLUE)
+    title(ws, "Guida operativa", "Percorso d'uso, mappa dei fogli e README incorporato nel workbook.")
 
     rows = [
-        ("Avvio rapido", "1. Apri il file .xlsm e abilita le macro se richiesto.\n2. Vai a Parametri e scegli soglia/lotto attivo.\n3. Compila Offerte.\n4. Esegui CheckBeforeRun e poi SimulaScenario.\n5. Usa ConfrontoWebGolden solo dopo aver copiato gli expected dal web."),
-        ("Macro principali", "CheckBeforeRun: valida setup e input.\nSimulaScenario: calcola risultati.\nOttimizzaLottoAttivo: lavora sul bidder e lotto selezionati.\nConfrontoWebGolden: confronta i totali Excel con valori web incollati in J2:J5."),
-        ("Scoring tecnico", "Il foglio CriteriTecnici raccoglie i sub-criteri A-G e alimenta il punteggio tecnico calcolato in Offerte."),
+        ("Avvio rapido", "1. Apri Dashboard e controlla lo stato scenario.\n2. In Parametri imposta soglia e lotto attivo.\n3. In Offerte compila concorrenti, lotti, attivo e ribasso.\n4. In CriteriTecnici compila solo le celle evidenziate in giallo.\n5. Esegui CheckBeforeRun e poi SimulaScenario.\n6. Leggi Risultati."),
+        ("Mappa rispetto alla web app", "Scenario = Parametri.\nTecnica = CriteriTecnici.\nEconomica = Offerte.\nOttimizzazione = Ottimizzazione.\nCombinatorie = Combinatorie.\nRisultati = Risultati."),
+        ("Cosa non devi toccare", "Le colonne nascoste e i fogli nascosti servono a formule, macro, scambio dati e audit. Restano nel file per completezza, ma non fanno parte del percorso quotidiano."),
+        ("Macro principali", "CheckBeforeRun: valida setup e input.\nSimulaScenario: calcola risultati.\nOttimizzaLottoAttivo: lavora sul bidder e lotto selezionati.\nConfrontoWebGolden: confronta i totali Excel con valori web incollati nel foglio nascosto ConfrontoWeb."),
         ("Sicurezza macro", "Dopo download da web Excel può bloccare le macro. Su macOS/Windows può servire sbloccare il file o spostarlo in una posizione attendibile."),
     ]
     row = 4
@@ -302,8 +345,7 @@ def create_guide(wb):
 
 def create_glossary(wb):
     ws = reset_sheet(wb, "Glossario")
-    ws.sheet_properties.tabColor = "70AD47"
-    ws.sheet_view.showGridLines = False
+    apply_sheet_chrome(ws, TEAL)
     title(ws, "Glossario e campi", "Riferimento rapido per compilare senza cercare istruzioni esterne.")
     headers = ["Area", "Campo/Macro", "Dove", "Significato", "Note operative"]
     ws.append([])
@@ -350,7 +392,7 @@ def add_table(ws, name: str, ref: str):
         del ws.tables[name]
     table = Table(displayName=name, ref=ref)
     table.tableStyleInfo = TableStyleInfo(
-        name="TableStyleMedium2",
+        name="TableStyleMedium4",
         showFirstColumn=False,
         showLastColumn=False,
         showRowStripes=True,
@@ -361,8 +403,7 @@ def add_table(ws, name: str, ref: str):
 
 def polish_instruction_sheet(wb):
     ws = wb["Istruzioni"]
-    ws.sheet_properties.tabColor = "5B9BD5"
-    ws.sheet_view.showGridLines = False
+    apply_sheet_chrome(ws, BLUE)
     ws.delete_rows(1, ws.max_row)
     title(ws, "Istruzioni rapide", "Punto di partenza per usare il file senza leggere documenti esterni.")
     rows = [
@@ -395,8 +436,7 @@ def polish_instruction_sheet(wb):
 def polish_parametri(wb):
     ws = wb["Parametri"]
     clear_layout_helpers(ws)
-    ws.sheet_properties.tabColor = "FFC000"
-    ws.sheet_view.showGridLines = False
+    apply_sheet_chrome(ws, AMBER_TEXT)
     style_header_row(ws, 1, 3)
     style_cells(ws, f"A2:C{ws.max_row}", WHITE)
     for row in range(2, ws.max_row + 1):
@@ -418,8 +458,7 @@ def polish_parametri(wb):
 def polish_ottimizzazione(wb):
     ws = wb["Ottimizzazione"]
     clear_layout_helpers(ws)
-    ws.sheet_properties.tabColor = "70AD47"
-    ws.sheet_view.showGridLines = False
+    apply_sheet_chrome(ws, TEAL)
     style_header_row(ws, 1, 3)
     style_cells(ws, f"A2:C{ws.max_row}", WHITE)
     for row in [2, 3, 4, 6, 7, 8, 9]:
@@ -440,8 +479,7 @@ def polish_ottimizzazione(wb):
 def polish_offerte(wb):
     ws = wb["Offerte"]
     clear_layout_helpers(ws)
-    ws.sheet_properties.tabColor = "ED7D31"
-    ws.sheet_view.showGridLines = False
+    apply_sheet_chrome(ws, BLUE)
     headers = [
         "BidderId",
         "BidderNome",
@@ -472,6 +510,14 @@ def polish_offerte(wb):
     for col, header in enumerate(headers, start=1):
         ws.cell(row=1, column=col).value = header
     style_header_row(ws, 1, len(headers))
+    add_header_comment(ws, "A1", "Identificativo breve del concorrente. Usalo uguale in tutti i lotti dello stesso operatore.")
+    add_header_comment(ws, "B1", "Nome leggibile del concorrente.")
+    add_header_comment(ws, "C1", "Lotto L1-L4.")
+    add_header_comment(ws, "D1", "1 = riga inclusa nella simulazione, 0 = esclusa.")
+    add_header_comment(ws, "E1", "Punteggio tecnico finale calcolato dai sub-criteri A-G. Non modificarlo se usi CriteriTecnici.")
+    add_header_comment(ws, "F1", "Ribasso economico medio in percentuale.")
+    add_header_comment(ws, "G1", "Esito della soglia tecnica.")
+    add_header_comment(ws, "J1", "Totale tecnico + economico calcolato nel foglio.")
     style_cells(ws, f"A2:P{MAX_OFFER_ROWS}", WHITE)
 
     criteria_end_row = TECHNICAL_START_ROW + (MAX_OFFER_ROWS - 1) * len(load_criteria()) - 1
@@ -548,9 +594,7 @@ def polish_offerte(wb):
     ws.conditional_formatting.add(f"G2:G{MAX_OFFER_ROWS}", CellIsRule(operator="equal", formula=['"NO"'], fill=fill(RED)))
     add_table(ws, "tblOfferte", f"A1:P{MAX_OFFER_ROWS}")
     set_widths(ws, {"A": 16, "B": 26, "C": 12, "D": 12, "E": 22, "F": 24, "G": 18, "H": 14, "I": 18, "J": 18, "K": 22, "L": 22, "M": 18, "N": 26, "O": 18, "P": 16})
-    ws.column_dimensions["M"].hidden = True
-    ws.column_dimensions["N"].hidden = True
-    ws.column_dimensions["O"].hidden = True
+    hide_columns(ws, ["L", "M", "N", "O", "P"])
     ws.freeze_panes = "A2"
 
 
@@ -561,8 +605,7 @@ def excel_sumproduct_max(condition_formula: str, value_range: str) -> str:
 def create_criteri_tecnici(wb):
     criteria = load_criteria()
     ws = reset_sheet(wb, "CriteriTecnici")
-    ws.sheet_properties.tabColor = "5B9BD5"
-    ws.sheet_view.showGridLines = False
+    apply_sheet_chrome(ws, TEAL)
     title(
         ws,
         "Criteri tecnici A-G",
@@ -595,6 +638,11 @@ def create_criteri_tecnici(wb):
     for col, header in enumerate(headers, start=1):
         ws.cell(row=header_row, column=col).value = header
     style_header_row(ws, header_row, len(headers))
+    add_header_comment(ws, "J4", "Input diretto quando il criterio usa un valore unico.")
+    add_header_comment(ws, "K4", "Numeratore per criteri percentuali o rapporto.")
+    add_header_comment(ws, "L4", "Denominatore per criteri percentuali o rapporto.")
+    add_header_comment(ws, "M4", "Per criteri tabellari: 1 se presente, 0 se assente. Per discrezionali: coefficiente 0-1.")
+    add_header_comment(ws, "O4", "Punteggio raw del sub-criterio usato dal totale tecnico.")
 
     total_rows = (MAX_OFFER_ROWS - 1) * len(criteria)
     end_row = TECHNICAL_START_ROW + total_rows - 1
@@ -709,17 +757,13 @@ def create_criteri_tecnici(wb):
             "T": 14,
         },
     )
-    ws.column_dimensions["Q"].hidden = True
-    ws.column_dimensions["R"].hidden = True
-    ws.column_dimensions["S"].hidden = True
-    ws.column_dimensions["T"].hidden = True
+    hide_columns(ws, ["G", "H", "N", "Q", "R", "S", "T"])
     ws.freeze_panes = "A5"
 
 
 def create_combinatorie(wb):
     ws = reset_sheet(wb, "Combinatorie")
-    ws.sheet_properties.tabColor = "8064A2"
-    ws.sheet_view.showGridLines = False
+    apply_sheet_chrome(ws, TEAL)
     title(
         ws,
         "Combinatorie",
@@ -754,6 +798,12 @@ def create_combinatorie(wb):
     for col, header in enumerate(headers, start=1):
         ws.cell(row=header_row, column=col).value = header
     style_header_row(ws, header_row, len(headers))
+    add_header_comment(ws, "D4", "1 = combinatoria inclusa, 0 = esclusa.")
+    add_header_comment(ws, "E4", "Ribasso medio della combinatoria, in percentuale.")
+    add_header_comment(ws, "F4", "1 se la coppia è inserita in entrambe le buste.")
+    add_header_comment(ws, "G4", "1 se il PEF è coerente.")
+    add_header_comment(ws, "N4", "Esito ammissibilità della combinatoria.")
+    add_header_comment(ws, "Q4", "Totale combinatoria calcolato.")
     style_cells(ws, f"A{header_row + 1}:W{MAX_COMBO_ROWS}", WHITE)
 
     pair_a = 'IF($C{row}="L1+L2","L1",IF($C{row}="L2+L3","L2",IF($C{row}="L3+L4","L3",IF($C{row}="L1+L4","L1",""))))'
@@ -880,15 +930,13 @@ def create_combinatorie(wb):
             "W": 18,
         },
     )
-    ws.column_dimensions["V"].hidden = True
-    ws.column_dimensions["W"].hidden = True
+    hide_columns(ws, ["H", "I", "J", "K", "L", "M", "O", "P", "S", "T", "U", "V", "W"])
     ws.freeze_panes = "A5"
 
 
 def create_scenario_globale(wb):
     ws = reset_sheet(wb, "ScenarioGlobale")
-    ws.sheet_properties.tabColor = "00A6A6"
-    ws.sheet_view.showGridLines = False
+    apply_sheet_chrome(ws, BLUE)
     title(
         ws,
         "Scenario globale",
@@ -997,8 +1045,7 @@ def excel_iso_date() -> str:
 
 def create_scambio_web(wb):
     ws = reset_sheet(wb, "ScambioWeb")
-    ws.sheet_properties.tabColor = "00B0F0"
-    ws.sheet_view.showGridLines = False
+    apply_sheet_chrome(ws, BLUE)
     title(
         ws,
         "Scambio web",
@@ -1139,8 +1186,7 @@ def create_scambio_web(wb):
 def polish_results(wb):
     ws = wb["Risultati"]
     clear_layout_helpers(ws)
-    ws.sheet_properties.tabColor = "A5A5A5"
-    ws.sheet_view.showGridLines = False
+    apply_sheet_chrome(ws, TEAL_DARK)
     if ws.max_row >= 1:
         style_header_row(ws, 1, min(ws.max_column, 8))
     style_cells(ws, f"A2:H{max(ws.max_row, 30)}", OUTPUT)
@@ -1153,8 +1199,7 @@ def polish_results(wb):
 def polish_confronto(wb):
     ws = wb["ConfrontoWeb"]
     clear_layout_helpers(ws)
-    ws.sheet_properties.tabColor = "7030A0"
-    ws.sheet_view.showGridLines = False
+    apply_sheet_chrome(ws, BLUE)
     ws["I1"] = "Input expected"
     ws["J1"] = "Valore"
     style_header_row(ws, 1, 10)
@@ -1176,8 +1221,7 @@ def polish_confronto(wb):
 def polish_log(wb):
     ws = wb["LogOttimizzazione"]
     clear_layout_helpers(ws)
-    ws.sheet_properties.tabColor = "4472C4"
-    ws.sheet_view.showGridLines = False
+    apply_sheet_chrome(ws, TEAL_DARK)
     style_header_row(ws, 1, max(ws.max_column, 7))
     style_cells(ws, f"A2:J{max(ws.max_row, 50)}", OUTPUT)
     set_widths(ws, {"A": 14, "B": 16, "C": 12, "D": 12, "E": 16, "F": 16, "G": 16, "H": 16, "I": 16, "J": 20})
@@ -1222,21 +1266,22 @@ def main():
         wb,
         [
             "Dashboard",
-            "Istruzioni",
             "Parametri",
-            "Ottimizzazione",
-            "Offerte",
             "CriteriTecnici",
+            "Offerte",
+            "Ottimizzazione",
             "Combinatorie",
+            "Risultati",
+            "Guida",
+            "Istruzioni",
             "ScenarioGlobale",
             "ScambioWeb",
-            "Risultati",
             "ConfrontoWeb",
             "LogOttimizzazione",
-            "Guida",
             "Glossario",
         ],
     )
+    apply_workbook_visibility(wb)
 
     for ws in wb.worksheets:
         ws.sheet_view.tabSelected = False
