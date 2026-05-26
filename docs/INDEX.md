@@ -30,7 +30,8 @@ La root resta il punto di ingresso operativo. `docs/` contiene governance, logic
 ## Decisioni
 
 - `docs/decisions/`: ADR e decisioni stabili.
-- `docs/decisions/README.md`: indice delle decisioni.
+- `docs/DECISIONS.md`: indice delle decisioni.
+- `docs/DECISIONS_PENDING.md`: decisioni strutturali non ancora approvate.
 - `docs/decisions/template.md`: template ADR.
 
 Le decisioni operative esistenti sono oggi documentate in `AGENTS.md`, `README.md` e nelle guide. Quando una decisione deve diventare autonoma, crearla in `docs/decisions/` e collegarla qui.

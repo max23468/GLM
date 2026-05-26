@@ -114,3 +114,10 @@ Scrivi le voci dal punto di vista di chi usa il simulatore:
 La release non pubblica automaticamente.
 
 Quando viene chiesto `pubblica`, `rilascia`, `deploya` o equivalente, segui `AGENTS.md`: controlla il diff, esegui le verifiche proporzionate, porta il codice su `main` se necessario e distribuisci solo su Cloudflare Pages progetto `gare-lotti-milanesi`.
+
+## Tag e GitHub Release
+
+Oggi GLM usa versioning locale con `package.json`, `CHANGELOG.md` e
+`npm run release`. Non creare tag Git o GitHub Release finché la decisione
+aperta in `docs/DECISIONS_PENDING.md` non definisce formato tag, source of
+truth, relazione con Cloudflare Pages e migrazione dello storico.
