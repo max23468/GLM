@@ -117,7 +117,21 @@ Quando viene chiesto `pubblica`, `rilascia`, `deploya` o equivalente, segui `AGE
 
 ## Tag e GitHub Release
 
-Oggi GLM usa versioning locale con `package.json`, `CHANGELOG.md` e
-`npm run release`. Non creare tag Git o GitHub Release finché la decisione
-aperta in `docs/DECISIONS_PENDING.md` non definisce formato tag, source of
-truth, relazione con Cloudflare Pages e migrazione dello storico.
+Decisione di riferimento:
+`docs/decisions/0001-tag-e-github-release.md`.
+
+Per una release prodotto reale:
+
+- `package.json`, aggiornato da `npm run release`, resta la source of truth;
+- il tag Git deve avere formato `vX.Y.Z` e corrispondere esattamente alla
+  versione in `package.json`;
+- la GitHub Release, se creata, parte da quel tag e usa note derivate dalla
+  sezione rilasciata di `CHANGELOG.md`;
+- il deploy Cloudflare Pages resta separato e richiede il flusso dedicato;
+- documentazione interna, governance, piani e voci `### Non versionato` non
+  generano tag e non generano GitHub Release.
+
+Lo storico `v1.0.0` già presente su GitHub non va retro-corretto con tag
+inventati. La policy vale dalla prossima release prodotto reale: in quella fase
+si decide se taggare la versione corrente allineata o preparare un bump
+successivo con `npm run release`.
