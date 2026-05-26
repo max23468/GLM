@@ -4,7 +4,7 @@
 
 - Fase: web app React/Vite operativa su Cloudflare Pages.
 - Nome prodotto visibile: `Simulatore gara TPL lotti 1-4`.
-- Versione applicativa: `1.1.1` da `package.json`.
+- Versione applicativa: leggere `version` in `package.json` come source of truth.
 - Deploy produzione: Cloudflare Pages progetto `gare-lotti-milanesi`, URL `https://gare-lotti-milanesi.pages.dev`.
 - Branch principale: `main`.
 - Remote: `git@github.com:max23468/Gare-Lotti-Milanesi.git`.
@@ -17,7 +17,8 @@
 - Roadmap: `docs/ROADMAP.md`.
 - Backlog: `docs/BACKLOG.md`.
 - Toolchain: `docs/TOOLCHAIN.md`.
-- Decisioni: `docs/decisions/`.
+- Decisioni: `docs/DECISIONS.md`, `docs/DECISIONS_PENDING.md` e ADR in
+  `docs/decisions/`.
 - Logica simulatore: `docs/LOGICA_SIMULATORE.md`.
 - Versioning/release: `docs/guides/versioning-e-release.md`.
 - Deploy Cloudflare: `docs/guides/cloudflare-pages.md`.
