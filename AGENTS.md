@@ -316,7 +316,7 @@ Un'attività è chiusa quando:
 
 Deploy solo su richiesta esplicita.
 
-Quando l'utente dice `pubblica`, `rilascia`, `deploya` o formule equivalenti, interpreta la richiesta come flusso completo di pubblicazione, non come solo comando locale. In questa repository il flusso resta specifico di GLM: Cloudflare Pages progetto `gare-lotti-milanesi`, output Vite `dist`, niente Vercel.
+Quando l'utente dice `pubblica`, `rilascia`, `deploya` o formule equivalenti, interpreta la richiesta come flusso completo di pubblicazione, non come solo comando locale: PR pronta/merge su `main`, eventuale deploy su Cloudflare Pages quando la modifica lo richiede o lo richiede l'utente, verifica finale, e pulizia esplicita del checkout (branch/worktree locali e remoti non più necessari). In questa repository il flusso resta specifico di GLM: Cloudflare Pages progetto `gare-lotti-milanesi`, output Vite `dist`, niente Vercel.
 
 Prima di pubblicare:
 
