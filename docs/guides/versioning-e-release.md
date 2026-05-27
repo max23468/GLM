@@ -7,7 +7,7 @@ Questa guida descrive come preparare una nuova versione del **Simulatore gara TP
 In GLM ci sono due azioni diverse:
 
 1. **Preparare una release**: chiudere il blocco `## [Non rilasciato]` del changelog, aggiornare `package.json`, `package-lock.json` e la data build in `src/lib/version.ts`.
-2. **Pubblicare**: portare la modifica su `main` e, solo quando richiesto esplicitamente, distribuire `dist` su Cloudflare Pages progetto `gare-lotti-milanesi`.
+2. **Pubblicare**: portare la modifica su `main` (PR/merge o commit diretto secondo policy), verificare l'assorbimento e, solo quando richiesto esplicitamente, distribuire `dist` su Cloudflare Pages progetto `gare-lotti-milanesi`.
 
 Documentazione interna, regole agenti, note operative e piani non esposti nel simulatore possono essere pubblicati nel repo senza bump SemVer. In quel caso usa `### Non versionato` nel changelog solo se serve tenere traccia del lavoro: queste note non devono comparire nel changelog pubblico del simulatore.
 
@@ -19,7 +19,9 @@ Per preparare la versione `X.Y.Z`:
 2. Esegui `npm run release`.
 3. Controlla il diff generato.
 4. Esegui i check proporzionati al diff secondo `AGENTS.md`.
-5. Se e solo se viene chiesto di pubblicare, usa il flusso Cloudflare Pages della repo.
+5. Se e solo se viene chiesto di pubblicare, usa il flusso Cloudflare Pages della
+   repo dopo PR/merge completo; alla fine completa il cleanup locale/remoto del
+   checkout usato per il flusso.
 
 ## Quando bumpare quale numero
 
@@ -113,7 +115,7 @@ Scrivi le voci dal punto di vista di chi usa il simulatore:
 
 La release non pubblica automaticamente.
 
-Quando viene chiesto `pubblica`, `rilascia`, `deploya` o equivalente, segui `AGENTS.md`: controlla il diff, esegui le verifiche proporzionate, porta il codice su `main` se necessario e distribuisci solo su Cloudflare Pages progetto `gare-lotti-milanesi`.
+Quando viene chiesto `pubblica`, `rilascia`, `deploya` o equivalente, segui `AGENTS.md`: controlla il diff, esegui le verifiche proporzionate, porta il codice su `main` con PR/merge quando previsto, distribuisci solo su Cloudflare Pages progetto `gare-lotti-milanesi` se la modifica lo richiede e completa la chiusura del checkout (branch/worktree locali e remoti) al termine.
 
 ## Tag e GitHub Release
 
