@@ -15,12 +15,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          case "$PR_TITLE" in
-            feat:\ *|fix:\ *|docs:\ *|chore:\ *|refactor:\ *|test:\ *|ci:\ *)
-              exit 0
-              ;;
-            *)
-              echo "PR title must start with one of: feat:, fix:, docs:, chore:, refactor:, test:, ci:"
-              exit 1
-              ;;
-          esac
+          if ! echo "$PR_TITLE" | grep -Eq '^(feat|fix|perf|docs|test|chore|ci|refactor|build|style)(\([a-z0-9._-]+\))?!?: .+'; then
+            echo "PR title must follow Conventional Commits (for example: feat:, fix(ui): ..., chore!: ...)"
+            exit 1
+          fi
