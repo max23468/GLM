@@ -202,10 +202,11 @@ export function WorkspaceSidebar({
             Partecipazione
             <HelpTooltip>Attiva lotti e combinatorie del concorrente selezionato. Queste opzioni si gestiscono solo dalla barra laterale.</HelpTooltip>
           </div>
-        <div className="sidebar-participation-grid" aria-label={`Partecipazione ${selectedBidder.name}`}>
+          <div className="sidebar-participation-grid" aria-label={`Partecipazione ${selectedBidder.name}`}>
           {LOTS.map((lot) => {
             const lotScore = result.lotScores[selectedBidder.id][lot.id];
             const isSourceLot = lot.id === selectedLotId;
+            const sourceLotLabel = LOTS.find((item) => item.id === selectedLotId)?.shortLabel ?? "lotto attivo";
             return (
               <div key={lot.id} className="sidebar-participation-row">
                 <label className={selectedBidder.lots[lot.id].enabled ? (lotScore.admitted ? "ok" : "warn") : ""}>
@@ -218,14 +219,19 @@ export function WorkspaceSidebar({
                   />
                 </label>
                 <button
-                  className="icon-button mini"
+                  className="sidebar-duplicate-lot-button"
                   type="button"
                   onClick={() => onDuplicateBidderLotOffer(selectedLotId, lot.id)}
                   disabled={isSourceLot}
-                  aria-label={`Copia offerta da ${selectedLotId} a ${lot.shortLabel}`}
-                  title={isSourceLot ? "Seleziona un altro lotto per incollare la copia" : `Copia offerta dal lotto attivo a ${lot.shortLabel}`}
+                  aria-label={`Copia offerta dal ${sourceLotLabel} a ${lot.shortLabel}`}
+                  title={
+                    isSourceLot
+                      ? "Questo lotto è la sorgente: seleziona un altro lotto per incollare la copia"
+                      : `Copia offerta dal ${sourceLotLabel} a ${lot.shortLabel}`
+                  }
                 >
                   <CopyPlus size={14} />
+                  <span>{isSourceLot ? "Sorgente" : "Copia qui"}</span>
                 </button>
               </div>
             );

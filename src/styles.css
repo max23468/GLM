@@ -1046,7 +1046,7 @@ input[type="checkbox"] {
 
 .sidebar-participation-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) minmax(94px, auto);
   gap: 6px;
   align-items: stretch;
 }
@@ -1061,6 +1061,30 @@ input[type="checkbox"] {
   border-color: var(--amber-border);
   background: var(--amber-soft);
   color: var(--warning-text);
+}
+
+.sidebar-duplicate-lot-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  min-height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-soft);
+  color: var(--body-soft);
+  padding: 0 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-duplicate-lot-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .chip-grid {

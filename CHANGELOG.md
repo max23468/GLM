@@ -6,6 +6,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.8.1] — 2026-05-30
+
+### Correzioni
+
+- **Interfaccia**: migliorata la leggibilità del pulsante di copia dell’offerta tra lotti, con etichetta esplicita e allineamento più stabile nella riga di partecipazione.
+
 ## [1.8.0] — 2026-05-30
 
 ### Novità
