@@ -5,7 +5,6 @@ import {
   Download,
   CheckCircle2,
   CircleDollarSign,
-  ClipboardList,
   LineChart,
   type LucideIcon,
   Monitor,
@@ -103,14 +102,7 @@ type WorkspaceTab = "tecnica" | "economica" | "ottimizza" | "combinatorie" | "ri
 type AppView = "simulatore" | "istruzioni";
 
 type ExcelPackageManifest = {
-  version: string;
-  builtAt: string;
-  sha256: string;
-  file: string;
-  templateFile?: string;
-  minAppVersion?: string;
-  notes?: string;
-  generatedBy?: string;
+  file?: string;
 };
 
 const themeOptions: { value: ThemePreference; label: string; icon: LucideIcon }[] = [
@@ -1228,9 +1220,6 @@ function SimulatorApp({ controller }: { controller: SimulatorController }) {
 
 function SimulatorHeader({ controller }: { controller: SimulatorController }) {
   const { navigateToInstructions, themePreference, setThemePreference, resolvedTheme } = controller;
-  const [excelBadge, setExcelBadge] = useState("v0.3 · 25/05/2026");
-  const [excelHashShort, setExcelHashShort] = useState("");
-  const [excelPackageNote, setExcelPackageNote] = useState("");
   const [excelPackageHref, setExcelPackageHref] = useState("/downloads/Simulatore-TPL-Lotti-1-4.xlsm");
 
   useEffect(() => {
@@ -1238,15 +1227,8 @@ function SimulatorHeader({ controller }: { controller: SimulatorController }) {
     fetch("/downloads/pacchetto-excel-vba.manifest.json")
       .then((response) => (response.ok ? response.json() : null))
       .then((manifest: ExcelPackageManifest | null) => {
-        if (cancelled || !manifest?.version || !manifest?.builtAt) return;
-        setExcelBadge(`${manifest.version} · ${manifest.builtAt}`);
-        if (manifest.sha256) setExcelHashShort(manifest.sha256.slice(0, 8));
-        if (manifest.file) setExcelPackageHref(manifest.file);
-        const noteParts: string[] = [];
-        if (manifest.templateFile) noteParts.push("File XLSM unico con macro");
-        if (manifest.minAppVersion) noteParts.push(`Compatibile da web v${manifest.minAppVersion}`);
-        if (manifest.notes) noteParts.push(manifest.notes);
-        setExcelPackageNote(noteParts.join(" · "));
+        if (cancelled || !manifest?.file) return;
+        setExcelPackageHref(manifest.file);
       })
       .catch(() => undefined);
 
@@ -1280,10 +1262,6 @@ function SimulatorHeader({ controller }: { controller: SimulatorController }) {
             );
           })}
         </div>
-        <div className="source-pill">
-          <ClipboardList size={16} />
-          Fonti: web pubbliche, Disciplinare, All. 13, All. 18
-        </div>
         <button className="doc-link" type="button" onClick={navigateToInstructions}>
           <BookOpen size={16} />
           Istruzioni
@@ -1292,14 +1270,6 @@ function SimulatorHeader({ controller }: { controller: SimulatorController }) {
           <Download size={16} />
           Pacchetto Excel
         </a>
-        <span
-          className="doc-meta"
-          aria-label="Versione pacchetto Excel"
-          title={excelHashShort ? `SHA-256: ${excelHashShort}` : "Versione pacchetto Excel"}
-        >
-          {excelBadge}
-        </span>
-        {excelPackageNote ? <span className="doc-meta doc-meta--subtle">{excelPackageNote}</span> : null}
       </div>
     </header>
   );
@@ -1443,6 +1413,25 @@ function WorkspaceWorkbench({ controller }: { controller: SimulatorController })
 
   return (
     <section className="panel workbench-panel">
+      <div className="workspace-tabs" role="tablist" aria-label="Sezioni offerta">
+        {workspaceTabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.value}
+              type="button"
+              className={"workspace-tab " + (activeTab === tab.value ? "active" : "")}
+              onClick={() => setActiveTab(tab.value)}
+              role="tab"
+              aria-selected={activeTab === tab.value}
+            >
+              <Icon size={16} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
       <div className="editor-header">
         <div>
           <div className="section-title">
@@ -1493,25 +1482,6 @@ function WorkspaceWorkbench({ controller }: { controller: SimulatorController })
             );
           })}
         </fieldset>
-      </div>
-
-      <div className="workspace-tabs" role="tablist" aria-label="Sezioni offerta">
-        {workspaceTabs.map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.value}
-              type="button"
-              className={"workspace-tab " + (activeTab === tab.value ? "active" : "")}
-              onClick={() => setActiveTab(tab.value)}
-              role="tab"
-              aria-selected={activeTab === tab.value}
-            >
-              <Icon size={16} />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
       </div>
 
       <ActiveWorkbench controller={controller} />

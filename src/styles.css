@@ -174,7 +174,6 @@ button {
   color: var(--success-text);
 }
 
-.source-pill,
 .doc-link {
   display: inline-flex;
   align-items: center;
@@ -200,19 +199,6 @@ button {
   background: var(--teal-soft);
 }
 
-
-.doc-meta {
-  display: inline-flex;
-  align-items: center;
-  min-width: max-content;
-  padding: 7px 10px;
-  border: 1px dashed var(--border);
-  border-radius: 999px;
-  background: var(--surface-soft);
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 650;
-}
 
 .guide-page {
   min-height: 100vh;
@@ -3513,7 +3499,6 @@ input[type="checkbox"] {
     flex: 1;
   }
 
-  .source-pill,
   .doc-link {
     min-width: 0;
     border-radius: 8px;
@@ -3639,12 +3624,4 @@ input[type="checkbox"] {
   .row-status {
     justify-self: end;
   }
-}
-
-.doc-meta--subtle {
-  opacity: 0.85;
-  max-width: 22rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }

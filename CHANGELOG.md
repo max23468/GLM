@@ -6,6 +6,13 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.6.2] — 2026-05-30
+
+### Correzioni
+
+- **Interfaccia**: i tab Tecnica, Economica, Ottimizzazione, Combinatorie e Risultati sono ora in cima al pannello di lavoro, prima del titolo di sezione e del selettore lotto.
+- **Interfaccia**: rimossi dalla testata il pill delle fonti e i badge testuali sul pacchetto Excel (versione, note XLSM e compatibilità web); restano i pulsanti Istruzioni e Pacchetto Excel.
+
 ## [1.6.1] — 2026-05-30
 
 ### Correzioni
