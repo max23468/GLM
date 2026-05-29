@@ -479,8 +479,10 @@ button {
   align-items: stretch;
   max-width: 1680px;
   min-height: 0;
+  height: 100%;
   margin: 0 auto;
   width: 100%;
+  overflow: hidden;
 }
 
 .left-rail,
