@@ -741,14 +741,29 @@ input[type="checkbox"] {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
+  align-items: stretch;
 }
 
 .scenario-actions .action-button {
   width: 100%;
   min-width: 0;
-  white-space: nowrap;
+  min-height: 52px;
+  display: inline-flex;
+  flex-direction: column;
   justify-content: center;
-  padding-inline: 7px;
+  align-items: center;
+  gap: 4px;
+  padding-inline: 5px;
+  text-align: center;
+  white-space: normal;
+  word-break: break-word;
+  font-size: 0.7rem;
+}
+
+.scenario-actions .action-button svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
 }
 
 .action-button {
@@ -790,6 +805,10 @@ input[type="checkbox"] {
 .action-button.compact {
   min-height: 34px;
   white-space: nowrap;
+}
+
+.scenario-actions .action-button.compact {
+  white-space: normal;
 }
 
 .scenario-notice {
