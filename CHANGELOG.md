@@ -6,6 +6,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.6.1] — 2026-05-30
+
+### Correzioni
+
+- **Interfaccia**: rimosso il riepilogo iniziale con scenario, punteggi e vincitori simulati sui quattro lotti; le stesse letture restano nel tab Risultati e nel confronto scenari.
+
 ## [1.6.0] — 2026-05-26
 
 ### Novità

@@ -1097,58 +1097,6 @@ input[type="checkbox"] {
   min-width: 0;
 }
 
-.strategic-summary {
-  display: grid;
-  gap: 12px;
-  border: 1px solid var(--teal-border);
-  border-radius: var(--radius);
-  background: linear-gradient(180deg, var(--teal-soft), var(--surface));
-  box-shadow: var(--shadow);
-  padding: 14px;
-}
-
-.strategic-heading,
-.strategic-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.strategic-heading > div,
-.summary-score,
-.strategic-footer {
-  min-width: 0;
-}
-
-.strategic-heading span,
-.strategic-lot span,
-.strategic-lot small,
-.strategic-footer {
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 720;
-}
-
-.strategic-heading strong {
-  display: block;
-  color: var(--section-title);
-  overflow-wrap: anywhere;
-  font-size: 1rem;
-}
-
-.summary-score strong {
-  color: var(--score-text);
-  font-size: 1.35rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.summary-score.per-lot {
-  display: grid;
-  gap: 6px;
-  min-width: 260px;
-}
-
 .summary-lot-score-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1180,48 +1128,6 @@ input[type="checkbox"] {
 
 .summary-lot-score-grid.compact strong {
   font-size: 0.9rem;
-}
-
-.summary-actions {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 7px;
-  flex-wrap: wrap;
-}
-
-.strategic-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.strategic-lot {
-  display: grid;
-  gap: 3px;
-  min-height: 74px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  padding: 10px;
-}
-
-.strategic-lot.assigned {
-  border-color: var(--teal-border);
-}
-
-.strategic-lot strong {
-  color: var(--strong-text);
-  overflow-wrap: anywhere;
-  font-size: 0.9rem;
-  line-height: 1.2;
-}
-
-.summary-warning {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--warning-text);
 }
 
 .lot-toggle-grid {
@@ -1384,12 +1290,6 @@ input[type="checkbox"] {
 
 .threshold-status {
   white-space: nowrap;
-}
-
-.summary-threshold-status {
-  flex: 0 0 auto;
-  padding: 6px 9px;
-  font-size: 0.78rem;
 }
 
 .empty-state {
@@ -3655,7 +3555,6 @@ input[type="checkbox"] {
 
   .criterion-inspector-main,
   .quantity-input-grid,
-  .strategic-grid,
   .decision-grid,
   .sensitivity-grid,
   .batch-summary-grid,
@@ -3689,19 +3588,15 @@ input[type="checkbox"] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .strategic-heading,
-  .strategic-footer,
   .criteria-filter-bar {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .summary-actions,
   .filter-pills {
     justify-content: stretch;
   }
 
-  .summary-actions .action-button,
   .filter-pills button {
     flex: 1;
   }

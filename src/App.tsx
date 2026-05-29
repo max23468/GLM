@@ -61,10 +61,7 @@ import {
   type Suggestion,
   type TradeoffPlan,
 } from "./lib/scoring";
-import {
-  ScenarioComparison,
-  StrategicSummary,
-} from "./components/scenario-panels";
+import { ScenarioComparison } from "./components/scenario-panels";
 import { InstructionsPage } from "./components/instructions-page";
 import { HelpTooltip } from "./components/help-tooltip";
 import { ReleasePanel } from "./components/release-panel";
@@ -1397,24 +1394,11 @@ function SimulatorSidebar({ controller }: { controller: SimulatorController }) {
 }
 
 function WorkspaceMain({ controller }: { controller: SimulatorController }) {
-  const { selectedBidder, scenarioName, selectedLotLabel, result, selectedLotScore, activeTabLabel, setActiveTab } = controller;
+  const { selectedBidder } = controller;
 
   return (
     <main className="workspace">
-      {selectedBidder && (
-        <>
-          <StrategicSummary
-            scenarioName={scenarioName}
-            selectedBidderName={selectedBidder.name}
-            selectedLotLabel={selectedLotLabel}
-            result={result}
-            selectedLotAdmitted={selectedLotScore?.admitted}
-            activeSectionLabel={activeTabLabel}
-            onOpenResults={() => setActiveTab("risultati")}
-          />
-          <WorkspaceWorkbench controller={controller} />
-        </>
-      )}
+      {selectedBidder && <WorkspaceWorkbench controller={controller} />}
     </main>
   );
 }

@@ -1,5 +1,4 @@
 import {
-  AlertTriangle,
   CopyPlus,
   Download,
   FileJson,
@@ -7,7 +6,6 @@ import {
   Plus,
   RotateCcw,
   Save,
-  Trophy,
   Upload,
   X,
 } from "lucide-react";
@@ -147,87 +145,6 @@ export function ScenarioTools({
         Reset totale tool
       </button>
       {scenarioNotice && <div className="scenario-notice">{scenarioNotice}</div>}
-    </section>
-  );
-}
-
-type StrategicSummaryProps = {
-  scenarioName: string;
-  selectedBidderName?: string;
-  selectedLotLabel: string;
-  result: SimulationResult;
-  selectedLotAdmitted?: boolean;
-  activeSectionLabel: string;
-  onOpenResults: () => void;
-};
-
-export function StrategicSummary({
-  scenarioName,
-  selectedBidderName,
-  selectedLotLabel,
-  result,
-  selectedLotAdmitted,
-  activeSectionLabel,
-  onOpenResults,
-}: StrategicSummaryProps) {
-  const selected = result.selectedScenario;
-  const lotSummaries = scenarioLotSummaries(selected?.assignments ?? []);
-
-  return (
-    <section className="strategic-summary" aria-label="Riepilogo strategico">
-      <div className="strategic-heading">
-        <div>
-          <span>Scenario</span>
-          <strong>{scenarioName}</strong>
-        </div>
-        <div className="summary-score per-lot">
-          <span>Punteggio migliore per lotto</span>
-          <div className="summary-lot-score-grid" aria-label="Punteggio migliore per lotto">
-            {lotSummaries.map(({ lot, score }) => (
-              <div key={lot.id}>
-                <small>{lot.shortLabel}</small>
-                <strong>{typeof score === "number" ? formatPoints(score) : "n/d"}</strong>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="summary-actions" aria-label="Azioni rapide">
-            <button className="action-button compact primary" type="button" onClick={onOpenResults}>
-            <Trophy size={16} />
-            Risultati
-          </button>
-        </div>
-      </div>
-      <div className="strategic-grid">
-        {lotSummaries.map(({ lot, assignment }) => (
-          <div key={lot.id} className={`strategic-lot ${assignment ? "assigned" : "open"}`}>
-            <span>{lot.shortLabel}</span>
-            <strong>{assignment?.bidderName ?? "non assegnato"}</strong>
-            <small>{assignment ? (assignment.kind === "combo" ? assignment.pairId : "singola") : "verifica scenario"}</small>
-          </div>
-        ))}
-      </div>
-      <div className="strategic-footer">
-        <span>Focus: {selectedBidderName ?? "n/d"} su {selectedLotLabel}, sezione {activeSectionLabel}</span>
-        {selectedLotAdmitted === false ? (
-          <span
-            className="status-badge threshold-status summary-threshold-status fail"
-            aria-label="Soglia di sbarramento non superata"
-            title="Soglia di sbarramento non superata"
-          >
-            <X size={14} />
-            Soglia non superata
-          </span>
-        ) : null}
-        {result.warnings[0] ? (
-          <span className="summary-warning">
-            <AlertTriangle size={14} />
-            {result.warnings[0]}
-          </span>
-        ) : (
-          <span>Nessun warning scenario prioritario.</span>
-        )}
-      </div>
     </section>
   );
 }
