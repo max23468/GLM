@@ -15,41 +15,51 @@ import { candidateLotScore, formatPoints, type AssignmentCandidate, type Simulat
 import type { SavedScenarioSnapshot } from "../lib/scenario-persistence";
 import { HelpTooltip } from "./help-tooltip";
 
+export type ScenarioLibraryEntry = {
+  key: string;
+  name: string;
+  detail: string;
+};
+
 type ScenarioToolsProps = {
   scenarioName: string;
-  savedScenarios: SavedScenarioSnapshot[];
-  activeSavedScenarioId?: string;
+  libraryEntries: ScenarioLibraryEntry[];
+  activeLibraryKey: string;
   scenarioNotice?: string;
+  hiddenLibraryCount?: number;
   onScenarioNameChange: (name: string) => void;
   onNew: () => void;
   onSave: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
-  onDeleteSaved: (scenarioId: string) => void;
   onExport: () => void;
   onExportExcel: () => void;
   onImportFile: (file: File) => void;
-  onLoadSaved: (scenarioId: string) => void;
-  onResetBaseScenario: () => void;
+  onLoadEntry: (entry: ScenarioLibraryEntry) => void;
+  onDeleteEntry: (entry: ScenarioLibraryEntry) => void;
+  onRestoreHiddenEntries?: () => void;
+  onResetModel: () => void;
   onResetTool: () => void;
 };
 
 export function ScenarioTools({
   scenarioName,
-  savedScenarios,
-  activeSavedScenarioId,
+  libraryEntries,
+  activeLibraryKey,
   scenarioNotice,
+  hiddenLibraryCount = 0,
   onScenarioNameChange,
   onNew,
   onSave,
   onDuplicate,
   onDelete,
-  onDeleteSaved,
   onExport,
   onExportExcel,
   onImportFile,
-  onLoadSaved,
-  onResetBaseScenario,
+  onLoadEntry,
+  onDeleteEntry,
+  onRestoreHiddenEntries,
+  onResetModel,
   onResetTool,
 }: ScenarioToolsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -59,7 +69,7 @@ export function ScenarioTools({
       <div className="section-title">
         <FileJson size={18} />
         Scenario
-        <HelpTooltip>Rinomina lo scenario prima di salvarlo: il nome resta nella libreria, nel confronto e negli export JSON.</HelpTooltip>
+        <HelpTooltip>Scegli uno scenario dalla libreria, rinominalo e salvalo quando vuoi conservarlo o confrontarlo.</HelpTooltip>
       </div>
       <label className="field">
         <span>
@@ -78,7 +88,14 @@ export function ScenarioTools({
           <button className="icon-button" type="button" onClick={onDuplicate} aria-label="Duplica scenario" title="Duplica scenario">
           <CopyPlus size={16} />
         </button>
-          <button className="icon-button danger" type="button" onClick={onDelete} disabled={!activeSavedScenarioId} aria-label="Elimina scenario attivo" title="Elimina scenario attivo">
+          <button
+            className="icon-button danger"
+            type="button"
+            onClick={onDelete}
+            disabled={!activeLibraryKey}
+            aria-label="Elimina scenario attivo"
+            title="Elimina scenario attivo"
+          >
           <X size={16} />
         </button>
           <button className="icon-button" type="button" onClick={onExport} aria-label="Esporta scenario JSON completo" title="Esporta JSON completo">
@@ -109,22 +126,22 @@ export function ScenarioTools({
       />
       <div className="field">
         <span>
-          Scenari salvati
-          <HelpTooltip>La libreria resta nel browser corrente. Per archiviare o condividere uno scenario, usa sempre Esporta.</HelpTooltip>
+          Libreria scenari
+          <HelpTooltip>Apri uno scenario dalla libreria. I profili simulati non sono offerte ufficiali: servono come punto di partenza.</HelpTooltip>
         </span>
         <div className="saved-scenario-list">
-          {savedScenarios.length ? (
-            savedScenarios.map((scenario) => (
-              <div key={scenario.id} className={`saved-scenario-row ${scenario.id === activeSavedScenarioId ? "selected" : ""}`}>
-                  <button className="saved-scenario-main" type="button" onClick={() => onLoadSaved(scenario.id)}>
-                  <span>{scenario.name}</span>
-                  <small>{new Date(scenario.savedAt).toLocaleDateString("it-IT")}</small>
+          {libraryEntries.length ? (
+            libraryEntries.map((entry) => (
+              <div key={entry.key} className={`saved-scenario-row ${entry.key === activeLibraryKey ? "selected" : ""}`}>
+                <button className="saved-scenario-main" type="button" onClick={() => onLoadEntry(entry)}>
+                  <span>{entry.name}</span>
+                  <small>{entry.detail}</small>
                 </button>
-                  <button
-                    className="icon-button mini danger"
-                    type="button"
-                  onClick={() => onDeleteSaved(scenario.id)}
-                  aria-label={`Elimina scenario ${scenario.name}`}
+                <button
+                  className="icon-button mini danger"
+                  type="button"
+                  onClick={() => onDeleteEntry(entry)}
+                  aria-label={`Elimina scenario ${entry.name}`}
                   title="Elimina scenario"
                 >
                   <X size={14} />
@@ -132,13 +149,18 @@ export function ScenarioTools({
               </div>
             ))
           ) : (
-            <div className="empty-sidebar-note">Nessuno scenario salvato</div>
+            <div className="empty-sidebar-note">Nessuno scenario in libreria</div>
           )}
         </div>
+        {hiddenLibraryCount > 0 && onRestoreHiddenEntries ? (
+          <button className="action-button compact" type="button" onClick={onRestoreHiddenEntries}>
+            Ripristina scenari rimossi ({hiddenLibraryCount})
+          </button>
+        ) : null}
       </div>
-        <button className="action-button subtle" type="button" onClick={onResetBaseScenario}>
+      <button className="action-button subtle" type="button" onClick={onResetModel}>
         <RotateCcw size={16} />
-        Ripristina scenario base
+        Ripristina modello corrente
       </button>
         <button className="action-button danger subtle" type="button" onClick={onResetTool}>
         <RotateCcw size={16} />

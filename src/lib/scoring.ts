@@ -10,6 +10,14 @@ import {
   type PairId,
 } from "../data/tender";
 
+export type DiscountInputMode = "phases" | "average";
+
+export type EconomicDiscountSource = {
+  discountInputMode?: DiscountInputMode;
+  phaseDiscounts: [number, number, number];
+  averageDiscount?: number;
+};
+
 export type LotOffer = {
   enabled: boolean;
   technicalOverrideRaw?: number;
@@ -18,7 +26,9 @@ export type LotOffer = {
   tValues: Record<string, boolean>;
   dValues: Record<string, number>;
   tradeoffs: Record<string, TradeoffPlan>;
+  discountInputMode?: DiscountInputMode;
   phaseDiscounts: [number, number, number];
+  averageDiscount?: number;
 };
 
 export type QuantityInputValue = {
@@ -34,7 +44,9 @@ export type TradeoffPlan = {
 
 export type ComboOffer = {
   enabled: boolean;
+  discountInputMode?: DiscountInputMode;
   phaseDiscounts: [number, number, number];
+  averageDiscount?: number;
   insertedInBothBuste: boolean;
   pefCoherent: boolean;
 };
@@ -193,7 +205,9 @@ export const emptyLotOffer = (): LotOffer => ({
   tValues: emptyTabularValues(),
   dValues: emptyDiscretionaryValues(),
   tradeoffs: emptyTradeoffs(),
+  discountInputMode: "phases",
   phaseDiscounts: [0, 0, 0],
+  averageDiscount: 0,
 });
 
 export const emptyTradeoffs = () =>
@@ -201,7 +215,9 @@ export const emptyTradeoffs = () =>
 
 export const emptyComboOffer = (): ComboOffer => ({
   enabled: false,
+  discountInputMode: "phases",
   phaseDiscounts: [0, 0, 0],
+  averageDiscount: 0,
   insertedInBothBuste: true,
   pefCoherent: true,
 });
@@ -267,6 +283,76 @@ const getPair = (pairId: PairId) => {
 
 const discountToDecimal = (percent: number) => clamp(percent / 100, 0, 1);
 
+export const clampDiscountPercent = (value: number) => round4(Math.min(100, Math.max(0, value)));
+
+export const resolvePhaseDiscounts = (offer: EconomicDiscountSource): [number, number, number] => {
+  if (offer.discountInputMode === "average") {
+    const average = clampDiscountPercent(offer.averageDiscount ?? offer.phaseDiscounts[0] ?? 0);
+    return [average, average, average];
+  }
+  return offer.phaseDiscounts.map((discount) => clampDiscountPercent(discount)) as [number, number, number];
+};
+
+export const weightedRibassoPercentFromPhases = (
+  baseByPhase: [number, number, number],
+  phaseDiscounts: [number, number, number],
+) => round4(computeWeightedRibasso(baseByPhase, phaseDiscounts) * 100);
+
+export const setDiscountInputMode = <T extends EconomicDiscountSource>(
+  offer: T,
+  mode: DiscountInputMode,
+  baseByPhase?: [number, number, number],
+): T => {
+  if (mode === "average") {
+    const average = baseByPhase
+      ? weightedRibassoPercentFromPhases(baseByPhase, resolvePhaseDiscounts({ ...offer, discountInputMode: "phases" }))
+      : clampDiscountPercent(offer.averageDiscount ?? offer.phaseDiscounts[0] ?? 0);
+    return {
+      ...offer,
+      discountInputMode: "average",
+      averageDiscount: average,
+      phaseDiscounts: [average, average, average],
+    };
+  }
+  return { ...offer, discountInputMode: "phases" };
+};
+
+export const setAverageDiscountValue = <T extends EconomicDiscountSource>(offer: T, value: number): T => {
+  const average = clampDiscountPercent(value);
+  return {
+    ...offer,
+    discountInputMode: "average",
+    averageDiscount: average,
+    phaseDiscounts: [average, average, average],
+  };
+};
+
+export const setPhaseDiscountValue = <T extends EconomicDiscountSource>(
+  offer: T,
+  index: number,
+  value: number,
+): T => {
+  const next = [...offer.phaseDiscounts] as [number, number, number];
+  next[index] = clampDiscountPercent(value);
+  return {
+    ...offer,
+    discountInputMode: "phases",
+    phaseDiscounts: next,
+  };
+};
+
+export const applyPhaseDiscountDelta = <T extends EconomicDiscountSource>(offer: T, delta: number): T => {
+  const next = resolvePhaseDiscounts(offer).map((discount) => clampDiscountPercent(discount + delta)) as [
+    number,
+    number,
+    number,
+  ];
+  if (offer.discountInputMode === "average") {
+    return { ...offer, averageDiscount: next[0], phaseDiscounts: next };
+  }
+  return { ...offer, phaseDiscounts: next };
+};
+
 export const computeOfferedAmount = (baseByPhase: [number, number, number], phaseDiscounts: [number, number, number]) => {
   const roundedDiscounts = phaseDiscounts.map((item) => round4(discountToDecimal(item))) as [number, number, number];
   return baseByPhase.reduce((sum, base, index) => sum + base * (1 - roundedDiscounts[index]), 0);
@@ -277,6 +363,11 @@ export const computeWeightedRibasso = (baseByPhase: [number, number, number], ph
   const offered = computeOfferedAmount(baseByPhase, phaseDiscounts);
   return round4(1 - offered / baseTotal);
 };
+
+export const economicBreakdownFromOffer = (
+  baseByPhase: [number, number, number],
+  offer: EconomicDiscountSource,
+): EconomicBreakdown => economicBreakdown(baseByPhase, resolvePhaseDiscounts(offer));
 
 export const economicBreakdown = (baseByPhase: [number, number, number], phaseDiscounts: [number, number, number]): EconomicBreakdown => {
   const baseTotal = baseByPhase.reduce((sum, value) => sum + value, 0);
@@ -318,7 +409,7 @@ const computeTechnicalRawScores = (bidders: Bidder[], settings: Settings): Recor
         rawByAmbit: Object.fromEntries(AMBITS.map((ambit) => [ambit.id, 0])),
         riparamByAmbit: Object.fromEntries(AMBITS.map((ambit) => [ambit.id, 0])),
         technical: 0,
-        singleRibasso: computeWeightedRibasso(lot.baseByPhase, bidder.lots[lot.id].phaseDiscounts),
+        singleRibasso: computeWeightedRibasso(lot.baseByPhase, resolvePhaseDiscounts(bidder.lots[lot.id])),
         singleEconomic: 0,
         singleTotal: 0,
         subScores: {},
@@ -502,11 +593,12 @@ const computeComboScores = (
           const secondScore = lotScores[bidder.id][secondLotId];
           const baseSum = firstLot.totalBase + secondLot.totalBase;
           const pairBases = pairBaseByPhase(pair.id);
-          const ribasso = computeWeightedRibasso(pairBaseByPhase(pair.id), combo.phaseDiscounts);
-          const comboOffered = computeOfferedAmount(pairBases, combo.phaseDiscounts);
+          const comboDiscounts = resolvePhaseDiscounts(combo);
+          const ribasso = computeWeightedRibasso(pairBaseByPhase(pair.id), comboDiscounts);
+          const comboOffered = computeOfferedAmount(pairBases, comboDiscounts);
           const singleOfferedSum =
-            computeOfferedAmount(firstLot.baseByPhase, bidder.lots[firstLotId].phaseDiscounts) +
-            computeOfferedAmount(secondLot.baseByPhase, bidder.lots[secondLotId].phaseDiscounts);
+            computeOfferedAmount(firstLot.baseByPhase, resolvePhaseDiscounts(bidder.lots[firstLotId])) +
+            computeOfferedAmount(secondLot.baseByPhase, resolvePhaseDiscounts(bidder.lots[secondLotId]));
           const minRequiredRibasso = round4(1 - singleOfferedSum / baseSum);
           const warnings: string[] = [];
 
@@ -584,10 +676,11 @@ const computeRMaxByLot = (bidders: Bidder[], lotScores: Record<string, Record<Lo
         const secondScore = lotScores[bidder.id][secondLotId];
         const firstLot = getLot(firstLotId);
         const secondLot = getLot(secondLotId);
-        const comboOffered = computeOfferedAmount(pairBaseByPhase(pair.id), combo.phaseDiscounts);
+        const comboDiscounts = resolvePhaseDiscounts(combo);
+        const comboOffered = computeOfferedAmount(pairBaseByPhase(pair.id), comboDiscounts);
         const singleOfferedSum =
-          computeOfferedAmount(firstLot.baseByPhase, bidder.lots[firstLotId].phaseDiscounts) +
-          computeOfferedAmount(secondLot.baseByPhase, bidder.lots[secondLotId].phaseDiscounts);
+          computeOfferedAmount(firstLot.baseByPhase, resolvePhaseDiscounts(bidder.lots[firstLotId])) +
+          computeOfferedAmount(secondLot.baseByPhase, resolvePhaseDiscounts(bidder.lots[secondLotId]));
         if (
           pairContainsLot &&
           combo.enabled &&
@@ -599,7 +692,7 @@ const computeRMaxByLot = (bidders: Bidder[], lotScores: Record<string, Record<Lo
           combo.pefCoherent &&
           comboOffered < singleOfferedSum
         ) {
-          rMax = Math.max(rMax, computeWeightedRibasso(pairBaseByPhase(pair.id), bidder.combos[pair.id].phaseDiscounts));
+          rMax = Math.max(rMax, computeWeightedRibasso(pairBaseByPhase(pair.id), comboDiscounts));
         }
       }
     }

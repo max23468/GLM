@@ -1,8 +1,10 @@
 import { CRITERIA, LOTS, type Criterion, type LotId } from "../data/tender";
 import {
+  applyPhaseDiscountDelta,
   candidateLotScore,
   computeQuantityInputValue,
   getQuantitativeCriterionValue,
+  resolvePhaseDiscounts,
   round4,
   simulate,
   type Bidder,
@@ -382,7 +384,7 @@ const buildReallocationCandidates = ({
       const nextBidders = structuredClone(reducedBidders);
       const nextBidder = nextBidders[selectedBidderIndex];
       if (!nextBidder) continue;
-      nextBidder.lots[lotId].phaseDiscounts = nextBidder.lots[lotId].phaseDiscounts.map((discount) => discount + economicStep) as [number, number, number];
+      nextBidder.lots[lotId] = applyPhaseDiscountDelta(nextBidder.lots[lotId], economicStep);
       const nextSimulation = simulate(nextBidders, settings, selectedBidderId);
       const nextScore = objectiveScore(nextSimulation, nextBidders, selectedBidderId, selectedLotId, config.scope);
       const objectiveDelta = round4(nextScore - currentScore);
@@ -587,7 +589,7 @@ const fundedEconomicStepUnits = (
 ) => {
   if (lotTotalBase <= 0 || availableFunding <= 0) return 0;
   const fundedStep = (availableFunding * 100) / lotTotalBase;
-  const phaseHeadroom = Math.min(...currentOffer.phaseDiscounts.map((discount) => Math.max(0, 100 - discount)));
+  const phaseHeadroom = Math.min(...resolvePhaseDiscounts(currentOffer).map((discount) => Math.max(0, 100 - discount)));
   return Math.min(fundedStep, phaseHeadroom);
 };
 

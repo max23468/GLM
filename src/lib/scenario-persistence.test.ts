@@ -30,8 +30,8 @@ describe("scenario persistence normalization", () => {
     });
 
     expect(snapshot).toBeDefined();
-    expect(snapshot?.schemaVersion).toBe(7);
-    expect(snapshot?.baseScenarioId).toBe("market");
+    expect(snapshot?.schemaVersion).toBe(8);
+    expect(snapshot?.originProfileId).toBe("market");
     expect(snapshot?.optimization.mode).toBe("technical-economic");
     expect(snapshot?.optimization.scope).toBe("active-lot");
     expect(snapshot?.optimization.levers.L1?.["C.1.2"].unitCost).toBeGreaterThan(0);
@@ -66,8 +66,8 @@ describe("scenario persistence normalization", () => {
     });
 
     expect(workspace).toBeDefined();
-    expect(workspace?.schemaVersion).toBe(7);
-    expect(workspace?.baseScenarioId).toBe("local");
+    expect(workspace?.schemaVersion).toBe(8);
+    expect(workspace?.activeSavedScenarioId).toBe("preset-local");
     expect(workspace?.optimization.mode).toBe("technical-economic");
     expect(workspace?.optimization.levers.L4?.["C.2.1"].unitCost).toBeGreaterThan(0);
     expect(workspace?.scenarioName).toBe("Presidio locale");
@@ -141,12 +141,12 @@ describe("scenario persistence normalization", () => {
 
     expect(report.snapshot).toBeDefined();
     expect(report.messages).toContain("Schema aggiornato alla versione corrente.");
-    expect(report.messages).toContain("Campo legacy demoScenarioId migrato a baseScenarioId.");
+    expect(report.messages).toContain("Profilo di riferimento legacy migrato al formato corrente.");
     expect(report.messages).toContain("Offerte incomplete riparate con lotti, combinatorie e campi mancanti.");
     expect(report.messages).toContain("Configurazione Ottimizzazione assente o non valida: usati i valori dello scenario base.");
 
     const snapshot = report.snapshot!;
-    expect(snapshot.baseScenarioId).toBe("tech");
+    expect(snapshot.originProfileId).toBe("tech");
     expect(snapshot.bidders[0].lots.L2.enabled).toBe(true);
     expect(snapshot.bidders[0].lots.L2.qValues["A.1.1"]).toBe(3);
     expect(snapshot.bidders[0].lots.L2.phaseDiscounts).toEqual([4, 0, 0]);
@@ -175,7 +175,7 @@ describe("scenario persistence normalization", () => {
 
     expect(report.snapshot).toBeDefined();
     expect(report.messages).toContain("Schema aggiornato alla versione corrente.");
-    expect(report.messages).toContain("Campo legacy demoScenarioId migrato a baseScenarioId.");
+    expect(report.messages).toContain("Profilo di riferimento legacy migrato al formato corrente.");
     expect(report.messages).toContain("Offerte incomplete riparate con lotti, combinatorie e campi mancanti.");
     expect(report.messages).toContain("Configurazione Ottimizzazione assente o non valida: usati i valori dello scenario base.");
     expect(report.messages).toContain("Parametri scenario non validi riallineati ai valori supportati.");
@@ -209,7 +209,7 @@ describe("scenario persistence normalization", () => {
 
     expect(wrapped.snapshot?.name).toBe("Scenario incapsulato");
     expect(wrapped.messages).toContain("Struttura JSON riconosciuta: importato il primo scenario disponibile.");
-    expect(library.snapshot?.baseScenarioId).toBe("local");
+    expect(library.snapshot?.originProfileId).toBe("local");
     expect(library.messages).toContain("Struttura JSON riconosciuta: importato il primo scenario disponibile.");
   });
 

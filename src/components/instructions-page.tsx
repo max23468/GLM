@@ -30,7 +30,7 @@ type InstructionSection = {
 };
 
 const quickSteps = [
-  "Scegli scenario base, concorrente e partecipazioni dalla barra laterale.",
+  "Scegli scenario, concorrente e partecipazioni dalla barra laterale.",
   "Cambia lotto dalla barra `Lotto di lavoro`.",
   "Compila la parte tecnica e verifica la soglia di sbarramento.",
   "Compila ribassi e controlli economici.",
@@ -56,7 +56,7 @@ const sections: InstructionSection[] = [
     id: "istruzioni-scenario",
     eyebrow: "Scenario",
     title: "Scegliere, rinominare e salvare lo scenario",
-    body: "La colonna sinistra governa lo stato di lavoro: da lì scegli lo scenario base, rinomini la simulazione, salvi una fotografia in libreria e importi o esporti JSON.",
+    body: "La colonna sinistra governa lo stato di lavoro: da lì scegli lo scenario dalla libreria, rinomini la simulazione, salvi una fotografia e importi o esporti JSON.",
     bullets: [
       "Scegli `Mercato realistico` per partire da un assetto equilibrato.",
       "Usa `Tecnologia e flotta` quando vuoi stressare dotazioni, monitoraggio e informazione all'utenza.",
@@ -77,6 +77,7 @@ const sections: InstructionSection[] = [
       "Seleziona un concorrente dalla lista laterale prima di compilare tecnica o economica.",
       "Cambia il lotto di lavoro dalla barra compatta sopra le tab operative.",
       "Aggiungi un nuovo concorrente con il pulsante `+`.",
+      "Duplica un concorrente con l'icona copia sulla riga: copia offerte, ribassi e partecipazioni.",
       "Rinomina il concorrente dal campo laterale `Nome concorrente`.",
       "Usa `X` sulla riga del concorrente per eliminarlo.",
       "Spunta solo i lotti che il concorrente presenta davvero nello scenario.",
@@ -131,7 +132,7 @@ const sections: InstructionSection[] = [
     id: "istruzioni-economica",
     eyebrow: "Economica",
     title: "Compilare ribassi e leggere il punteggio",
-    body: "La tab `Economica` replica la struttura dell'All. 18 in forma navigabile: ribassi di fase, ribasso medio ponderato, corrispettivi offerti e punteggio economico.",
+    body: "La tab `Economica` replica la struttura dell'All. 18 in forma navigabile: puoi inserire tre ribassi di fase oppure un ribasso medio unico, con corrispettivi offerti e punteggio economico calcolati di conseguenza.",
     bullets: [
       "Inserisci tre ribassi: mesi 1-12, mesi 13-24 e mesi 25-84.",
       "Controlla il ribasso medio ponderato: è il valore usato per il confronto economico.",
@@ -184,12 +185,11 @@ const sections: InstructionSection[] = [
       "Controlla il vincitore simulato per ciascun lotto.",
       "Guarda i punteggi per lotto e il dettaglio tecnico, soprattutto nei casi vicini.",
       "Usa la lettura decisionale per vedere scarto dal secondo, alternativa e prossima verifica.",
-      "Controlla la sensitività soglia/deroga e la matrice batch prima di considerare stabile un esito.",
-      "Leggi i lotti sensibili: indicano dove soglie, deroga o piccoli stress di ribasso cambiano l'assegnazione simulata.",
+      "Apri i punteggi sotto criterio per confrontare i concorrenti sul lotto selezionato.",
       "Se ci sono lotti non assegnati, torna a partecipazioni, soglia di sbarramento e combinatorie.",
       "Seleziona uno scenario salvato per confrontare delta di punteggio e assegnazioni.",
     ],
-    checks: ["Scenario salvato prima del confronto", "Lotti sensibili interpretati", "Lotti non assegnati spiegati", "Warning letti"],
+    checks: ["Scenario salvato prima del confronto", "Punteggi sotto criterio letti sul lotto attivo", "Lotti non assegnati spiegati", "Warning letti"],
   },
   {
     id: "istruzioni-dati-locali",

@@ -1,5 +1,12 @@
 import { CRITERIA, LOTS, PAIRS, THRESHOLD_OPTIONS, type LotId, type PairId } from "../data/tender";
-import { BASE_SCENARIOS, DEFAULT_SETTINGS, getBaseScenario, isBaseScenarioId, type BaseScenarioId } from "../data/base-scenarios";
+import {
+  BASE_SCENARIOS,
+  DEFAULT_SETTINGS,
+  getBaseScenario,
+  isBaseScenarioId,
+  type BaseScenario,
+  type BaseScenarioId,
+} from "../data/base-scenarios";
 import {
   createBidder,
   emptyComboOffer,
@@ -26,12 +33,16 @@ export const LEGACY_STORAGE_KEYS = {
   scenarios: "tpl-simulator-scenarios",
 } as const;
 
+export const PRESET_SCENARIO_PREFIX = "preset-";
+
+export const PRESET_SAVED_AT = "2026-01-01T00:00:00.000Z";
+
 export type SavedScenarioSnapshot = {
-  schemaVersion: 7;
+  schemaVersion: 8;
   id: string;
   name: string;
   savedAt: string;
-  baseScenarioId: BaseScenarioId;
+  originProfileId?: BaseScenarioId;
   bidders: Bidder[];
   settings: Settings;
   optimization: OptimizationConfig;
@@ -41,10 +52,9 @@ export type SavedScenarioSnapshot = {
 };
 
 export type StoredWorkspace = {
-  schemaVersion: 7;
+  schemaVersion: 8;
   scenarioName: string;
   activeSavedScenarioId?: string;
-  baseScenarioId: BaseScenarioId;
   bidders: Bidder[];
   settings: Settings;
   optimization: OptimizationConfig;
@@ -61,6 +71,73 @@ type LegacyScenarioLike = Partial<SavedScenarioSnapshot> & {
 type LegacyWorkspaceLike = Partial<StoredWorkspace> & {
   demoScenarioId?: unknown;
   baseScenarioId?: unknown;
+};
+
+export const presetScenarioId = (baseId: BaseScenarioId) => `${PRESET_SCENARIO_PREFIX}${baseId}`;
+
+export const isPresetScenarioId = (id: string) => id.startsWith(PRESET_SCENARIO_PREFIX);
+
+export const baseIdFromPresetScenarioId = (id: string): BaseScenarioId | undefined => {
+  const candidate = id.slice(PRESET_SCENARIO_PREFIX.length);
+  return isBaseScenarioId(candidate) ? candidate : undefined;
+};
+
+export const resolveOriginProfileId = (
+  snapshot?: Pick<SavedScenarioSnapshot, "id" | "originProfileId"> | null,
+): BaseScenarioId => {
+  if (snapshot?.originProfileId && isBaseScenarioId(snapshot.originProfileId)) return snapshot.originProfileId;
+  const fromPreset = snapshot?.id ? baseIdFromPresetScenarioId(snapshot.id) : undefined;
+  return fromPreset ?? "market";
+};
+
+const resolveLegacyProfileId = (candidate: { originProfileId?: unknown; baseScenarioId?: unknown; demoScenarioId?: unknown }) =>
+  normalizeBaseScenarioId(candidate.originProfileId ?? candidate.baseScenarioId ?? candidate.demoScenarioId);
+
+export const buildPresetScenarioSnapshot = (base: BaseScenario): SavedScenarioSnapshot => ({
+  schemaVersion: 8,
+  id: presetScenarioId(base.id),
+  name: base.title,
+  savedAt: PRESET_SAVED_AT,
+  originProfileId: base.id,
+  bidders: base.buildBidders(),
+  settings: { ...base.settings },
+  optimization: base.buildOptimizationConfig(),
+  selectedBidderId: base.defaultBidderId,
+  selectedLotId: base.defaultLotId,
+  selectedPairId: base.defaultPairId,
+});
+
+export const buildDefaultScenarioLibrary = () => BASE_SCENARIOS.map((scenario) => buildPresetScenarioSnapshot(scenario));
+
+export const readHiddenBaseScenarioIds = (): BaseScenarioId[] => {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEYS.hiddenBaseScenarios) ?? "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((value): value is BaseScenarioId => typeof value === "string" && isBaseScenarioId(value));
+  } catch {
+    return [];
+  }
+};
+
+export const hydrateScenarioLibrary = (
+  library: SavedScenarioSnapshot[],
+  hiddenBaseScenarioIds: readonly BaseScenarioId[] = readHiddenBaseScenarioIds(),
+): SavedScenarioSnapshot[] => {
+  const hidden = new Set(hiddenBaseScenarioIds);
+  const byId = new Map(library.map((scenario) => [scenario.id, scenario]));
+  const merged = library.filter((scenario) => {
+    const presetBaseId = baseIdFromPresetScenarioId(scenario.id);
+    return !presetBaseId || !hidden.has(presetBaseId);
+  });
+
+  for (const base of BASE_SCENARIOS) {
+    if (hidden.has(base.id)) continue;
+    const id = presetScenarioId(base.id);
+    if (!byId.has(id)) merged.unshift(buildPresetScenarioSnapshot(base));
+  }
+
+  return merged;
 };
 
 type ExcelScenarioLike = {
@@ -158,6 +235,9 @@ const normalizePhaseDiscounts = (value: unknown): [number, number, number] => {
   const source = Array.isArray(value) ? value : [];
   return [0, 1, 2].map((index) => nonNegativeNumber(source[index], 0)) as [number, number, number];
 };
+
+const normalizeDiscountInputMode = (value: unknown, fallback: LotOffer["discountInputMode"] = "phases") =>
+  value === "average" ? "average" : fallback ?? "phases";
 
 const normalizeQuantityInput = (value: unknown): QuantityInputValue => {
   const source = isRecord(value) ? value : {};
@@ -266,6 +346,13 @@ export const normalizeLotOffer = (value: unknown, fallbackOffer?: LotOffer): Lot
     ]),
   );
 
+  const phaseDiscounts = normalizePhaseDiscounts(source.phaseDiscounts ?? fallback.phaseDiscounts);
+  const discountInputMode = normalizeDiscountInputMode(source.discountInputMode, fallback.discountInputMode);
+  const averageDiscount = nonNegativeNumber(
+    source.averageDiscount,
+    discountInputMode === "average" ? phaseDiscounts[0] : (fallback.averageDiscount ?? phaseDiscounts[0]),
+  );
+
   return {
     enabled: normalizeBoolean(source.enabled, fallback.enabled),
     technicalOverrideRaw: boundedNumber(source.technicalOverrideRaw, 0, 70, fallback.technicalOverrideRaw),
@@ -274,16 +361,27 @@ export const normalizeLotOffer = (value: unknown, fallbackOffer?: LotOffer): Lot
     tValues,
     dValues,
     tradeoffs,
-    phaseDiscounts: normalizePhaseDiscounts(source.phaseDiscounts),
+    discountInputMode,
+    phaseDiscounts,
+    averageDiscount,
   };
 };
 
 export const normalizeComboOffer = (value: unknown): ComboOffer => {
   const fallback = emptyComboOffer();
   const source = isRecord(value) ? value : {};
+  const phaseDiscounts = normalizePhaseDiscounts(source.phaseDiscounts ?? fallback.phaseDiscounts);
+  const discountInputMode = normalizeDiscountInputMode(source.discountInputMode, fallback.discountInputMode);
+  const averageDiscount = nonNegativeNumber(
+    source.averageDiscount,
+    discountInputMode === "average" ? phaseDiscounts[0] : (fallback.averageDiscount ?? phaseDiscounts[0]),
+  );
+
   return {
     enabled: normalizeBoolean(source.enabled, fallback.enabled),
-    phaseDiscounts: normalizePhaseDiscounts(source.phaseDiscounts),
+    discountInputMode,
+    phaseDiscounts,
+    averageDiscount,
     insertedInBothBuste: normalizeBoolean(source.insertedInBothBuste, fallback.insertedInBothBuste),
     pefCoherent: normalizeBoolean(source.pefCoherent, fallback.pefCoherent),
   };
@@ -326,6 +424,8 @@ const normalizeExcelScenarioSnapshot = (value: ExcelScenarioLike): { snapshot?: 
       0,
     );
     const discount = boundedNumber(recordValue(row, "discount") ?? recordValue(row, "ribasso") ?? recordValue(row, "ribassoMedioPercento"), 0, 100, 0) ?? 0;
+    offer.discountInputMode = "average";
+    offer.averageDiscount = discount;
     offer.phaseDiscounts = [discount, discount, discount];
   }
 
@@ -377,6 +477,8 @@ const normalizeExcelScenarioSnapshot = (value: ExcelScenarioLike): { snapshot?: 
     const combo = bidder.combos[pairId];
     combo.enabled = normalizeBoolean(recordValue(row, "enabled") ?? recordValue(row, "attivo"), false);
     const discount = boundedNumber(recordValue(row, "discount") ?? recordValue(row, "ribasso") ?? recordValue(row, "ribassoCombinatoria"), 0, 100, 0) ?? 0;
+    combo.discountInputMode = "average";
+    combo.averageDiscount = discount;
     combo.phaseDiscounts = [discount, discount, discount];
     combo.insertedInBothBuste = normalizeBoolean(recordValue(row, "insertedInBothBuste") ?? recordValue(row, "inseritoBuste"), true);
     combo.pefCoherent = normalizeBoolean(recordValue(row, "pefCoherent") ?? recordValue(row, "pefCoerente"), true);
@@ -394,11 +496,11 @@ const normalizeExcelScenarioSnapshot = (value: ExcelScenarioLike): { snapshot?: 
   return {
     hasCriteria,
     snapshot: {
-    schemaVersion: 7,
+    schemaVersion: 8,
     id: normalizedId(value.id, `excel-${Date.now()}`),
     name: normalizedName(value.name, "Scenario Excel"),
     savedAt: typeof value.savedAt === "string" ? value.savedAt : new Date().toISOString(),
-    baseScenarioId,
+    originProfileId: baseScenarioId,
     bidders,
     settings: normalizeSettings(value.settings),
     optimization: fallbackScenario.buildOptimizationConfig(),
@@ -463,18 +565,20 @@ export const normalizeSettings = (value: unknown): Settings => {
 export const normalizeScenarioSnapshot = (value: unknown): SavedScenarioSnapshot | undefined => {
   if (!isRecord(value)) return undefined;
   const candidate = value as LegacyScenarioLike;
-  const baseScenarioId = normalizeBaseScenarioId(candidate.baseScenarioId ?? candidate.demoScenarioId);
-  const bidders = normalizeBidders(candidate.bidders, baseScenarioId);
+  const originProfileId = resolveLegacyProfileId(candidate);
+  const bidders = normalizeBidders(candidate.bidders, originProfileId);
   if (!bidders.length) return undefined;
-  const fallbackScenario = getBaseScenario(baseScenarioId);
+  const fallbackScenario = getBaseScenario(originProfileId);
   const firstBidderId = bidders[0]?.id ?? fallbackScenario.defaultBidderId;
+  const rawId = normalizedId(candidate.id, `scenario-${Date.now()}`);
+  const id = isBaseScenarioId(rawId) && !isPresetScenarioId(rawId) ? presetScenarioId(rawId) : rawId;
 
   return {
-    schemaVersion: 7,
-    id: normalizedId(candidate.id, `scenario-${Date.now()}`),
+    schemaVersion: 8,
+    id,
     name: normalizedName(candidate.name, "Scenario importato"),
     savedAt: typeof candidate.savedAt === "string" ? candidate.savedAt : new Date().toISOString(),
-    baseScenarioId,
+    originProfileId,
     bidders,
     settings: normalizeSettings(candidate.settings),
     optimization: normalizeOptimizationConfig(candidate.optimization, fallbackScenario.buildOptimizationConfig()),
@@ -542,8 +646,10 @@ export const normalizeScenarioSnapshotWithReport = (value: unknown): ScenarioImp
 
   const messages: string[] = [];
   if (importCandidate !== value) messages.push("Struttura JSON riconosciuta: importato il primo scenario disponibile.");
-  if (candidate.schemaVersion !== 7) messages.push("Schema aggiornato alla versione corrente.");
-  if (!candidate.baseScenarioId && candidate.demoScenarioId) messages.push("Campo legacy demoScenarioId migrato a baseScenarioId.");
+  if (candidate.schemaVersion !== 8) messages.push("Schema aggiornato alla versione corrente.");
+  if ((candidate.baseScenarioId || candidate.demoScenarioId) && !candidate.originProfileId) {
+    messages.push("Profilo di riferimento legacy migrato al formato corrente.");
+  }
   if (!Array.isArray(candidate.bidders) || candidate.bidders.length === 0) {
     messages.push("Concorrenti mancanti: usata la base dello scenario selezionato.");
   } else if (hasIncompleteBidderShape(candidate.bidders)) {
@@ -566,16 +672,19 @@ export const normalizeScenarioSnapshotWithReport = (value: unknown): ScenarioImp
 export const normalizeStoredWorkspace = (value: unknown): StoredWorkspace | undefined => {
   if (!isRecord(value)) return undefined;
   const candidate = value as LegacyWorkspaceLike;
-  const baseScenarioId = normalizeBaseScenarioId(candidate.baseScenarioId ?? candidate.demoScenarioId);
-  const fallbackScenario = getBaseScenario(baseScenarioId);
-  const bidders = normalizeBidders(candidate.bidders, baseScenarioId);
+  const originProfileId = resolveLegacyProfileId(candidate);
+  const fallbackScenario = getBaseScenario(originProfileId);
+  const bidders = normalizeBidders(candidate.bidders, originProfileId);
   if (!bidders.length) return undefined;
+  let activeSavedScenarioId = typeof candidate.activeSavedScenarioId === "string" ? candidate.activeSavedScenarioId : undefined;
+  if (!activeSavedScenarioId && (candidate.baseScenarioId || candidate.demoScenarioId)) {
+    activeSavedScenarioId = presetScenarioId(originProfileId);
+  }
 
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     scenarioName: normalizedName(candidate.scenarioName, fallbackScenario.title),
-    activeSavedScenarioId: typeof candidate.activeSavedScenarioId === "string" ? candidate.activeSavedScenarioId : undefined,
-    baseScenarioId,
+    activeSavedScenarioId,
     bidders,
     settings: normalizeSettings(candidate.settings),
     optimization: normalizeOptimizationConfig(candidate.optimization, fallbackScenario.buildOptimizationConfig()),
@@ -605,7 +714,22 @@ const normalizeStoredScenarioList = (value: unknown) => (Array.isArray(value) ? 
 export const readStoredWorkspace = (): StoredWorkspace | undefined =>
   normalizeStoredWorkspace(getStoredJson([STORAGE_KEYS.workspace, LEGACY_STORAGE_KEYS.workspace]));
 
+export const bootstrapScenarioLibrary = (stored: SavedScenarioSnapshot[]): SavedScenarioSnapshot[] => {
+  const hidden = readHiddenBaseScenarioIds();
+  if (!stored.length) return hydrateScenarioLibrary([], hidden);
+
+  const hasPresetEntries = stored.some((scenario) => isPresetScenarioId(scenario.id));
+  if (!hasPresetEntries) return [...hydrateScenarioLibrary([], hidden), ...stored];
+
+  return stored.filter((scenario) => {
+    const presetBaseId = baseIdFromPresetScenarioId(scenario.id);
+    return !presetBaseId || !hidden.includes(presetBaseId);
+  });
+};
+
 export const readStoredSavedScenarios = (): SavedScenarioSnapshot[] =>
-  normalizeStoredScenarioList(getStoredJson<unknown>([STORAGE_KEYS.scenarios, LEGACY_STORAGE_KEYS.scenarios]))
-    .map(normalizeScenarioSnapshot)
-    .filter((scenario): scenario is SavedScenarioSnapshot => Boolean(scenario));
+  bootstrapScenarioLibrary(
+    normalizeStoredScenarioList(getStoredJson<unknown>([STORAGE_KEYS.scenarios, LEGACY_STORAGE_KEYS.scenarios]))
+      .map(normalizeScenarioSnapshot)
+      .filter((scenario): scenario is SavedScenarioSnapshot => Boolean(scenario)),
+  );

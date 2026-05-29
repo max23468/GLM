@@ -119,8 +119,8 @@ Nel riepilogo del piano, `Impegno lordo del piano` somma i costi tecnici aggiunt
 
 La sezione economica replica in forma navigabile la struttura dell'All. 18:
 
-- tre ribassi di fase, sui periodi 1-12, 13-24 e 25-84 mesi;
-- ribasso medio ponderato sulle basi di fase;
+- tre ribassi di fase, sui periodi 1-12, 13-24 e 25-84 mesi, oppure un ribasso medio unico replicato sulle tre fasi;
+- ribasso medio ponderato sulle basi di fase (in modalità ribasso medio unico coincide con l'input solo se le basi sono uniformi; altrimenti segue le basi di fase);
 - corrispettivo offerto per fase;
 - punteggio economico calcolato come `30 x R(i) / Rmax`;
 - lettura dei corrispettivi unitari medi €/km usando le vett*km dei modelli All. 18.1-18.8.

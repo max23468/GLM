@@ -35,22 +35,31 @@ import {
   type LotId,
   type PairId,
 } from "./data/tender";
-import { BASE_SCENARIOS, DEFAULT_SETTINGS, getBaseScenario, type BaseScenario, type BaseScenarioId } from "./data/base-scenarios";
+import { BASE_SCENARIOS, DEFAULT_SETTINGS, getBaseScenario } from "./data/base-scenarios";
 import {
+  applyPhaseDiscountDelta,
   computeQuantityInputValue,
   createBidder,
   criteriaByParent,
   economicBreakdown,
+  economicBreakdownFromOffer,
   formatPercent,
   formatPoints,
   candidateLotScore,
   getQuantitativeCriterionValue,
   maxQtPoints,
   pairBaseByPhase,
+  resolvePhaseDiscounts,
   round4,
+  setAverageDiscountValue,
+  setDiscountInputMode,
+  setPhaseDiscountValue,
+  clampDiscountPercent,
   simulate,
   type AssignmentCandidate,
   type Bidder,
+  type DiscountInputMode,
+  type EconomicDiscountSource,
   type ComboScore,
   type LotScore,
   type LotOffer,
@@ -68,9 +77,14 @@ import { WorkspaceSidebar } from "./components/workspace-sidebar";
 import {
   LEGACY_STORAGE_KEYS,
   STORAGE_KEYS,
+  buildDefaultScenarioLibrary,
+  buildPresetScenarioSnapshot,
+  hydrateScenarioLibrary,
   normalizeScenarioSnapshotWithReport,
+  presetScenarioId,
   readStoredSavedScenarios,
   readStoredWorkspace,
+  resolveOriginProfileId,
   type SavedScenarioSnapshot,
   type StoredWorkspace,
 } from "./lib/scenario-persistence";
@@ -154,19 +168,6 @@ const getStoredTheme = (): ThemePreference => {
   }
 };
 
-const getStoredHiddenBaseScenarios = (): BaseScenarioId[] => {
-  if (typeof window === "undefined") return [];
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEYS.hiddenBaseScenarios) ?? "[]");
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((value): value is BaseScenarioId =>
-      typeof value === "string" && BASE_SCENARIOS.some((scenario) => scenario.id === value),
-    );
-  } catch {
-    return [];
-  }
-};
-
 const currentView = (): AppView => {
   if (typeof window === "undefined") return "simulatore";
   return window.location.pathname === "/istruzioni" || window.location.pathname === "/istruzioni/" ? "istruzioni" : "simulatore";
@@ -192,64 +193,6 @@ type TradeoffPreview = {
 };
 
 const signedPoints = (amount: number) => `${amount >= 0 ? "+" : ""}${formatPoints(amount)}`;
-
-const batchDiscountStressOptions = [
-  { id: "base", label: "0,00 p.p.", delta: 0 },
-  { id: "stress-025", label: "+0,25 p.p.", delta: 0.25 },
-  { id: "stress-050", label: "+0,50 p.p.", delta: 0.5 },
-  { id: "stress-100", label: "+1,00 p.p.", delta: 1 },
-] as const;
-
-const clampDiscountPercent = (value: number) => round4(Math.min(100, Math.max(0, value)));
-
-const stressPhaseDiscounts = (discounts: [number, number, number], delta: number) =>
-  discounts.map((discount) => clampDiscountPercent(discount + delta)) as [number, number, number];
-
-const applySelectedBidderDiscountStress = (bidders: Bidder[], selectedBidderId: string, delta: number) => {
-  if (delta <= 0) return bidders;
-  const nextBidders = structuredClone(bidders);
-  const bidder = nextBidders.find((item) => item.id === selectedBidderId);
-  if (!bidder) return nextBidders;
-
-  for (const lot of LOTS) {
-    const offer = bidder.lots[lot.id];
-    if (offer.enabled) offer.phaseDiscounts = stressPhaseDiscounts(offer.phaseDiscounts, delta);
-  }
-
-  for (const pair of PAIRS) {
-    const combo = bidder.combos[pair.id];
-    if (combo.enabled) combo.phaseDiscounts = stressPhaseDiscounts(combo.phaseDiscounts, delta);
-  }
-
-  return nextBidders;
-};
-
-const sameLotSet = (left: LotId[], right: LotId[]) => {
-  if (left.length !== right.length) return false;
-  const rightSet = new Set(right);
-  return left.every((lotId) => rightSet.has(lotId));
-};
-
-const assignedLotsForBidder = (result: SimulationResult, bidderId: string) => {
-  const assigned = new Set<LotId>();
-  for (const assignment of result.selectedScenario?.assignments ?? []) {
-    if (assignment.bidderId !== bidderId) continue;
-    for (const lotId of assignment.lotIds) {
-      assigned.add(lotId);
-    }
-  }
-  const lotIds: LotId[] = [];
-  for (const lot of LOTS) {
-    if (assigned.has(lot.id)) lotIds.push(lot.id);
-  }
-  return lotIds;
-};
-
-const formatBatchAssignments = (result: SimulationResult) =>
-  LOTS.map((lot) => {
-    const assignment = assignmentByLot(result, lot.id);
-    return `${lot.shortLabel}: ${assignment?.bidderName ?? "n/d"}`;
-  }).join(" · ");
 
 type OptimizationInvestmentRow = {
   key: string;
@@ -420,25 +363,6 @@ const buildScenarioLotSummaries = (assignments: AssignmentCandidate[]) =>
 const assignmentByLot = (result: SimulationResult, lotId: LotId) =>
   result.selectedScenario?.assignments.find((assignment) => assignment.lotIds.includes(lotId));
 
-const scenarioLotScoreTotal = (result: SimulationResult) =>
-  LOTS.reduce((sum, lot) => {
-    const assignment = assignmentByLot(result, lot.id);
-    return sum + (assignment ? candidateLotScore(assignment, lot.id) : 0);
-  }, 0);
-
-const changedLotsBetween = (current: SimulationResult, variant: SimulationResult) =>
-  LOTS.filter((lot) => {
-    const currentAssignment = assignmentByLot(current, lot.id);
-    const variantAssignment = assignmentByLot(variant, lot.id);
-    return (
-      currentAssignment?.bidderId !== variantAssignment?.bidderId ||
-      currentAssignment?.kind !== variantAssignment?.kind ||
-      currentAssignment?.pairId !== variantAssignment?.pairId
-    );
-  });
-
-const formatLotList = (lots: LotId[]) => lots.length ? lots.join(", ") : "nessuno";
-
 const formatAssignmentLotScores = (assignment: AssignmentCandidate) =>
   assignment.lotIds.map((lotId) => `${lotId} ${formatPoints(candidateLotScore(assignment, lotId))}`).join(" · ");
 
@@ -451,7 +375,6 @@ const criterionStatus = (criterion: Criterion, score: number, note?: string) => 
 };
 
 type SimulatorState = {
-  baseScenarioId: BaseScenarioId;
   bidders: Bidder[];
   selectedBidderId: string;
   selectedLotId: LotId;
@@ -463,7 +386,6 @@ type SimulatorState = {
   optimizationConfig: OptimizationConfig;
   scenarioName: string;
   activeSavedScenarioId?: string;
-  hiddenBaseScenarioIds: BaseScenarioId[];
   compareScenarioId: string;
   scenarioNotice: string;
   isSuggestionsPanelExpanded: boolean;
@@ -479,6 +401,15 @@ type StateUpdater<T> = T | ((current: T) => T);
 const resolveStateUpdater = <T,>(updater: StateUpdater<T>, current: T) =>
   typeof updater === "function" ? (updater as (value: T) => T)(current) : updater;
 
+const buildDuplicateBidderName = (name: string, bidders: Bidder[]) => {
+  const base = name.replace(/\s+copia(?:\s+\d+)?$/i, "").trim() || name;
+  const firstCandidate = `${base} copia`;
+  if (!bidders.some((bidder) => bidder.name === firstCandidate)) return firstCandidate;
+  let index = 2;
+  while (bidders.some((bidder) => bidder.name === `${base} copia ${index}`)) index += 1;
+  return `${base} copia ${index}`;
+};
+
 const getFirstEnabledLotId = (bidder: Bidder, fallback: LotId): LotId => {
   for (const lot of LOTS) {
     if (bidder.lots[lot.id].enabled) return lot.id;
@@ -488,21 +419,19 @@ const getFirstEnabledLotId = (bidder: Bidder, fallback: LotId): LotId => {
 
 const createInitialSimulatorState = (): SimulatorState => {
   const initialWorkspace = readStoredWorkspace();
-  const initialBaseScenario = getBaseScenario(initialWorkspace?.baseScenarioId);
+  const fallbackScenario = getBaseScenario("market");
   return {
-    baseScenarioId: initialBaseScenario.id,
-    bidders: initialWorkspace?.bidders ?? initialBaseScenario.buildBidders(),
-    selectedBidderId: initialWorkspace?.selectedBidderId ?? initialBaseScenario.defaultBidderId,
-    selectedLotId: initialWorkspace?.selectedLotId ?? initialBaseScenario.defaultLotId,
-    selectedPairId: initialWorkspace?.selectedPairId ?? initialBaseScenario.defaultPairId,
+    bidders: initialWorkspace?.bidders ?? fallbackScenario.buildBidders(),
+    selectedBidderId: initialWorkspace?.selectedBidderId ?? fallbackScenario.defaultBidderId,
+    selectedLotId: initialWorkspace?.selectedLotId ?? fallbackScenario.defaultLotId,
+    selectedPairId: initialWorkspace?.selectedPairId ?? fallbackScenario.defaultPairId,
     activeTab: "tecnica",
     selectedAmbitId: AMBITS[0].id,
     selectedCriterionId: CRITERIA[0].id,
     settings: initialWorkspace?.settings ?? DEFAULT_SETTINGS,
-    optimizationConfig: initialWorkspace?.optimization ?? initialBaseScenario.buildOptimizationConfig(),
-    scenarioName: initialWorkspace?.scenarioName ?? initialBaseScenario.title,
+    optimizationConfig: initialWorkspace?.optimization ?? fallbackScenario.buildOptimizationConfig(),
+    scenarioName: initialWorkspace?.scenarioName ?? fallbackScenario.title,
     activeSavedScenarioId: initialWorkspace?.activeSavedScenarioId,
-    hiddenBaseScenarioIds: getStoredHiddenBaseScenarios(),
     compareScenarioId: "",
     scenarioNotice: "",
     isSuggestionsPanelExpanded: false,
@@ -519,7 +448,6 @@ function useSimulatorController() {
   const [view, setView] = useState<AppView>(currentView);
   const [simulatorState, dispatchSimulatorState] = useReducer(simulatorStateReducer, undefined, createInitialSimulatorState);
   const {
-    baseScenarioId,
     bidders,
     selectedBidderId,
     selectedLotId,
@@ -531,7 +459,6 @@ function useSimulatorController() {
     optimizationConfig,
     scenarioName,
     activeSavedScenarioId,
-    hiddenBaseScenarioIds,
     compareScenarioId,
     scenarioNotice,
     isSuggestionsPanelExpanded,
@@ -545,7 +472,6 @@ function useSimulatorController() {
   const resolvedTheme = themePreference === "auto" ? (systemPrefersDark ? "dark" : "light") : themePreference;
   const patchSimulatorState = (patch: Partial<SimulatorState>) => dispatchSimulatorState({ type: "patch", patch });
   const updateSimulatorState = (updater: (state: SimulatorState) => SimulatorState) => dispatchSimulatorState({ type: "update", updater });
-  const setBaseScenarioId = (baseScenarioId: BaseScenarioId) => patchSimulatorState({ baseScenarioId });
   const setBidders = (updater: StateUpdater<Bidder[]>) =>
     updateSimulatorState((state) => ({ ...state, bidders: resolveStateUpdater(updater, state.bidders) }));
   const setSelectedBidderId = (selectedBidderId: string) => patchSimulatorState({ selectedBidderId });
@@ -560,8 +486,6 @@ function useSimulatorController() {
     updateSimulatorState((state) => ({ ...state, optimizationConfig: resolveStateUpdater(updater, state.optimizationConfig) }));
   const setScenarioName = (scenarioName: string) => patchSimulatorState({ scenarioName });
   const setActiveSavedScenarioId = (activeSavedScenarioId: string | undefined) => patchSimulatorState({ activeSavedScenarioId });
-  const setHiddenBaseScenarioIds = (updater: StateUpdater<BaseScenarioId[]>) =>
-    updateSimulatorState((state) => ({ ...state, hiddenBaseScenarioIds: resolveStateUpdater(updater, state.hiddenBaseScenarioIds) }));
   const setCompareScenarioId = (compareScenarioId: string) => patchSimulatorState({ compareScenarioId });
   const setScenarioNotice = (scenarioNotice: string) => patchSimulatorState({ scenarioNotice });
   const setSuggestionsPanelExpanded = (updater: StateUpdater<boolean>) =>
@@ -593,10 +517,9 @@ function useSimulatorController() {
     window.localStorage.setItem(
       STORAGE_KEYS.workspace,
       JSON.stringify({
-        schemaVersion: 7,
+        schemaVersion: 8,
         scenarioName,
         activeSavedScenarioId,
-        baseScenarioId,
         bidders,
         optimization: optimizationConfig,
         settings,
@@ -605,15 +528,11 @@ function useSimulatorController() {
         selectedPairId,
       } satisfies StoredWorkspace),
     );
-  }, [activeSavedScenarioId, bidders, baseScenarioId, optimizationConfig, scenarioName, selectedBidderId, selectedLotId, selectedPairId, settings]);
+  }, [activeSavedScenarioId, bidders, optimizationConfig, scenarioName, selectedBidderId, selectedLotId, selectedPairId, settings]);
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEYS.scenarios, JSON.stringify(savedScenarios));
   }, [savedScenarios]);
-
-  useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEYS.hiddenBaseScenarios, JSON.stringify(hiddenBaseScenarioIds));
-  }, [hiddenBaseScenarioIds]);
 
   const selectedBidder = bidders.find((bidder) => bidder.id === selectedBidderId) ?? bidders[0];
   const participatingLots = useMemo(
@@ -622,10 +541,13 @@ function useSimulatorController() {
   );
   const selectedLot = LOTS.find((lot) => lot.id === selectedLotId) ?? LOTS[0];
   const selectedLotContext = LOT_CONTEXT[selectedLotId];
-  const selectedBaseScenario = BASE_SCENARIOS.find((scenario) => scenario.id === baseScenarioId) ?? BASE_SCENARIOS[0];
-  const visibleBaseScenarios = useMemo(
-    () => BASE_SCENARIOS.filter((scenario) => !hiddenBaseScenarioIds.includes(scenario.id)),
-    [hiddenBaseScenarioIds],
+  const activeSavedScenario = useMemo(
+    () => (activeSavedScenarioId ? savedScenarios.find((scenario) => scenario.id === activeSavedScenarioId) : undefined),
+    [activeSavedScenarioId, savedScenarios],
+  );
+  const removedPresetCount = useMemo(
+    () => BASE_SCENARIOS.filter((base) => !savedScenarios.some((scenario) => scenario.id === presetScenarioId(base.id))).length,
+    [savedScenarios],
   );
   const result = useMemo(() => simulate(bidders, settings, selectedBidder?.id ?? ""), [bidders, settings, selectedBidder?.id]);
   const optimizationResult = useMemo(
@@ -688,7 +610,7 @@ function useSimulatorController() {
     const totalCost = tradeoffCost(criterion, plan);
     if (lot && totalCost > 0) {
       const reductionPoints = (totalCost / lot.totalBase) * 100;
-      nextOffer.phaseDiscounts = nextOffer.phaseDiscounts.map((discount) => Math.max(0, discount - reductionPoints)) as [number, number, number];
+      Object.assign(nextOffer, applyPhaseDiscountDelta(nextOffer, -reductionPoints));
     }
 
     const nextResult = simulate(nextBidders, settings, selectedBidder.id);
@@ -741,32 +663,6 @@ function useSimulatorController() {
 
   const updateBidder = (bidderId: string, updater: (bidder: Bidder) => Bidder) => {
     setBidders((current) => current.map((bidder) => (bidder.id === bidderId ? updater(structuredClone(bidder)) : bidder)));
-  };
-
-  const loadBaseScenario = (scenario: BaseScenario) => {
-    setBaseScenarioId(scenario.id);
-    setScenarioName(scenario.title);
-    setActiveSavedScenarioId(undefined);
-    setBidders(scenario.buildBidders());
-    setOptimizationConfig(scenario.buildOptimizationConfig());
-    setSettings(scenario.settings);
-    setSelectedBidderId(scenario.defaultBidderId);
-    setSelectedLotId(scenario.defaultLotId);
-    setSelectedPairId(scenario.defaultPairId);
-  };
-
-  const deleteBaseScenario = (scenario: BaseScenario) => {
-    setHiddenBaseScenarioIds((current) => (current.includes(scenario.id) ? current : [...current, scenario.id]));
-    setScenarioNotice(
-      scenario.id === baseScenarioId
-        ? `Scenario base eliminato dalla lista: ${scenario.title}. Lo scenario corrente resta in lavoro.`
-        : `Scenario base eliminato dalla lista: ${scenario.title}.`,
-    );
-  };
-
-  const restoreBaseScenarios = () => {
-    setHiddenBaseScenarioIds([]);
-    setScenarioNotice("Scenari base ripristinati nella barra laterale.");
   };
 
   const updateLotOffer = (lotId: LotId, updater: (offer: LotOffer) => LotOffer) => {
@@ -846,7 +742,7 @@ function useSimulatorController() {
       const totalCost = tradeoffCost(criterion, plan);
       if (lot && totalCost > 0) {
         const reductionPoints = (totalCost / lot.totalBase) * 100;
-        offer.phaseDiscounts = offer.phaseDiscounts.map((discount) => Math.max(0, discount - reductionPoints)) as [number, number, number];
+        Object.assign(offer, applyPhaseDiscountDelta(offer, -reductionPoints));
       }
       return { ...offer };
     });
@@ -859,6 +755,21 @@ function useSimulatorController() {
     setBidders((current) => [...current, next]);
     setSelectedBidderId(nextId);
     setSelectedLotId("L1");
+  };
+
+  const duplicateBidder = (bidderId: string) => {
+    const source = bidders.find((bidder) => bidder.id === bidderId);
+    if (!source) return;
+    const nextId = `offerente-${Date.now()}`;
+    const next = structuredClone(source);
+    next.id = nextId;
+    next.name = buildDuplicateBidderName(source.name, bidders);
+    setBidders((current) => [...current, next]);
+    patchSimulatorState({
+      selectedBidderId: nextId,
+      selectedLotId: getFirstEnabledLotId(next, selectedLotId),
+      scenarioNotice: `Duplicato: ${next.name}`,
+    });
   };
 
     const removeBidder = (bidderId: string) => {
@@ -875,11 +786,11 @@ function useSimulatorController() {
     };
 
   const currentScenarioSnapshot = (id = activeSavedScenarioId ?? `scenario-${Date.now()}`, name = scenarioName): SavedScenarioSnapshot => ({
-    schemaVersion: 7,
+    schemaVersion: 8,
     id,
     name: name.trim() || "Scenario senza nome",
     savedAt: new Date().toISOString(),
-    baseScenarioId,
+    originProfileId: resolveOriginProfileId(activeSavedScenario),
     bidders: structuredClone(bidders),
     optimization: structuredClone(optimizationConfig),
     settings: { ...settings },
@@ -899,7 +810,6 @@ function useSimulatorController() {
           : scenario.selectedLotId;
       setScenarioName(scenario.name);
       setActiveSavedScenarioId(scenario.id);
-      setBaseScenarioId(scenario.baseScenarioId);
       setBidders(nextBidders);
       setOptimizationConfig(scenario.optimization);
       setSettings(scenario.settings);
@@ -944,7 +854,7 @@ function useSimulatorController() {
       id: activeSavedScenarioId ?? `excel-${Date.now()}`,
       name: scenarioName.trim() || "Scenario Excel",
       savedAt,
-      baseScenarioId,
+      originProfileId: resolveOriginProfileId(activeSavedScenario),
       settings: { ...settings },
       selectedBidderId: selectedBidder?.id ?? bidders[0]?.id ?? "",
       selectedLotId,
@@ -1035,9 +945,32 @@ function useSimulatorController() {
     if (scenario) applyScenarioSnapshot(scenario);
   };
 
-  const resetCurrentBaseScenario = () => {
-    loadBaseScenario(selectedBaseScenario);
-    setScenarioNotice(`Scenario base ripristinato: ${selectedBaseScenario.title}`);
+  const resetCurrentScenarioModel = () => {
+    const profileId = resolveOriginProfileId(activeSavedScenario);
+    const factory = buildPresetScenarioSnapshot(getBaseScenario(profileId));
+    if (activeSavedScenarioId) {
+      const restored = {
+        ...factory,
+        id: activeSavedScenarioId,
+        name: scenarioName.trim() || factory.name,
+        savedAt: activeSavedScenario?.savedAt ?? factory.savedAt,
+      };
+      setSavedScenarios((current) => current.map((scenario) => (scenario.id === activeSavedScenarioId ? restored : scenario)));
+      applyScenarioSnapshot(restored);
+    } else {
+      setBidders(factory.bidders);
+      setOptimizationConfig(factory.optimization);
+      setSettings(factory.settings);
+      setSelectedBidderId(factory.selectedBidderId);
+      setSelectedLotId(factory.selectedLotId);
+      setSelectedPairId(factory.selectedPairId);
+    }
+    setScenarioNotice(`Modello ripristinato: ${factory.name}`);
+  };
+
+  const restoreRemovedPresets = () => {
+    setSavedScenarios((current) => hydrateScenarioLibrary(current, []));
+    setScenarioNotice("Profili predefiniti ripristinati in libreria.");
   };
 
   const resetToolToInitialState = () => {
@@ -1047,27 +980,18 @@ function useSimulatorController() {
     if (!confirmed) return;
 
     [...Object.values(STORAGE_KEYS), ...Object.values(LEGACY_STORAGE_KEYS)].forEach((key) => window.localStorage.removeItem(key));
-    const initialScenario = BASE_SCENARIOS[0];
-    const nextBidders = initialScenario.buildBidders();
+    const library = buildDefaultScenarioLibrary();
+    const initialScenario = library[0];
     setView("simulatore");
     window.history.pushState({}, "", "/");
-    setBaseScenarioId(initialScenario.id);
-    setScenarioName(initialScenario.title);
-    setActiveSavedScenarioId(undefined);
-    setBidders(nextBidders);
-    setOptimizationConfig(initialScenario.buildOptimizationConfig());
-    setSettings(initialScenario.settings);
-    setSelectedBidderId(initialScenario.defaultBidderId);
-    setSelectedLotId(initialScenario.defaultLotId);
-    setSelectedPairId(initialScenario.defaultPairId);
-    setSavedScenarios([]);
-    setHiddenBaseScenarioIds([]);
+    setSavedScenarios(library);
+    applyScenarioSnapshot(initialScenario);
     setCompareScenarioId("");
     setActiveTab("tecnica");
     setSelectedAmbitId(AMBITS[0].id);
     setSelectedCriterionId(CRITERIA[0].id);
     setThemePreference("auto");
-    setScenarioNotice("Tool ripristinato allo stato iniziale: scenari base e input sono tornati ai valori di default.");
+    setScenarioNotice("Tool ripristinato allo stato iniziale: libreria e input sono tornati ai valori predefiniti.");
   };
 
   const renameCurrentScenario = (name: string) => {
@@ -1079,15 +1003,15 @@ function useSimulatorController() {
   };
 
   const createNewScenario = () => {
-    const nextBidders = selectedBaseScenario.buildBidders();
+    const template = buildPresetScenarioSnapshot(getBaseScenario("market"));
     setScenarioName("Nuovo scenario");
     setActiveSavedScenarioId(undefined);
-    setBidders(nextBidders);
-    setOptimizationConfig(selectedBaseScenario.buildOptimizationConfig());
-    setSettings(selectedBaseScenario.settings);
-    setSelectedBidderId(nextBidders.some((bidder) => bidder.id === selectedBaseScenario.defaultBidderId) ? selectedBaseScenario.defaultBidderId : nextBidders[0]?.id ?? "");
-    setSelectedLotId(selectedBaseScenario.defaultLotId);
-    setSelectedPairId(selectedBaseScenario.defaultPairId);
+    setBidders(template.bidders);
+    setOptimizationConfig(template.optimization);
+    setSettings(template.settings);
+    setSelectedBidderId(template.selectedBidderId);
+    setSelectedLotId(template.selectedLotId);
+    setSelectedPairId(template.selectedPairId);
     setCompareScenarioId("");
     setScenarioNotice("Nuovo scenario creato: salvalo in libreria quando vuoi conservarlo.");
   };
@@ -1137,20 +1061,16 @@ function useSimulatorController() {
     exportExcelScenario,
     importScenarioFile,
     loadSavedScenario,
-    resetCurrentBaseScenario,
+    resetCurrentScenarioModel,
     resetToolToInitialState,
-    selectedBaseScenario,
-    visibleBaseScenarios,
-    hiddenBaseScenarioIds,
-    baseScenarioId,
-    loadBaseScenario,
-    deleteBaseScenario,
-    restoreBaseScenarios,
+    restoreRemovedPresets,
+    removedPresetCount,
     bidders,
     selectedBidder,
     result,
     settings,
     addBidder,
+    duplicateBidder,
     removeBidder,
     selectBidder,
     updateBidder,
@@ -1290,20 +1210,16 @@ function SimulatorSidebar({ controller }: { controller: SimulatorController }) {
     exportExcelScenario,
     importScenarioFile,
     loadSavedScenario,
-    resetCurrentBaseScenario,
+    resetCurrentScenarioModel,
     resetToolToInitialState,
-    selectedBaseScenario,
-    visibleBaseScenarios,
-    hiddenBaseScenarioIds,
-    baseScenarioId,
-    loadBaseScenario,
-    deleteBaseScenario,
-    restoreBaseScenarios,
+    restoreRemovedPresets,
+    removedPresetCount,
     bidders,
     selectedBidder,
     result,
     settings,
     addBidder,
+    duplicateBidder,
     removeBidder,
     selectBidder,
     updateBidder,
@@ -1327,20 +1243,16 @@ function SimulatorSidebar({ controller }: { controller: SimulatorController }) {
       onExportExcel={exportExcelScenario}
       onImportFile={importScenarioFile}
       onLoadSaved={loadSavedScenario}
-      onResetBaseScenario={resetCurrentBaseScenario}
+      onResetModel={resetCurrentScenarioModel}
       onResetTool={resetToolToInitialState}
-      selectedBaseScenario={selectedBaseScenario}
-      visibleBaseScenarios={visibleBaseScenarios}
-      hiddenBaseScenarioCount={hiddenBaseScenarioIds.length}
-      baseScenarioId={baseScenarioId}
-      onLoadBaseScenario={loadBaseScenario}
-      onDeleteBaseScenario={deleteBaseScenario}
-      onRestoreBaseScenarios={restoreBaseScenarios}
+      removedPresetCount={removedPresetCount}
+      onRestoreRemovedPresets={restoreRemovedPresets}
       bidders={bidders}
       selectedBidder={selectedBidder}
       result={result}
       settings={settings}
       onAddBidder={addBidder}
+      onDuplicateBidder={duplicateBidder}
       onRemoveBidder={removeBidder}
       onSelectBidder={selectBidder}
       onSelectedBidderNameChange={(name) => {
@@ -1578,15 +1490,19 @@ function ActiveWorkbench({ controller }: { controller: SimulatorController }) {
           lotScore={selectedLotScore}
           comboScore={selectedComboScore}
           rMax={result.rMaxByLot[selectedLotId]}
-          discounts={selectedBidder.lots[selectedLotId].phaseDiscounts}
           lotOffer={selectedBidder.lots[selectedLotId]}
           disabled={!selectedBidder.lots[selectedLotId].enabled}
-          onChange={(index, value) =>
+          onDiscountModeChange={(mode) =>
             updateLotOffer(selectedLotId, (offer) => {
-              const next = [...offer.phaseDiscounts] as [number, number, number];
-              next[index] = value;
-              return { ...offer, phaseDiscounts: next };
+              const lot = LOTS.find((item) => item.id === selectedLotId);
+              return lot ? setDiscountInputMode(offer, mode, lot.baseByPhase) : setDiscountInputMode(offer, mode);
             })
+          }
+          onPhaseChange={(index, value) =>
+            updateLotOffer(selectedLotId, (offer) => setPhaseDiscountValue(offer, index, value))
+          }
+          onAverageChange={(value) =>
+            updateLotOffer(selectedLotId, (offer) => setAverageDiscountValue(offer, value))
           }
         />
       );
@@ -1617,11 +1533,25 @@ function ActiveWorkbench({ controller }: { controller: SimulatorController }) {
               return bidder;
             })
           }
-          onDiscountChange={(index, value) =>
+          onDiscountModeChange={(mode) =>
             updateBidder(selectedBidder.id, (bidder) => {
-              const next = [...bidder.combos[selectedPairId].phaseDiscounts] as [number, number, number];
-              next[index] = value;
-              bidder.combos[selectedPairId].phaseDiscounts = next;
+              bidder.combos[selectedPairId] = setDiscountInputMode(
+                bidder.combos[selectedPairId],
+                mode,
+                pairBaseByPhase(selectedPairId),
+              );
+              return bidder;
+            })
+          }
+          onPhaseChange={(index, value) =>
+            updateBidder(selectedBidder.id, (bidder) => {
+              bidder.combos[selectedPairId] = setPhaseDiscountValue(bidder.combos[selectedPairId], index, value);
+              return bidder;
+            })
+          }
+          onAverageChange={(value) =>
+            updateBidder(selectedBidder.id, (bidder) => {
+              bidder.combos[selectedPairId] = setAverageDiscountValue(bidder.combos[selectedPairId], value);
               return bidder;
             })
           }
@@ -1641,7 +1571,7 @@ function ActiveWorkbench({ controller }: { controller: SimulatorController }) {
       );
     }
     if (activeTab === "risultati") {
-      return <ResultsWorkbench result={result} selectedLotId={selectedLotId} bidders={bidders} settings={settings} selectedBidderId={selectedBidder.id} />;
+      return <ResultsWorkbench result={result} selectedLotId={selectedLotId} bidders={bidders} />;
     }
     return null;
 }
@@ -2163,10 +2093,11 @@ function EconomicsWorkbench({
   lotScore,
   comboScore,
   rMax,
-  discounts,
   lotOffer,
   disabled,
-  onChange,
+  onDiscountModeChange,
+  onPhaseChange,
+  onAverageChange,
 }: {
   bidder: Bidder;
   selectedLotId: LotId;
@@ -2174,21 +2105,24 @@ function EconomicsWorkbench({
   lotScore: LotScore;
   comboScore?: ComboScore;
   rMax: number;
-  discounts: [number, number, number];
   lotOffer: LotOffer;
   disabled?: boolean;
-  onChange: (index: number, value: number) => void;
+  onDiscountModeChange: (mode: DiscountInputMode) => void;
+  onPhaseChange: (index: number, value: number) => void;
+  onAverageChange: (value: number) => void;
 }) {
   const [targetEconomic, setTargetEconomic] = useState(30);
   const selectedLot = LOTS.find((lot) => lot.id === selectedLotId) ?? LOTS[0];
   const selectedPair = PAIRS.find((pair) => pair.id === selectedPairId) ?? PAIRS[0];
-  const breakdown = economicBreakdown(selectedLot.baseByPhase, discounts);
-  const unitBreakdown = economicBreakdown(ECONOMIC_UNIT_BASE_BY_LOT[selectedLotId], discounts);
+  const discountMode = lotOffer.discountInputMode ?? "phases";
+  const resolvedDiscounts = resolvePhaseDiscounts(lotOffer);
+  const breakdown = economicBreakdownFromOffer(selectedLot.baseByPhase, lotOffer);
+  const unitBreakdown = economicBreakdownFromOffer(ECONOMIC_UNIT_BASE_BY_LOT[selectedLotId], lotOffer);
   const unitKm = ECONOMIC_UNIT_KM_BY_LOT[selectedLotId];
   const targetRibasso = rMax > 0 ? round4((Math.min(30, Math.max(0, targetEconomic)) / 30) * rMax) : 0;
   const targetDelta = Math.max(0, targetRibasso - lotScore.singleRibasso);
   const onePointDelta = rMax > 0 && lotScore.singleEconomic < 30 ? rMax / 30 : 0;
-  const phaseSpread = Math.max(...discounts) - Math.min(...discounts);
+  const phaseSpread = Math.max(...resolvedDiscounts) - Math.min(...resolvedDiscounts);
   const plannedTradeoffCost = CRITERIA.reduce((sum, criterion) => {
     const plan = lotOffer.tradeoffs[criterion.id];
     return sum + (plan ? tradeoffCost(criterion, plan) : 0);
@@ -2228,24 +2162,30 @@ function EconomicsWorkbench({
       scoreDelta: round4(nextEconomic - lotScore.singleEconomic),
     };
   });
-  const comboBreakdown = economicBreakdown(pairBaseByPhase(selectedPairId), bidder.combos[selectedPairId].phaseDiscounts);
-  const comboUnitBreakdown = economicBreakdown(ECONOMIC_UNIT_BASE_BY_PAIR[selectedPairId], bidder.combos[selectedPairId].phaseDiscounts);
+  const comboOffer = bidder.combos[selectedPairId];
+  const comboBreakdown = economicBreakdownFromOffer(pairBaseByPhase(selectedPairId), comboOffer);
+  const comboUnitBreakdown = economicBreakdownFromOffer(ECONOMIC_UNIT_BASE_BY_PAIR[selectedPairId], comboOffer);
   const comboUnitKm = ECONOMIC_UNIT_KM_BY_PAIR[selectedPairId];
   const singleOfferedForPair = selectedPair.lots.reduce((sum, lotId) => {
     const lot = LOTS.find((item) => item.id === lotId);
-    return lot ? sum + economicBreakdown(lot.baseByPhase, bidder.lots[lotId].phaseDiscounts).offeredTotal : sum;
+    return lot ? sum + economicBreakdownFromOffer(lot.baseByPhase, bidder.lots[lotId]).offeredTotal : sum;
   }, 0);
   const comboSaving = singleOfferedForPair - comboBreakdown.offeredTotal;
   const guardrails = [
     {
       label: "Ribassi >= 0",
-      tone: discounts.every((discount) => discount >= 0) ? "ok" : "warn",
-      body: discounts.every((discount) => discount >= 0) ? "Vincolo formale rispettato." : "Correggi i valori negativi prima di usare lo scenario.",
+      tone: resolvedDiscounts.every((discount) => discount >= 0) ? "ok" : "warn",
+      body: resolvedDiscounts.every((discount) => discount >= 0) ? "Vincolo formale rispettato." : "Correggi i valori negativi prima di usare lo scenario.",
     },
     {
       label: "Profilo fasi",
-      tone: phaseSpread > 1.5 ? "warn" : "ok",
-      body: phaseSpread > 1.5 ? "Scarto oltre 1,50%: verifica tenuta PEF e motivazione industriale." : "Ribassi allineati fra le tre fasi.",
+      tone: discountMode === "average" ? "ok" : phaseSpread > 1.5 ? "warn" : "ok",
+      body:
+        discountMode === "average"
+          ? "Modalità ribasso medio unico: le tre fasi sono allineate al valore inserito."
+          : phaseSpread > 1.5
+            ? "Scarto oltre 1,50%: verifica tenuta PEF e motivazione industriale."
+            : "Ribassi allineati fra le tre fasi.",
     },
     {
       label: "Costi analisi puntuale",
@@ -2311,10 +2251,13 @@ function EconomicsWorkbench({
 
       <EconomicEditor
         title={`Ribasso singolo - ${selectedLotId}`}
-        discounts={discounts}
+        offer={lotOffer}
+        baseByPhase={selectedLot.baseByPhase}
         ribasso={lotScore.singleRibasso}
         disabled={disabled}
-        onChange={onChange}
+        onModeChange={onDiscountModeChange}
+        onPhaseChange={onPhaseChange}
+        onAverageChange={onAverageChange}
       />
 
       <EconomicRiskSections
@@ -3049,7 +2992,9 @@ function ComboWorkbench({
   comboScore,
   onPairSelect,
   onEnabledChange,
-  onDiscountChange,
+  onDiscountModeChange,
+  onPhaseChange,
+  onAverageChange,
   onInsertedChange,
   onPefChange,
 }: {
@@ -3058,7 +3003,9 @@ function ComboWorkbench({
   comboScore: ComboScore;
   onPairSelect: (pairId: PairId) => void;
   onEnabledChange: (enabled: boolean) => void;
-  onDiscountChange: (index: number, value: number) => void;
+  onDiscountModeChange: (mode: DiscountInputMode) => void;
+  onPhaseChange: (index: number, value: number) => void;
+  onAverageChange: (value: number) => void;
   onInsertedChange: (checked: boolean) => void;
   onPefChange: (checked: boolean) => void;
 }) {
@@ -3102,10 +3049,13 @@ function ComboWorkbench({
         </div>
         <EconomicEditor
           title="Ribasso combinatorio"
-          discounts={combo.phaseDiscounts}
+          offer={combo}
+          baseByPhase={pairBaseByPhase(selectedPairId)}
           ribasso={comboScore.ribasso}
           disabled={!combo.enabled}
-          onChange={onDiscountChange}
+          onModeChange={onDiscountModeChange}
+          onPhaseChange={onPhaseChange}
+          onAverageChange={onAverageChange}
         />
         <div className="combo-checks">
           <label className="toggle-row">
@@ -3143,56 +3093,22 @@ type DecisionRow = {
   margin?: number;
 };
 
-type ThresholdSensitivityRow = {
-  id: string;
-  label: string;
-  source: string;
-  value: number;
-  variant: SimulationResult;
-  changedLots: ReturnType<typeof changedLotsBetween>;
-  totalDelta: number;
-  assignedCount: number;
-};
-
-type BatchMatrixRow = {
-  id: string;
-  thresholdLabel: string;
-  derogationLabel: string;
-  stressLabel: string;
-  variant: SimulationResult;
-  changed: boolean;
-  changedLots: ReturnType<typeof changedLotsBetween>;
-  unassignedLots: LotId[];
-  selectedLotIds: LotId[];
-  assignedCount: number;
-  totalDelta: number;
-  warningDelta: number;
-  drawRequired: boolean;
-  assignments: string;
-};
-
 function ResultsWorkbench({
   result,
   selectedLotId,
   bidders,
-  settings,
-  selectedBidderId,
 }: {
   result: SimulationResult;
   selectedLotId: LotId;
   bidders: Bidder[];
-  settings: Settings;
-  selectedBidderId: string;
 }) {
   const scoreBidders = bidders.filter((bidder) => result.lotScores[bidder.id]?.[selectedLotId]?.participates);
-  const scoreColumnCount = scoreBidders.length + 2;
   const qtMax = maxQtPoints();
   const technicalMax = AMBITS.reduce((sum, ambit) => sum + ambit.maxPoints, 0);
   const economicMax = 30;
   const totalMax = technicalMax + economicMax;
   const lotSummaries = buildScenarioLotSummaries(result.selectedScenario?.assignments ?? []);
   const assignedLotCount = lotSummaries.filter(({ score }) => typeof score === "number").length;
-  const currentLotTotal = scenarioLotScoreTotal(result);
   const decisionRows: DecisionRow[] = LOTS.map((lot) => {
     const assignment = assignmentByLot(result, lot.id);
     const score = assignment ? candidateLotScore(assignment, lot.id) : undefined;
@@ -3216,110 +3132,14 @@ function ResultsWorkbench({
         : closeLots.length
           ? "Scarti sotto 0,50 pt su " + closeLots.map((row) => row.lot.shortLabel).join(", ") + ": utile stressare ribassi e criteri sensibili."
           : "Scenario completo e senza warning runtime: passa al confronto con scenari salvati o all'ottimizzazione mirata.";
-  const thresholdSensitivity: ThresholdSensitivityRow[] = THRESHOLD_OPTIONS.map((option) => {
-    const variant = simulate(bidders, { ...settings, threshold: option.value }, selectedBidderId);
-    const changedLots = changedLotsBetween(result, variant);
-    return {
-      id: option.id,
-      label: option.label,
-      source: option.source,
-      value: option.value,
-      variant,
-      changedLots,
-      totalDelta: round4(scenarioLotScoreTotal(variant) - currentLotTotal),
-      assignedCount: LOTS.length - (variant.selectedScenario?.unassignedLots.length ?? LOTS.length),
-    };
-  });
-  const derogationVariant = simulate(
-    bidders,
-    { ...settings, applyAwardLimitDerogation: !settings.applyAwardLimitDerogation },
-    selectedBidderId,
-  );
-  const derogationChangedLots = changedLotsBetween(result, derogationVariant);
-  const derogationTotalDelta = round4(scenarioLotScoreTotal(derogationVariant) - currentLotTotal);
-  const currentUnassignedLots = result.selectedScenario?.unassignedLots ?? [];
-  const currentDrawRequired = Boolean(result.selectedScenario?.drawRequired);
-  const batchRows: BatchMatrixRow[] = THRESHOLD_OPTIONS.flatMap((thresholdOption) =>
-    [false, true].flatMap((applyAwardLimitDerogation) =>
-      batchDiscountStressOptions.map((stressOption) => {
-        const variantBidders = applySelectedBidderDiscountStress(bidders, selectedBidderId, stressOption.delta);
-        const variant = simulate(variantBidders, { threshold: thresholdOption.value, applyAwardLimitDerogation }, selectedBidderId);
-        const changedLots = changedLotsBetween(result, variant);
-        const unassignedLots = variant.selectedScenario?.unassignedLots ?? [];
-        const selectedLotIds = assignedLotsForBidder(variant, selectedBidderId);
-        const drawRequired = Boolean(variant.selectedScenario?.drawRequired);
-        const changed =
-          changedLots.length > 0 ||
-          !sameLotSet(unassignedLots, currentUnassignedLots) ||
-          drawRequired !== currentDrawRequired;
-
-        return {
-          id: thresholdOption.id + "-" + (applyAwardLimitDerogation ? "deroga" : "ordinario") + "-" + stressOption.id,
-          thresholdLabel: thresholdOption.label,
-          derogationLabel: applyAwardLimitDerogation ? "Deroga sì" : "Deroga no",
-          stressLabel: stressOption.label,
-          variant,
-          changed,
-          changedLots,
-          unassignedLots,
-          selectedLotIds,
-          assignedCount: LOTS.length - unassignedLots.length,
-          totalDelta: round4(scenarioLotScoreTotal(variant) - currentLotTotal),
-          warningDelta: variant.warnings.length - result.warnings.length,
-          drawRequired,
-          assignments: formatBatchAssignments(variant),
-        };
-      }),
-    ),
-  );
-  const stableBatchRows = batchRows.filter((row) => !row.changed).length;
-  const sensitiveLots: { lot: (typeof LOTS)[number]; changes: number }[] = [];
-  for (const lot of LOTS) {
-    let changes = 0;
-    for (const row of batchRows) {
-      if (row.changedLots.some((changedLot) => changedLot.id === lot.id)) changes += 1;
-    }
-    if (changes > 0) sensitiveLots.push({ lot, changes });
-  }
-  let minSelectedLots = Number.POSITIVE_INFINITY;
-  let maxSelectedLots = 0;
-  for (const row of batchRows) {
-    const count = row.selectedLotIds.length;
-    minSelectedLots = Math.min(minSelectedLots, count);
-    maxSelectedLots = Math.max(maxSelectedLots, count);
-  }
-  if (!batchRows.length) minSelectedLots = 0;
-  const selectedLotRange = minSelectedLots === maxSelectedLots ? String(minSelectedLots) : minSelectedLots + "-" + maxSelectedLots;
-  const selectedLotRangeLabel = selectedLotRange === "1" ? "1 lotto" : selectedLotRange + " lotti";
-  const batchDecision =
-    stableBatchRows === batchRows.length
-      ? "Le assegnazioni restano stabili in tutte le varianti batch considerate."
-      : sensitiveLots.length
-        ? "I lotti più sensibili sono " + sensitiveLots.map((item) => item.lot.shortLabel + " (" + item.changes + ")").join(", ") + "."
-        : "Le variazioni riguardano lotti non assegnati, ex aequo o warning di scenario più che cambi diretti di vincitore.";
 
   return (
     <div className="results-board">
       <ResultsMetrics lotSummaries={lotSummaries} assignedLotCount={assignedLotCount} result={result} />
       <DecisionReport rows={decisionRows} decisionNextStep={decisionNextStep} />
-      <SensitivityPanel
-        settings={settings}
-        thresholdSensitivity={thresholdSensitivity}
-        derogationChangedLots={derogationChangedLots}
-        derogationVariant={derogationVariant}
-        derogationTotalDelta={derogationTotalDelta}
-      />
-      <BatchPanel
-        rows={batchRows}
-        stableBatchRows={stableBatchRows}
-        sensitiveLots={sensitiveLots}
-        selectedLotRangeLabel={selectedLotRangeLabel}
-        batchDecision={batchDecision}
-      />
       <AssignmentAndRanking result={result} selectedLotId={selectedLotId} />
       <SubcriteriaScoreSection
         scoreBidders={scoreBidders}
-        scoreColumnCount={scoreColumnCount}
         selectedLotId={selectedLotId}
         qtMax={qtMax}
         technicalMax={technicalMax}
@@ -3407,133 +3227,6 @@ function DecisionReport({ rows, decisionNextStep }: { rows: DecisionRow[]; decis
   );
 }
 
-function SensitivityPanel({
-  settings,
-  thresholdSensitivity,
-  derogationChangedLots,
-  derogationVariant,
-  derogationTotalDelta,
-}: {
-  settings: Settings;
-  thresholdSensitivity: ThresholdSensitivityRow[];
-  derogationChangedLots: ReturnType<typeof changedLotsBetween>;
-  derogationVariant: SimulationResult;
-  derogationTotalDelta: number;
-}) {
-  return (
-    <section className="sensitivity-panel">
-      <div className="section-title compact">
-        Sensitività soglia/deroga
-        <HelpTooltip>Ricalcola lo stesso scenario con le soglie documentali alternative e con la deroga al limite di due lotti invertita.</HelpTooltip>
-      </div>
-      <div className="sensitivity-grid">
-        {thresholdSensitivity.map((item) => (
-          <article key={item.id} className={"sensitivity-card " + (item.changedLots.length ? "warn" : "ok")}>
-            <span>{item.label}</span>
-            <strong>{item.changedLots.length ? "cambia " + item.changedLots.map((lot) => lot.shortLabel).join(", ") : "stabile"}</strong>
-            <small>
-              {item.source} · {item.assignedCount}/{LOTS.length} lotti · delta {signedPoints(item.totalDelta)} · non assegnati {formatLotList(item.variant.selectedScenario?.unassignedLots ?? [])}
-            </small>
-          </article>
-        ))}
-        <article className={"sensitivity-card " + (derogationChangedLots.length ? "warn" : "ok")}>
-          <span>{settings.applyAwardLimitDerogation ? "Deroga disattivata" : "Deroga attivata"}</span>
-          <strong>{derogationChangedLots.length ? "cambia " + derogationChangedLots.map((lot) => lot.shortLabel).join(", ") : "stabile"}</strong>
-          <small>
-            {LOTS.length - (derogationVariant.selectedScenario?.unassignedLots.length ?? LOTS.length)}/{LOTS.length} lotti · delta {signedPoints(derogationTotalDelta)}
-          </small>
-        </article>
-      </div>
-    </section>
-  );
-}
-
-function BatchPanel({
-  rows,
-  stableBatchRows,
-  sensitiveLots,
-  selectedLotRangeLabel,
-  batchDecision,
-}: {
-  rows: BatchMatrixRow[];
-  stableBatchRows: number;
-  sensitiveLots: { lot: (typeof LOTS)[number]; changes: number }[];
-  selectedLotRangeLabel: string;
-  batchDecision: string;
-}) {
-  return (
-    <section className="batch-panel">
-      <div className="section-title compact">
-        Matrice batch stabilità
-        <HelpTooltip>Ricalcola varianti temporanee incrociando soglie documentali, deroga al limite di due lotti e stress di ribasso sul concorrente selezionato. Non salva scenari e non modifica gli input.</HelpTooltip>
-      </div>
-      <div className="batch-summary-grid">
-        <article className="batch-summary-card">
-          <span>Varianti testate</span>
-          <strong>{rows.length}</strong>
-          <small>Soglie x deroga x stress ribasso</small>
-        </article>
-        <article className={"batch-summary-card " + (stableBatchRows === rows.length ? "ok" : "warn")}>
-          <span>Stabili</span>
-          <strong>{stableBatchRows} / {rows.length}</strong>
-          <small>Stessa assegnazione e stessi lotti non assegnati</small>
-        </article>
-        <article className={"batch-summary-card " + (sensitiveLots.length ? "warn" : "ok")}>
-          <span>Lotti sensibili</span>
-          <strong>{sensitiveLots.length ? sensitiveLots.map((item) => item.lot.shortLabel).join(", ") : "nessuno"}</strong>
-          <small>{sensitiveLots.length ? "Almeno un cambio nella matrice" : "Nessun cambio diretto di vincitore"}</small>
-        </article>
-        <article className="batch-summary-card">
-          <span>Concorrente selezionato</span>
-          <strong>{selectedLotRangeLabel}</strong>
-          <small>Range di assegnazioni nelle varianti</small>
-        </article>
-      </div>
-      <div className="batch-decision-line">
-        <strong>Lettura batch</strong>
-        <span>{batchDecision}</span>
-      </div>
-      <div className="batch-matrix-wrap">
-        <table className="batch-matrix">
-          <thead>
-            <tr>
-              <th>Soglia</th>
-              <th>Deroga</th>
-              <th>Stress ribasso</th>
-              <th>Esito</th>
-              <th>Lotti cambiati</th>
-              <th>Non assegnati</th>
-              <th>Delta</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} className={row.changed ? "warn" : "ok"}>
-                <td><strong>{row.thresholdLabel}</strong></td>
-                <td>{row.derogationLabel}</td>
-                <td>
-                  <strong>{row.stressLabel}</strong>
-                  <small>su offerte economiche del concorrente selezionato</small>
-                </td>
-                <td>
-                  <strong>{row.changed ? "da verificare" : "stabile"}</strong>
-                  <small>{row.assignments}</small>
-                </td>
-                <td>{row.changedLots.length ? row.changedLots.map((lot) => lot.shortLabel).join(", ") : "nessuno"}</td>
-                <td>{formatLotList(row.unassignedLots)}{row.drawRequired ? " · ex aequo" : ""}</td>
-                <td>
-                  <strong>{signedPoints(row.totalDelta)}</strong>
-                  <small>warning {row.warningDelta >= 0 ? "+" : ""}{row.warningDelta}</small>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
 function AssignmentAndRanking({ result, selectedLotId }: { result: SimulationResult; selectedLotId: LotId }) {
   return (
     <div className="results-grid">
@@ -3577,9 +3270,14 @@ function AssignmentAndRanking({ result, selectedLotId }: { result: SimulationRes
   );
 }
 
+const subcriteriaBidderLayout = (count: number) => {
+  if (count <= 2) return "few";
+  if (count >= 5) return "many";
+  return "medium";
+};
+
 function SubcriteriaScoreSection({
   scoreBidders,
-  scoreColumnCount,
   selectedLotId,
   qtMax,
   technicalMax,
@@ -3588,7 +3286,6 @@ function SubcriteriaScoreSection({
   result,
 }: {
   scoreBidders: Bidder[];
-  scoreColumnCount: number;
   selectedLotId: LotId;
   qtMax: number;
   technicalMax: number;
@@ -3596,23 +3293,39 @@ function SubcriteriaScoreSection({
   totalMax: number;
   result: SimulationResult;
 }) {
+  const bidderCount = scoreBidders.length;
+  const layout = subcriteriaBidderLayout(bidderCount);
+
   return (
-    <section className="subcriteria-score-section">
-      <div className="section-title compact">
-        Punteggi sotto criterio - {selectedLotId}
-        <HelpTooltip>Mostra i punti grezzi assegnati a ogni sotto-criterio sul lotto selezionato. La riparametrazione per ambito resta riportata nel totale tecnico.</HelpTooltip>
+    <section
+      className={"subcriteria-score-section layout-" + layout}
+      data-bidder-count={bidderCount}
+      style={{ "--score-bidder-count": bidderCount } as CSSProperties}
+    >
+      <div className="subcriteria-score-heading">
+        <div className="section-title compact">
+          Punteggi sotto criterio — {selectedLotId}
+          <HelpTooltip>Confronto dei punti grezzi per sotto-criterio sul lotto selezionato. Le righe di ambito riportano anche il tecnico riparametrato.</HelpTooltip>
+        </div>
+        {bidderCount > 0 ? (
+          <p className="subcriteria-score-meta">
+            {bidderCount === 1
+              ? "1 concorrente partecipa al lotto."
+              : `${bidderCount} concorrenti partecipano al lotto: colonne allineate per confronto rapido.`}
+            {layout === "many" ? " Scorri in orizzontale se i nomi sono lunghi." : null}
+          </p>
+        ) : null}
       </div>
       <div className="subcriteria-table-wrap">
-        {scoreBidders.length ? (
-          <table className="subcriteria-score-table" style={{ "--score-column-count": scoreColumnCount } as CSSProperties}>
+        {bidderCount ? (
+          <table className="subcriteria-score-table">
             <thead>
               <tr>
-                <th>Criterio</th>
-                <th>Max</th>
+                <th scope="col">Criterio</th>
+                <th scope="col">Max</th>
                 {scoreBidders.map((bidder) => (
-                  <th key={bidder.id}>
-                    <span>{bidder.name}</span>
-                    <small>attivo</small>
+                  <th key={bidder.id} scope="col" title={bidder.name}>
+                    <span className="subcriteria-bidder-name">{bidder.name}</span>
                   </th>
                 ))}
               </tr>
@@ -3711,34 +3424,95 @@ function SubcriteriaScoreSection({
 
 function EconomicEditor({
   title,
-  discounts,
+  offer,
+  baseByPhase,
   ribasso,
   disabled,
-  onChange,
+  onModeChange,
+  onPhaseChange,
+  onAverageChange,
 }: {
   title: string;
-  discounts: [number, number, number];
+  offer: EconomicDiscountSource;
+  baseByPhase: [number, number, number];
   ribasso: number;
   disabled?: boolean;
-  onChange: (index: number, value: number) => void;
+  onModeChange: (mode: DiscountInputMode) => void;
+  onPhaseChange: (index: number, value: number) => void;
+  onAverageChange: (value: number) => void;
 }) {
+  const mode = offer.discountInputMode ?? "phases";
+  const averageInput = clampDiscountPercent(offer.averageDiscount ?? resolvePhaseDiscounts(offer)[0] ?? 0);
+
   return (
     <div className={`economic-editor ${disabled ? "disabled" : ""}`}>
       <div className="economic-title">
         <strong>
           {title}
-          <HelpTooltip>Compila i ribassi delle tre fasi. Il ribasso medio è ponderato sulle basi economiche dei periodi.</HelpTooltip>
+          <HelpTooltip>
+            Scegli se inserire tre ribassi per fase oppure un ribasso medio unico: in entrambi i casi il simulatore calcola il
+            ribasso medio ponderato sulle basi economiche dei periodi.
+          </HelpTooltip>
         </strong>
         <span>R medio {formatPercent(ribasso)}</span>
       </div>
-      <div className="phase-grid">
-        {["Fase 1", "Fase 2", "Fase 3"].map((phase, index) => (
-          <label className="field compact" key={phase}>
-            <span>{phase}</span>
-              <input type="number" aria-label={`${title}, ${phase}`} min={0} step={0.01} value={discounts[index]} disabled={disabled} onChange={(event) => onChange(index, Number(event.target.value))} />
-          </label>
-        ))}
+      <div className="discount-mode-toggle" role="group" aria-label="Modalità inserimento ribasso">
+        <button
+          type="button"
+          className={mode === "phases" ? "active" : ""}
+          aria-pressed={mode === "phases"}
+          disabled={disabled}
+          onClick={() => onModeChange("phases")}
+        >
+          Per fase
+        </button>
+        <button
+          type="button"
+          className={mode === "average" ? "active" : ""}
+          aria-pressed={mode === "average"}
+          disabled={disabled}
+          onClick={() => onModeChange("average")}
+        >
+          Ribasso medio
+        </button>
       </div>
+      {mode === "average" ? (
+        <label className="field compact average-discount-field">
+          <span>Ribasso medio (%)</span>
+          <input
+            type="number"
+            aria-label={`${title}, ribasso medio`}
+            min={0}
+            max={100}
+            step={0.01}
+            value={averageInput}
+            disabled={disabled}
+            onChange={(event) => onAverageChange(Number(event.target.value))}
+          />
+          <small>
+            Le tre fasi usano lo stesso valore. Il ribasso medio ponderato coincide con l&apos;input quando le basi sono
+            uniformi; altrimenti segue le basi di fase.
+          </small>
+        </label>
+      ) : (
+        <div className="phase-grid">
+          {ECONOMIC_PHASES.map((phase, index) => (
+            <label className="field compact" key={phase.id}>
+              <span>{phase.label}</span>
+              <input
+                type="number"
+                aria-label={`${title}, ${phase.label}`}
+                min={0}
+                max={100}
+                step={0.01}
+                value={offer.phaseDiscounts[index]}
+                disabled={disabled}
+                onChange={(event) => onPhaseChange(index, Number(event.target.value))}
+              />
+            </label>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

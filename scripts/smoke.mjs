@@ -124,7 +124,7 @@ const verifyImportExportAndComparison = async (page, suffix) => {
     );
 
     const noticeText = await page.locator(".scenario-notice").innerText();
-    for (const expected of ["Schema aggiornato", "demoScenarioId", "Configurazione Ottimizzazione"]) {
+    for (const expected of ["Schema aggiornato", "Profilo di riferimento legacy", "Configurazione Ottimizzazione"]) {
       if (!noticeText.includes(expected)) throw new Error(`${suffix}: import senza dettaglio riparazione ${expected}`);
     }
 
@@ -256,20 +256,23 @@ const verifyOptimization = async (page, suffix, theme) => {
   const oldWorkspaceEntry = await page.getByRole("button", { name: "Gestisci workspace" }).count();
   if (oldWorkspaceEntry !== 0) throw new Error(`${suffix}: il vecchio passaggio Gestisci workspace è ancora visibile`);
 
-  await page.getByRole("button", { name: "Cambia" }).click();
-  const deleteBaseButton = page.getByRole("button", { name: "Elimina scenario base Mercato realistico" });
-  if ((await deleteBaseButton.count()) !== 0) throw new Error(`${suffix}: eliminazione scenario base visibile senza Gestisci`);
-  await page.getByRole("button", { name: "Gestisci" }).click();
-  if ((await deleteBaseButton.count()) !== 1) throw new Error(`${suffix}: eliminazione scenario base non disponibile`);
-  await deleteBaseButton.click();
-  const hiddenBaseScenarios = await page.evaluate(() => JSON.parse(localStorage.getItem("tpl-lotti-1-4-hidden-base-scenarios") || "[]"));
-  if (!Array.isArray(hiddenBaseScenarios) || !hiddenBaseScenarios.includes("market")) {
-    throw new Error(`${suffix}: scenario base eliminato non salvato ${JSON.stringify(hiddenBaseScenarios)}`);
+  const deleteMarketButton = page.getByRole("button", { name: "Elimina scenario Mercato realistico" });
+  if ((await deleteMarketButton.count()) !== 1) throw new Error(`${suffix}: eliminazione scenario libreria non disponibile`);
+  await deleteMarketButton.click();
+  const libraryAfterDelete = await page.evaluate(() => {
+    const scenarios = JSON.parse(localStorage.getItem("tpl-lotti-1-4-scenarios") || "[]");
+    return scenarios.map((scenario) => scenario.id);
+  });
+  if (libraryAfterDelete.includes("preset-market")) {
+    throw new Error(`${suffix}: scenario libreria non rimosso ${JSON.stringify(libraryAfterDelete)}`);
   }
-  await page.getByRole("button", { name: "Ripristina scenari base" }).click();
-  const restoredBaseScenarios = await page.evaluate(() => JSON.parse(localStorage.getItem("tpl-lotti-1-4-hidden-base-scenarios") || "[]"));
-  if (!Array.isArray(restoredBaseScenarios) || restoredBaseScenarios.length !== 0) {
-    throw new Error(`${suffix}: ripristino scenari base non riuscito ${JSON.stringify(restoredBaseScenarios)}`);
+  await page.getByRole("button", { name: "Ripristina scenari rimossi (1)" }).click();
+  const libraryAfterRestore = await page.evaluate(() => {
+    const scenarios = JSON.parse(localStorage.getItem("tpl-lotti-1-4-scenarios") || "[]");
+    return scenarios.map((scenario) => scenario.id);
+  });
+  if (!libraryAfterRestore.includes("preset-market")) {
+    throw new Error(`${suffix}: ripristino scenari libreria non riuscito ${JSON.stringify(libraryAfterRestore)}`);
   }
 
   await page.getByRole("button", { name: "Salva scenario in libreria" }).click();
@@ -285,7 +288,7 @@ const verifyOptimization = async (page, suffix, theme) => {
       hasGranularityUnits: Boolean(lever && "granularityUnits" in lever),
     };
   });
-  if (saved.count < 1 || saved.version !== 7 || saved.hasEconomic || saved.hasStepUnits || !saved.hasGranularityUnits) {
+  if (saved.count < 1 || saved.version !== 8 || saved.hasEconomic || saved.hasStepUnits || !saved.hasGranularityUnits) {
     throw new Error(`${suffix}: snapshot inatteso ${JSON.stringify(saved)}`);
   }
 
@@ -293,15 +296,7 @@ const verifyOptimization = async (page, suffix, theme) => {
 
   await clickWorkspaceTab(page, "Risultati");
   const resultsText = await page.locator(".results-board").innerText();
-  for (const expected of [
-    "Lettura decisionale",
-    "Scarto dal secondo",
-    "Prossima verifica",
-    "Sensitività soglia/deroga",
-    "Matrice batch stabilità",
-    "Varianti testate",
-    "Deroga",
-  ]) {
+  for (const expected of ["Lettura decisionale", "Scarto dal secondo", "Prossima verifica", "Punteggi sotto criterio"]) {
     if (!resultsText.includes(expected)) throw new Error(`${suffix}: risultati senza ${expected}`);
   }
   if (!resultsText.toLocaleLowerCase("it-IT").includes("stress ribasso")) {
@@ -318,7 +313,12 @@ const verifyOptimization = async (page, suffix, theme) => {
   await page.waitForFunction(() => {
     const scenarios = JSON.parse(localStorage.getItem("tpl-lotti-1-4-scenarios") || "[]");
     const workspace = JSON.parse(localStorage.getItem("tpl-lotti-1-4-workspace") || "{}");
-    return Array.isArray(scenarios) && scenarios.length === 0 && workspace.scenarioName === "Mercato realistico";
+    return (
+      Array.isArray(scenarios) &&
+      scenarios.length >= 4 &&
+      scenarios.some((scenario) => scenario.id === "preset-market") &&
+      workspace.scenarioName === "Mercato realistico"
+    );
   });
 };
 

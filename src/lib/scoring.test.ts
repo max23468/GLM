@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { CRITERIA, LOTS, PAIRS } from "../data/tender";
-import { candidateLotScore, createBidder, economicBreakdown, pairBaseByPhase, round4, simulate, type Bidder, type Settings } from "./scoring";
+import {
+  candidateLotScore,
+  computeWeightedRibasso,
+  createBidder,
+  economicBreakdown,
+  pairBaseByPhase,
+  resolvePhaseDiscounts,
+  round4,
+  setAverageDiscountValue,
+  simulate,
+  type Bidder,
+  type Settings,
+} from "./scoring";
 
 const settings: Settings = {
   threshold: 0,
@@ -218,6 +230,25 @@ describe("TPL tender scoring", () => {
 
     expect(result.selectedScenario?.drawRequired).toBe(true);
     expect(result.warnings.some((warning) => warning.includes("sorteggio pubblico"))).toBe(true);
+  });
+
+  it("allinea il ribasso medio unico alle tre fasi per il calcolo economico", () => {
+    const lot = LOTS[0];
+    const byPhase = createBidder("a", "A");
+    byPhase.lots.L1.enabled = true;
+    byPhase.lots.L1.discountInputMode = "phases";
+    byPhase.lots.L1.phaseDiscounts = [4, 6, 8];
+
+    const byAverage = createBidder("b", "B");
+    byAverage.lots.L1.enabled = true;
+    byAverage.lots.L1 = setAverageDiscountValue(byAverage.lots.L1, 6);
+
+    const phaseRibasso = computeWeightedRibasso(lot.baseByPhase, resolvePhaseDiscounts(byPhase.lots.L1));
+    const averageRibasso = computeWeightedRibasso(lot.baseByPhase, resolvePhaseDiscounts(byAverage.lots.L1));
+
+    expect(averageRibasso).toBe(computeWeightedRibasso(lot.baseByPhase, [6, 6, 6]));
+    expect(simulate([byAverage], settings, byAverage.id).lotScores[byAverage.id].L1.singleRibasso).toBe(averageRibasso);
+    expect(phaseRibasso).not.toBe(averageRibasso);
   });
 
   it("rejects overlapping combinatory pairs for the same bidder", () => {

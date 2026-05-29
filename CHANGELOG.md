@@ -6,12 +6,27 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.7.0] — 2026-05-30
+
+### Novità
+
+- **Libreria scenari**: i profili predefiniti sono scenari in libreria come gli altri; un solo pannello Scenario in sidebar, senza lista nascosta separata.
+
+### Correzioni
+
+- **Interfaccia**: unificati Scenario e Scenari base in un unico pannello con la stessa lista e le stesse azioni.
+
 ## [1.6.2] — 2026-05-30
 
 ### Correzioni
 
 - **Interfaccia**: i tab Tecnica, Economica, Ottimizzazione, Combinatorie e Risultati sono ora in cima al pannello di lavoro, prima del titolo di sezione e del selettore lotto.
 - **Interfaccia**: rimossi dalla testata il pill delle fonti e i badge testuali sul pacchetto Excel (versione, note XLSM e compatibilità web); restano i pulsanti Istruzioni e Pacchetto Excel.
+- **Risultati**: rimosse le sezioni Sensitività soglia/deroga e Matrice batch stabilità; la tabella Punteggi sotto criterio è più leggibile con pochi o molti concorrenti (fino a 7).
+- **Concorrenti**: aggiunto il pulsante per duplicare un concorrente dalla barra laterale, copiando offerte tecniche, economiche e partecipazioni.
+- **Economica**: aggiunta la modalità ribasso medio unico in alternativa ai tre ribassi per fase; scoring, combinatorie, ottimizzazione e import Excel usano lo stesso calcolo.
+- **Interfaccia**: la barra laterale scorre in modo autonomo rispetto al pannello centrale; anche il workspace ha scroll dedicato su desktop.
+- **Interfaccia**: i sette pulsanti sotto Nome scenario restano su una riga nella barra laterale.
 
 ## [1.6.1] — 2026-05-30
 
