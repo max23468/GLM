@@ -6,6 +6,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.8.3] — 2026-05-30
+
+### Correzioni
+
+- **Interfaccia**: corretta la gestione dello scroll autonomo di sidebar e area lavoro, in modo che i pannelli a sinistra scorrano indipendentemente dal contenuto.
+
 ## [1.8.2] — 2026-05-30
 
 ### Correzioni

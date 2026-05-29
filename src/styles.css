@@ -479,7 +479,6 @@ button {
   align-items: stretch;
   max-width: 1680px;
   min-height: 0;
-  height: 100%;
   margin: 0 auto;
   width: 100%;
   overflow: hidden;
@@ -498,6 +497,7 @@ button {
   align-self: stretch;
   min-width: 0;
   min-height: 0;
+  height: 100%;
   max-height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
@@ -740,24 +740,26 @@ input[type="checkbox"] {
 .scenario-actions {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+  gap: 7px;
   align-items: stretch;
 }
 
 .scenario-actions .action-button {
   width: 100%;
   min-width: 0;
-  min-height: 52px;
+  aspect-ratio: 1 / 1;
   display: inline-flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   gap: 4px;
-  padding-inline: 5px;
+  padding: 6px 6px 5px;
+  overflow: hidden;
   text-align: center;
-  white-space: normal;
   word-break: break-word;
-  font-size: 0.7rem;
+  white-space: normal;
+  font-size: 0.66rem;
+  line-height: 1.15;
 }
 
 .scenario-actions .action-button svg {
@@ -809,6 +811,7 @@ input[type="checkbox"] {
 
 .scenario-actions .action-button.compact {
   white-space: normal;
+  min-height: 0;
 }
 
 .scenario-notice {
@@ -1052,24 +1055,23 @@ input[type="checkbox"] {
 .sidebar-participation-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(82px, 96px);
-  gap: 7px;
+  gap: 6px;
   align-items: stretch;
 }
 
 .sidebar-lot-toggle {
-  display: grid;
-  grid-template-columns: 1fr auto;
+  display: flex;
   align-items: center;
-  justify-items: stretch;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 4px;
   border: 1px solid var(--border);
   border-radius: 7px;
   background: var(--control-bg);
-  padding: 8px 7px;
+  padding: 6px 7px;
   color: var(--muted);
   font-size: 0.74rem;
   font-weight: 800;
-  min-height: 38px;
+  min-height: 36px;
 }
 
 .sidebar-lot-toggle-name {
@@ -1081,7 +1083,9 @@ input[type="checkbox"] {
 
 .sidebar-lot-toggle input[type="checkbox"] {
   margin: 0;
-  justify-self: end;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
 }
 
 .sidebar-participation-grid label.ok {
@@ -1102,7 +1106,7 @@ input[type="checkbox"] {
   justify-content: center;
   gap: 5px;
   width: 100%;
-  min-height: 38px;
+  min-height: 36px;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface-soft);
@@ -1184,6 +1188,7 @@ input[type="checkbox"] {
   gap: 14px;
   min-width: 0;
   min-height: 0;
+  height: 100%;
   max-height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
