@@ -6,6 +6,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.8.2] — 2026-05-30
+
+### Correzioni
+
+- **Interfaccia**: rifatto il layout della partecipazione concorrente in modo leggibile su sidebar compatta, con toggle lotto e azione “Duplica” su riga pulita per evitare sovrapposizione e testo fuori contenitore.
+
 ## [1.8.1] — 2026-05-30
 
 ### Correzioni

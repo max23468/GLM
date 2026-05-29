@@ -202,15 +202,18 @@ export function WorkspaceSidebar({
             Partecipazione
             <HelpTooltip>Attiva lotti e combinatorie del concorrente selezionato. Queste opzioni si gestiscono solo dalla barra laterale.</HelpTooltip>
           </div>
-          <div className="sidebar-participation-grid" aria-label={`Partecipazione ${selectedBidder.name}`}>
+          <div className="sidebar-participation-list" aria-label={`Partecipazione ${selectedBidder.name}`}>
           {LOTS.map((lot) => {
             const lotScore = result.lotScores[selectedBidder.id][lot.id];
             const isSourceLot = lot.id === selectedLotId;
             const sourceLotLabel = LOTS.find((item) => item.id === selectedLotId)?.shortLabel ?? "lotto attivo";
             return (
               <div key={lot.id} className="sidebar-participation-row">
-                <label className={selectedBidder.lots[lot.id].enabled ? (lotScore.admitted ? "ok" : "warn") : ""}>
-                  <span>{lot.shortLabel}</span>
+                <label
+                  className={`sidebar-lot-toggle ${selectedBidder.lots[lot.id].enabled ? (lotScore.admitted ? "ok" : "warn") : ""}`}
+                  title={lot.shortLabel}
+                >
+                  <span className="sidebar-lot-toggle-name">{lot.shortLabel}</span>
                   <input
                     type="checkbox"
                     aria-label={`Partecipa al ${lot.shortLabel} con ${selectedBidder.name}`}
@@ -231,7 +234,7 @@ export function WorkspaceSidebar({
                   }
                 >
                   <CopyPlus size={14} />
-                  <span>{isSourceLot ? "Sorgente" : "Copia qui"}</span>
+                  <span>{isSourceLot ? "Origine" : "Duplica"}</span>
                 </button>
               </div>
             );
