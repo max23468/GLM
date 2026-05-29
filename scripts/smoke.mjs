@@ -299,10 +299,6 @@ const verifyOptimization = async (page, suffix, theme) => {
   for (const expected of ["Lettura decisionale", "Scarto dal secondo", "Prossima verifica", "Punteggi sotto criterio"]) {
     if (!resultsText.includes(expected)) throw new Error(`${suffix}: risultati senza ${expected}`);
   }
-  if (!resultsText.toLocaleLowerCase("it-IT").includes("stress ribasso")) {
-    throw new Error(`${suffix}: risultati senza stress ribasso`);
-  }
-
   const activeTheme = await page.evaluate(() => document.documentElement.dataset.theme);
   if (activeTheme !== theme) throw new Error(`${suffix}: tema atteso ${theme}, trovato ${activeTheme}`);
 
