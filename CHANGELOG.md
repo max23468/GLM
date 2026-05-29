@@ -6,6 +6,13 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.8.0] — 2026-05-30
+
+### Novità
+
+- **Scenari**: aggiunta l'esportazione completa di tutti gli scenari in un file unico dalla barra `Scenario`, con nome `scenari-glm-<totale>-<data>.json`.
+- **Concorrenti**: ora puoi duplicare rapidamente l'offerta di un lotto su un altro lotto dal pannello `Partecipazione` del concorrente attivo.
+
 ## [1.7.0] — 2026-05-30
 
 ### Novità

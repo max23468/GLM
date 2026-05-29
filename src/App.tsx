@@ -179,6 +179,9 @@ const makeDownloadName = (name: string) =>
 const makeExcelDownloadName = (name: string) =>
   `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "scenario"}-excel-${new Date().toISOString().slice(0, 10)}.json`;
 
+const makeAllScenariosDownloadName = (count: number) =>
+  `scenari-glm-${count}-${new Date().toISOString().slice(0, 10)}.json`;
+
 type TradeoffPreview = {
   nextValue: number | boolean;
   totalCost: number;
@@ -772,6 +775,21 @@ function useSimulatorController() {
     });
   };
 
+  const duplicateBidderLotOffer = (sourceLotId: LotId, targetLotId: LotId) => {
+    if (!selectedBidder || sourceLotId === targetLotId) return;
+    const sourceLot = LOTS.find((lot) => lot.id === sourceLotId);
+    const targetLot = LOTS.find((lot) => lot.id === targetLotId);
+    const sourceLabel = sourceLot?.shortLabel ?? sourceLotId;
+    const targetLabel = targetLot?.shortLabel ?? targetLotId;
+    updateBidder(selectedBidder.id, (bidder) => {
+      bidder.lots[targetLotId] = structuredClone(bidder.lots[sourceLotId]);
+      bidder.lots[targetLotId].enabled = true;
+      return bidder;
+    });
+    setSelectedLotId(targetLotId);
+    setScenarioNotice(`Copiata l'offerta da ${sourceLabel} a ${targetLabel}.`);
+  };
+
     const removeBidder = (bidderId: string) => {
       if (bidders.length <= 1) return;
       const nextBidders = bidders.filter((bidder) => bidder.id !== bidderId);
@@ -844,6 +862,24 @@ function useSimulatorController() {
     link.click();
     URL.revokeObjectURL(url);
     setScenarioNotice(`Esportato: ${snapshot.name}`);
+  };
+
+  const exportAllScenarios = () => {
+    const payload = {
+      format: "glm-scenario-library-v1",
+      schemaVersion: 8,
+      exportedAt: new Date().toISOString(),
+      scenarios: savedScenarios,
+      count: savedScenarios.length,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = makeAllScenariosDownloadName(savedScenarios.length);
+    link.click();
+    URL.revokeObjectURL(url);
+    setScenarioNotice(`Esportati ${savedScenarios.length} scenari`);
   };
 
   const exportExcelScenario = () => {
@@ -1058,6 +1094,7 @@ function useSimulatorController() {
     duplicateCurrentScenario,
     deleteSavedScenario,
     exportCurrentScenario,
+    exportAllScenarios,
     exportExcelScenario,
     importScenarioFile,
     loadSavedScenario,
@@ -1071,6 +1108,7 @@ function useSimulatorController() {
     settings,
     addBidder,
     duplicateBidder,
+    duplicateBidderLotOffer,
     removeBidder,
     selectBidder,
     updateBidder,
@@ -1207,6 +1245,7 @@ function SimulatorSidebar({ controller }: { controller: SimulatorController }) {
     duplicateCurrentScenario,
     deleteSavedScenario,
     exportCurrentScenario,
+    exportAllScenarios,
     exportExcelScenario,
     importScenarioFile,
     loadSavedScenario,
@@ -1216,10 +1255,12 @@ function SimulatorSidebar({ controller }: { controller: SimulatorController }) {
     removedPresetCount,
     bidders,
     selectedBidder,
+    selectedLotId,
     result,
     settings,
     addBidder,
     duplicateBidder,
+    duplicateBidderLotOffer,
     removeBidder,
     selectBidder,
     updateBidder,
@@ -1240,6 +1281,7 @@ function SimulatorSidebar({ controller }: { controller: SimulatorController }) {
       onDelete={() => deleteSavedScenario()}
       onDeleteSaved={deleteSavedScenario}
       onExport={exportCurrentScenario}
+      onExportAll={exportAllScenarios}
       onExportExcel={exportExcelScenario}
       onImportFile={importScenarioFile}
       onLoadSaved={loadSavedScenario}
@@ -1253,6 +1295,7 @@ function SimulatorSidebar({ controller }: { controller: SimulatorController }) {
       settings={settings}
       onAddBidder={addBidder}
       onDuplicateBidder={duplicateBidder}
+      onDuplicateBidderLotOffer={duplicateBidderLotOffer}
       onRemoveBidder={removeBidder}
       onSelectBidder={selectBidder}
       onSelectedBidderNameChange={(name) => {
@@ -1270,6 +1313,7 @@ function SimulatorSidebar({ controller }: { controller: SimulatorController }) {
           return draft;
         });
       }}
+      selectedLotId={selectedLotId}
       onSettingsChange={(patch) => setSettings((current) => ({ ...current, ...patch }))}
     />
   );

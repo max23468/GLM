@@ -739,14 +739,16 @@ input[type="checkbox"] {
 
 .scenario-actions {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 5px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
 }
 
-.scenario-actions .icon-button {
+.scenario-actions .action-button {
   width: 100%;
   min-width: 0;
-  height: 30px;
+  white-space: nowrap;
+  justify-content: center;
+  padding-inline: 7px;
 }
 
 .action-button {
@@ -1021,6 +1023,13 @@ input[type="checkbox"] {
   color: var(--muted);
   font-size: 0.74rem;
   font-weight: 800;
+}
+
+.sidebar-participation-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  align-items: stretch;
 }
 
 .sidebar-participation-grid label.ok {
