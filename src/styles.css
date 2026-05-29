@@ -508,6 +508,7 @@ button {
 
 .left-rail .panel {
   width: 100%;
+  flex: 0 0 auto;
 }
 
 .right-panel {
