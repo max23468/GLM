@@ -647,7 +647,7 @@ export const normalizeScenarioSnapshotWithReport = (value: unknown): ScenarioImp
   const messages: string[] = [];
   if (importCandidate !== value) messages.push("Struttura JSON riconosciuta: importato il primo scenario disponibile.");
   if (candidate.schemaVersion !== 8) messages.push("Schema aggiornato alla versione corrente.");
-  if ((candidate.baseScenarioId || candidate.demoScenarioId) && !candidate.originProfileId) {
+  if (candidate.demoScenarioId || candidate.baseScenarioId) {
     messages.push("Profilo di riferimento legacy migrato al formato corrente.");
   }
   if (!Array.isArray(candidate.bidders) || candidate.bidders.length === 0) {
