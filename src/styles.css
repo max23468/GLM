@@ -2132,6 +2132,10 @@ input[type="checkbox"] {
   display: inline-flex;
   gap: 6px;
   flex-wrap: wrap;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 .discount-mode-toggle button {

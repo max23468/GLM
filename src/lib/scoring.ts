@@ -166,7 +166,7 @@ const criterionById = new Map(CRITERIA.map((criterion) => [criterion.id, criteri
 const compatiblePairSetKeys = new Set(COMPATIBLE_PAIR_SETS.map((set) => Array.from(set).sort().join("|")));
 const MAX_TECH_POINTS = AMBITS.reduce((sum, ambit) => sum + ambit.maxPoints, 0);
 
-export const emptyQuantityInputs = () => {
+const emptyQuantityInputs = () => {
   const inputs: Record<string, QuantityInputValue> = {};
   for (const criterion of CRITERIA) {
     if (criterion.quantityInput) inputs[criterion.id] = { numerator: 0, denominator: 0 };
@@ -210,7 +210,7 @@ export const emptyLotOffer = (): LotOffer => ({
   averageDiscount: 0,
 });
 
-export const emptyTradeoffs = () =>
+const emptyTradeoffs = () =>
   Object.fromEntries(CRITERIA.map((criterion) => [criterion.id, { deltaUnits: 0, unitCost: 0, denominator: 0 } satisfies TradeoffPlan]));
 
 export const emptyComboOffer = (): ComboOffer => ({
@@ -234,7 +234,7 @@ const round = (value: number, digits: number) => {
   return Math.round((value + Number.EPSILON) * factor) / factor;
 };
 
-export const round2 = (value: number) => round(value, 2);
+const round2 = (value: number) => round(value, 2);
 export const round4 = (value: number) => round(value, 4);
 
 export const formatPoints = (value: number) => round2(value).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -293,7 +293,7 @@ export const resolvePhaseDiscounts = (offer: EconomicDiscountSource): [number, n
   return offer.phaseDiscounts.map((discount) => clampDiscountPercent(discount)) as [number, number, number];
 };
 
-export const weightedRibassoPercentFromPhases = (
+const weightedRibassoPercentFromPhases = (
   baseByPhase: [number, number, number],
   phaseDiscounts: [number, number, number],
 ) => round4(computeWeightedRibasso(baseByPhase, phaseDiscounts) * 100);
@@ -1035,7 +1035,7 @@ export const simulate = (bidders: Bidder[], settings: Settings, selectedBidderId
   };
 };
 
-export const criteriaByAmbit = (ambit: Ambit) => CRITERIA.filter((criterion) => criterion.ambit === ambit.id);
+const criteriaByAmbit = (ambit: Ambit) => CRITERIA.filter((criterion) => criterion.ambit === ambit.id);
 
 export const maxQtPoints = () => {
   let total = 0;
@@ -1045,7 +1045,7 @@ export const maxQtPoints = () => {
   return total;
 };
 
-export const getCriterion = (id: string) => {
+const getCriterion = (id: string) => {
   const criterion = CRITERIA.find((item) => item.id === id);
   if (!criterion) throw new Error(`Unknown criterion ${id}`);
   return criterion;

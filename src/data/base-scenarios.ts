@@ -329,7 +329,7 @@ const completeScenarioTradeoffs = (bidders: Bidder[], profile: ScenarioAssumptio
     return bidder;
   });
 
-export const buildScenarioOptimizationConfig = (profile: ScenarioAssumptionProfile): OptimizationConfig => {
+const buildScenarioOptimizationConfig = (profile: ScenarioAssumptionProfile): OptimizationConfig => {
   const scenarioSettings = SCENARIO_OPTIMIZATION_SETTINGS[profile];
   return {
     ...defaultOptimizationConfig(),

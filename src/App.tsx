@@ -119,6 +119,17 @@ type ExcelPackageManifest = {
   file?: string;
 };
 
+const defaultExcelPackageHref = "/downloads/Simulatore-TPL-Lotti-1-4.xlsm";
+
+let excelPackageManifestPromise: Promise<ExcelPackageManifest | null> | undefined;
+
+const loadExcelPackageManifest = () => {
+  excelPackageManifestPromise ??= fetch("/downloads/pacchetto-excel-vba.manifest.json")
+    .then((response) => (response.ok ? response.json() : null))
+    .catch(() => null);
+  return excelPackageManifestPromise;
+};
+
 const themeOptions: { value: ThemePreference; label: string; icon: LucideIcon }[] = [
   { value: "auto", label: "Auto", icon: Monitor },
   { value: "light", label: "Chiaro", icon: Sun },
@@ -1178,17 +1189,14 @@ function SimulatorApp({ controller }: { controller: SimulatorController }) {
 
 function SimulatorHeader({ controller }: { controller: SimulatorController }) {
   const { navigateToInstructions, themePreference, setThemePreference, resolvedTheme } = controller;
-  const [excelPackageHref, setExcelPackageHref] = useState("/downloads/Simulatore-TPL-Lotti-1-4.xlsm");
+  const [excelPackageHref, setExcelPackageHref] = useState(defaultExcelPackageHref);
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/downloads/pacchetto-excel-vba.manifest.json")
-      .then((response) => (response.ok ? response.json() : null))
-      .then((manifest: ExcelPackageManifest | null) => {
-        if (cancelled || !manifest?.file) return;
-        setExcelPackageHref(manifest.file);
-      })
-      .catch(() => undefined);
+    loadExcelPackageManifest().then((manifest) => {
+      if (cancelled || !manifest?.file) return;
+      setExcelPackageHref(manifest.file);
+    });
 
     return () => {
       cancelled = true;
@@ -3348,7 +3356,7 @@ function SubcriteriaScoreSection({
     >
       <div className="subcriteria-score-heading">
         <div className="section-title compact">
-          Punteggi sotto criterio — {selectedLotId}
+          Punteggi sotto criterio: {selectedLotId}
           <HelpTooltip>Confronto dei punti grezzi per sotto-criterio sul lotto selezionato. Le righe di ambito riportano anche il tecnico riparametrato.</HelpTooltip>
         </div>
         {bidderCount > 0 ? (
@@ -3500,7 +3508,7 @@ function EconomicEditor({
         </strong>
         <span>R medio {formatPercent(ribasso)}</span>
       </div>
-      <div className="discount-mode-toggle" role="group" aria-label="Modalità inserimento ribasso">
+      <fieldset className="discount-mode-toggle" aria-label="Modalità inserimento ribasso">
         <button
           type="button"
           className={mode === "phases" ? "active" : ""}
@@ -3519,7 +3527,7 @@ function EconomicEditor({
         >
           Ribasso medio
         </button>
-      </div>
+      </fieldset>
       {mode === "average" ? (
         <label className="field compact average-discount-field">
           <span>Ribasso medio (%)</span>

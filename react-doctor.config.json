@@ -1,0 +1,15 @@
+{
+  "ignore": {
+    "files": ["tmp/**"],
+    "overrides": [
+      {
+        "files": ["src/lib/optimization.benchmark.ts"],
+        "rules": ["deslop/unused-file"]
+      },
+      {
+        "files": ["package.json"],
+        "rules": ["deslop/unused-dev-dependency"]
+      }
+    ]
+  }
+}

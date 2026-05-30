@@ -88,7 +88,7 @@ export function parseChangelog(raw: string): ChangelogEntry[] {
   return entries;
 }
 
-export const changelog: ChangelogEntry[] = parseChangelog(changelogRaw);
+const changelog: ChangelogEntry[] = parseChangelog(changelogRaw);
 
 export const releasedChangelog: ChangelogEntry[] = changelog.filter(
   (entry) => !entry.unreleased && !entry.nonVersioned && hasEndUserChangelogContent(entry),

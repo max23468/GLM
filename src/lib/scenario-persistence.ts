@@ -33,9 +33,9 @@ export const LEGACY_STORAGE_KEYS = {
   scenarios: "tpl-simulator-scenarios",
 } as const;
 
-export const PRESET_SCENARIO_PREFIX = "preset-";
+const PRESET_SCENARIO_PREFIX = "preset-";
 
-export const PRESET_SAVED_AT = "2026-01-01T00:00:00.000Z";
+const PRESET_SAVED_AT = "2026-01-01T00:00:00.000Z";
 
 export type SavedScenarioSnapshot = {
   schemaVersion: 8;
@@ -75,7 +75,7 @@ type LegacyWorkspaceLike = Partial<StoredWorkspace> & {
 
 export const presetScenarioId = (baseId: BaseScenarioId) => `${PRESET_SCENARIO_PREFIX}${baseId}`;
 
-export const isPresetScenarioId = (id: string) => id.startsWith(PRESET_SCENARIO_PREFIX);
+const isPresetScenarioId = (id: string) => id.startsWith(PRESET_SCENARIO_PREFIX);
 
 export const baseIdFromPresetScenarioId = (id: string): BaseScenarioId | undefined => {
   const candidate = id.slice(PRESET_SCENARIO_PREFIX.length);
@@ -109,7 +109,7 @@ export const buildPresetScenarioSnapshot = (base: BaseScenario): SavedScenarioSn
 
 export const buildDefaultScenarioLibrary = () => BASE_SCENARIOS.map((scenario) => buildPresetScenarioSnapshot(scenario));
 
-export const readHiddenBaseScenarioIds = (): BaseScenarioId[] => {
+const readHiddenBaseScenarioIds = (): BaseScenarioId[] => {
   if (typeof window === "undefined") return [];
   try {
     const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEYS.hiddenBaseScenarios) ?? "[]");
@@ -282,7 +282,7 @@ const normalizeOptimizationLever = (
   };
 };
 
-export const normalizeOptimizationConfig = (value: unknown, fallbackConfig?: OptimizationConfig): OptimizationConfig => {
+const normalizeOptimizationConfig = (value: unknown, fallbackConfig?: OptimizationConfig): OptimizationConfig => {
   const fallback = fallbackConfig ?? defaultOptimizationConfig();
   const source = isRecord(value) ? value : {};
   const sourceLevers = isRecord(source.levers) ? source.levers : {};
@@ -315,7 +315,7 @@ export const normalizeOptimizationConfig = (value: unknown, fallbackConfig?: Opt
   };
 };
 
-export const normalizeLotOffer = (value: unknown, fallbackOffer?: LotOffer): LotOffer => {
+const normalizeLotOffer = (value: unknown, fallbackOffer?: LotOffer): LotOffer => {
   const fallback = fallbackOffer ?? emptyLotOffer();
   const source = isRecord(value) ? value : {};
   const qValues: LotOffer["qValues"] = {};
@@ -367,7 +367,7 @@ export const normalizeLotOffer = (value: unknown, fallbackOffer?: LotOffer): Lot
   };
 };
 
-export const normalizeComboOffer = (value: unknown): ComboOffer => {
+const normalizeComboOffer = (value: unknown): ComboOffer => {
   const fallback = emptyComboOffer();
   const source = isRecord(value) ? value : {};
   const phaseDiscounts = normalizePhaseDiscounts(source.phaseDiscounts ?? fallback.phaseDiscounts);
@@ -514,7 +514,7 @@ const normalizeExcelScenarioSnapshot = (value: ExcelScenarioLike): { snapshot?: 
   };
 };
 
-export const normalizeBidder = (value: unknown, index = 0, fallbackBidder?: Bidder): Bidder => {
+const normalizeBidder = (value: unknown, index = 0, fallbackBidder?: Bidder): Bidder => {
   const source = isRecord(value) ? value : {};
   const id = normalizedId(source.id, `offerente-${index + 1}`);
   const bidder = createBidder(id, normalizedName(source.name, `Offerente ${index + 1}`));
@@ -529,7 +529,7 @@ export const normalizeBidder = (value: unknown, index = 0, fallbackBidder?: Bidd
   return bidder;
 };
 
-export const normalizeBidders = (value: unknown, baseScenarioId: BaseScenarioId): Bidder[] => {
+const normalizeBidders = (value: unknown, baseScenarioId: BaseScenarioId): Bidder[] => {
   const fallbackBidders = getBaseScenario(baseScenarioId).buildBidders();
   if (!Array.isArray(value) || !value.length) return fallbackBidders;
   const usedIds = new Set<string>();
@@ -696,7 +696,7 @@ export const normalizeStoredWorkspace = (value: unknown): StoredWorkspace | unde
   };
 };
 
-export const getStoredJson = <T,>(keys: readonly string[]): T | undefined => {
+const getStoredJson = <T,>(keys: readonly string[]): T | undefined => {
   if (typeof window === "undefined") return undefined;
   for (const key of keys) {
     try {
@@ -714,7 +714,7 @@ const normalizeStoredScenarioList = (value: unknown) => (Array.isArray(value) ? 
 export const readStoredWorkspace = (): StoredWorkspace | undefined =>
   normalizeStoredWorkspace(getStoredJson([STORAGE_KEYS.workspace, LEGACY_STORAGE_KEYS.workspace]));
 
-export const bootstrapScenarioLibrary = (stored: SavedScenarioSnapshot[]): SavedScenarioSnapshot[] => {
+const bootstrapScenarioLibrary = (stored: SavedScenarioSnapshot[]): SavedScenarioSnapshot[] => {
   const hidden = readHiddenBaseScenarioIds();
   if (!stored.length) return hydrateScenarioLibrary([], hidden);
 

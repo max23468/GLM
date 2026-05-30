@@ -10,7 +10,7 @@ export const effectiveTradeoffDenominator = (criterion: Criterion, quantityInput
   return plan.denominator > 0 ? plan.denominator : quantityInput?.denominator ?? 0;
 };
 
-export const quantityInputAfterTradeoff = (
+const quantityInputAfterTradeoff = (
   criterion: Criterion,
   currentValue: number | boolean,
   quantityInput: QuantityInputValue | undefined,

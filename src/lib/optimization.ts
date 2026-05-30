@@ -94,7 +94,7 @@ export const defaultOptimizationConfig = (): OptimizationConfig => ({
   levers: {},
 });
 
-export const defaultOptimizationLever = (criterion: Criterion, tradeoff?: TradeoffPlan): OptimizationLeverInput => ({
+const defaultOptimizationLever = (criterion: Criterion, tradeoff?: TradeoffPlan): OptimizationLeverInput => ({
   enabled: criterion.kind !== "D",
   granularityUnits: Math.max(0, tradeoff?.deltaUnits || 1),
   maxUnits: 0,
