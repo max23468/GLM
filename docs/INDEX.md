@@ -26,6 +26,7 @@ La root resta il punto di ingresso operativo. `docs/` contiene governance, logic
 
 - `docs/guides/versioning-e-release.md`: SemVer locale, changelog e rilascio.
 - `docs/guides/cloudflare-pages.md`: deploy Cloudflare Pages, preview, Access, Web Analytics, header, cache, rollback e checklist pubblicazione.
+- `docs/doppler-setup.md`: integrazione Doppler, variabili GitHub e verifica segreti CI.
 
 ## Decisioni
 
