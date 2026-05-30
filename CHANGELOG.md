@@ -6,6 +6,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.8.5] — 2026-05-31
+
+### Correzioni
+
+- **Interfaccia**: resa più utilizzabile la sidebar su desktop, con scroll autonomo stabile e controlli lotto più chiari per stato di partecipazione e copia offerta.
+
 ## [1.8.4] — 2026-05-30
 
 ### Correzioni

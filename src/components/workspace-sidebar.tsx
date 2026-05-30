@@ -205,19 +205,24 @@ export function WorkspaceSidebar({
           <div className="sidebar-participation-list" aria-label={`Partecipazione ${selectedBidder.name}`}>
           {LOTS.map((lot) => {
             const lotScore = result.lotScores[selectedBidder.id][lot.id];
+            const participates = selectedBidder.lots[lot.id].enabled;
             const isSourceLot = lot.id === selectedLotId;
             const sourceLotLabel = LOTS.find((item) => item.id === selectedLotId)?.shortLabel ?? "lotto attivo";
+            const lotStatus = participates ? (lotScore.admitted ? "Ammesso" : "Sotto soglia") : "Non attivo";
             return (
               <div key={lot.id} className="sidebar-participation-row">
                 <label
-                  className={`sidebar-lot-toggle ${selectedBidder.lots[lot.id].enabled ? (lotScore.admitted ? "ok" : "warn") : ""}`}
+                  className={`sidebar-lot-toggle ${participates ? (lotScore.admitted ? "ok" : "warn") : ""}`}
                   title={lot.shortLabel}
                 >
-                  <span className="sidebar-lot-toggle-name">{lot.shortLabel}</span>
+                  <span className="sidebar-lot-toggle-copy">
+                    <span className="sidebar-lot-toggle-name">{lot.shortLabel}</span>
+                    <small>{lotStatus}</small>
+                  </span>
                   <input
                     type="checkbox"
                     aria-label={`Partecipa al ${lot.shortLabel} con ${selectedBidder.name}`}
-                    checked={selectedBidder.lots[lot.id].enabled}
+                    checked={participates}
                     onChange={(event) => onLotParticipationChange(lot.id, event.target.checked)}
                   />
                 </label>
@@ -234,7 +239,7 @@ export function WorkspaceSidebar({
                   }
                 >
                   <CopyPlus size={14} />
-                  <span>{isSourceLot ? "Origine" : "Duplica"}</span>
+                  <span>{isSourceLot ? "Origine" : "Copia qui"}</span>
                 </button>
               </div>
             );

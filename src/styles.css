@@ -118,6 +118,7 @@ button {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  flex: 0 0 auto;
   gap: 18px;
   margin: 0 auto 16px;
   max-width: 1680px;
@@ -474,14 +475,14 @@ button {
     "rail workspace"
     "rail insights";
   grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
   gap: 18px;
-  align-items: stretch;
+  align-items: start;
   max-width: 1680px;
   min-height: 0;
   margin: 0 auto;
   width: 100%;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .left-rail,
@@ -494,16 +495,39 @@ button {
 .left-rail {
   grid-area: rail;
   grid-row: 1 / -1;
-  align-self: stretch;
+  align-self: start;
+  position: sticky;
+  top: 18px;
   min-width: 0;
   min-height: 0;
-  height: 100%;
-  max-height: 100%;
+  max-height: calc(100vh - 36px);
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding-right: 4px;
+  padding: 2px 6px 2px 0;
   scrollbar-gutter: stable;
+}
+
+.left-rail::-webkit-scrollbar,
+.workspace::-webkit-scrollbar,
+.right-panel::-webkit-scrollbar {
+  width: 10px;
+}
+
+.left-rail::-webkit-scrollbar-thumb,
+.workspace::-webkit-scrollbar-thumb,
+.right-panel::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 34%, transparent);
+  background-clip: padding-box;
+}
+
+.left-rail::-webkit-scrollbar-thumb:hover,
+.workspace::-webkit-scrollbar-thumb:hover,
+.right-panel::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--muted) 50%, transparent);
+  background-clip: padding-box;
 }
 
 .left-rail .panel {
@@ -1032,7 +1056,7 @@ input[type="checkbox"] {
 
 .sidebar-participation-list {
   display: grid;
-  gap: 7px;
+  gap: 8px;
 }
 
 .sidebar-participation-grid.two {
@@ -1054,8 +1078,8 @@ input[type="checkbox"] {
 
 .sidebar-participation-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(82px, 96px);
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) minmax(94px, 104px);
+  gap: 8px;
   align-items: stretch;
 }
 
@@ -1063,15 +1087,32 @@ input[type="checkbox"] {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 4px;
+  gap: 8px;
   border: 1px solid var(--border);
   border-radius: 7px;
   background: var(--control-bg);
-  padding: 6px 7px;
+  padding: 7px 9px;
   color: var(--muted);
-  font-size: 0.74rem;
-  font-weight: 800;
-  min-height: 36px;
+  cursor: pointer;
+  min-height: 42px;
+}
+
+.sidebar-lot-toggle.ok {
+  border-color: var(--teal-border);
+  background: var(--teal-soft);
+  color: var(--success-text);
+}
+
+.sidebar-lot-toggle.warn {
+  border-color: var(--amber-border);
+  background: var(--amber-soft);
+  color: var(--warning-text);
+}
+
+.sidebar-lot-toggle-copy {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
 }
 
 .sidebar-lot-toggle-name {
@@ -1079,12 +1120,33 @@ input[type="checkbox"] {
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
+  color: var(--strong-text);
+  font-size: 0.78rem;
+  font-weight: 840;
+}
+
+.sidebar-lot-toggle.ok .sidebar-lot-toggle-name {
+  color: var(--success-text);
+}
+
+.sidebar-lot-toggle.warn .sidebar-lot-toggle-name {
+  color: var(--warning-strong);
+}
+
+.sidebar-lot-toggle-copy small {
+  overflow: hidden;
+  color: currentColor;
+  font-size: 0.66rem;
+  font-weight: 760;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sidebar-lot-toggle input[type="checkbox"] {
   margin: 0;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   flex: 0 0 auto;
 }
 
@@ -1104,17 +1166,24 @@ input[type="checkbox"] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
   width: 100%;
-  min-height: 36px;
+  min-height: 42px;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface-soft);
   color: var(--body-soft);
-  padding: 0 8px;
-  font-size: 0.7rem;
+  padding: 0 7px;
+  font-size: 0.68rem;
   font-weight: 760;
   white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.sidebar-duplicate-lot-button span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3559,6 +3628,8 @@ input[type="checkbox"] {
 
 @media (max-width: 900px) {
   .app-shell {
+    height: auto;
+    overflow: visible;
     padding: 12px;
   }
 
@@ -3616,11 +3687,15 @@ input[type="checkbox"] {
       "insights";
     grid-template-columns: 1fr;
     grid-template-rows: minmax(0, 55vh) auto auto;
+    height: auto;
     max-height: none;
+    overflow: visible;
   }
 
   .left-rail {
     grid-row: auto;
+    position: static;
+    top: auto;
     max-height: min(70vh, 640px);
     overflow-x: hidden;
     overflow-y: auto;
@@ -3636,6 +3711,8 @@ input[type="checkbox"] {
   .right-panel {
     display: grid;
     grid-template-columns: 1fr;
+    overflow: visible;
+    padding-right: 0;
   }
 
   .editor-header,
