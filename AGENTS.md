@@ -6,9 +6,11 @@ Istruzioni operative per agenti che lavorano in questa repository.
 
 1. Istruzioni di sistema/developer ricevute nella sessione corrente.
 2. Questo file `AGENTS.md`.
-3. `README.md`, `docs/INDEX.md`, `docs/CONTEXT.md`, `docs/ROADMAP.md`, `docs/BACKLOG.md`, `docs/TOOLCHAIN.md`, `docs/LOGICA_SIMULATORE.md` e documenti di progetto collegati.
-4. Allegati e fonti ufficiali di gara, quando la task riguarda dati, criteri o regole.
-5. Assunzioni dell'agente.
+3. Eventuali `AGENTS.md` più profondi nella cartella toccata.
+4. `README.md`, `docs/INDEX.md`, `docs/CONTEXT.md`, `docs/ROADMAP.md`, `docs/BACKLOG.md`, `docs/TOOLCHAIN.md`, `docs/DECISIONS.md`, `docs/DECISIONS_PENDING.md`, `docs/LOGICA_SIMULATORE.md` e documenti di progetto collegati.
+5. Allegati e fonti ufficiali di gara, quando la task riguarda dati, criteri o regole.
+6. Convenzioni dedotte da codice, test e configurazioni vicine.
+7. Assunzioni dell'agente, solo per dettagli marginali.
 
 In caso di conflitto, segui sempre il livello più alto. Se una decisione nuova cambia stabilmente perimetro, dati, deploy, verifiche o documentazione, aggiorna il documento rilevante invece di lasciarla solo in chat.
 
@@ -288,6 +290,7 @@ Esegui `npm run smoke` solo quando il diff tocca o rischia di rompere flussi cop
 - Prima di commit o PR, fai self-review del diff e verifica che non includa modifiche estranee, file generati o allegati toccati per errore.
 - Se lavori su `main` direttamente, stage solo i file pertinenti alla richiesta.
 - Per lavori non banali o quando il worktree è già sporco, preferisci branch/worktree `codex/<tema>` e PR o merge esplicito verso `main`.
+- Prima di PR ready, merge, pubblicazione, deploy o release, controlla la `Codex feedback inbox` e risolvi i thread actionable o dichiarali fuori scope.
 - Nella descrizione PR o nel riepilogo operativo indica cosa è cambiato, perché, verifiche eseguite, verifiche saltate intenzionalmente e rischi residui.
 - Non aggiungere workflow GitHub Actions, policy di release o canali deploy alternativi senza richiesta esplicita.
 
@@ -311,12 +314,15 @@ Un'attività è chiusa quando:
 - non lascia file temporanei, generati o sensibili nel commit;
 - aggiorna documentazione, roadmap o note solo quando il cambio lo richiede davvero;
 - dichiara esplicitamente limiti, controlli non eseguiti e rischi residui utili.
+- publish, release e deploy sono stati completati oppure dichiarati non applicabili con motivo.
 
 ## Deploy e pubblicazione
 
 Deploy solo su richiesta esplicita.
 
 Quando l'utente dice `pubblica`, `rilascia`, `deploya` o formule equivalenti, interpreta la richiesta come flusso completo di pubblicazione, non come solo comando locale: PR pronta/merge su `main`, eventuale deploy su Cloudflare Pages quando la modifica lo richiede o lo richiede l'utente, verifica finale, e pulizia esplicita del checkout (branch/worktree locali e remoti non più necessari). In questa repository il flusso resta specifico di GLM: Cloudflare Pages progetto `gare-lotti-milanesi`, output Vite `dist`, niente Vercel.
+
+Release e deploy vanno valutati insieme quando entrambi sono applicabili: non chiudere una release senza dichiarare lo stato del deploy, e non chiudere un deploy senza dichiarare se la release è necessaria o `N/A`.
 
 Prima di pubblicare:
 
