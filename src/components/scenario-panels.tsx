@@ -1,4 +1,5 @@
 import {
+  Files,
   CopyPlus,
   Download,
   FileJson,
@@ -33,6 +34,7 @@ type ScenarioToolsProps = {
   onDuplicate: () => void;
   onDelete: () => void;
   onExport: () => void;
+  onExportAll: () => void;
   onExportExcel: () => void;
   onImportFile: (file: File) => void;
   onLoadEntry: (entry: ScenarioLibraryEntry) => void;
@@ -54,6 +56,7 @@ export function ScenarioTools({
   onDuplicate,
   onDelete,
   onExport,
+  onExportAll,
   onExportExcel,
   onImportFile,
   onLoadEntry,
@@ -79,33 +82,49 @@ export function ScenarioTools({
           <input aria-label="Nome scenario" value={scenarioName} onChange={(event) => onScenarioNameChange(event.target.value)} />
       </label>
       <div className="scenario-actions" aria-label="Azioni rapide scenario">
-          <button className="icon-button" type="button" onClick={onNew} aria-label="Nuovo scenario" title="Nuovo scenario">
+        <button className="action-button compact" type="button" onClick={onNew} aria-label="Nuovo scenario">
           <Plus size={16} />
+          Nuovo
         </button>
-          <button className="icon-button primary" type="button" onClick={onSave} aria-label="Salva scenario in libreria" title="Salva in libreria">
+        <button className="action-button compact primary" type="button" onClick={onSave} aria-label="Salva scenario in libreria">
           <Save size={16} />
+          Salva
         </button>
-          <button className="icon-button" type="button" onClick={onDuplicate} aria-label="Duplica scenario" title="Duplica scenario">
+        <button className="action-button compact" type="button" onClick={onDuplicate} aria-label="Duplica scenario">
           <CopyPlus size={16} />
+          Duplica
         </button>
-          <button
-            className="icon-button danger"
-            type="button"
-            onClick={onDelete}
-            disabled={!activeLibraryKey}
-            aria-label="Elimina scenario attivo"
-            title="Elimina scenario attivo"
-          >
+        <button
+          className="action-button compact danger"
+          type="button"
+          onClick={onDelete}
+          disabled={!activeLibraryKey}
+          aria-label="Elimina scenario attivo"
+        >
           <X size={16} />
+          Elimina
         </button>
-          <button className="icon-button" type="button" onClick={onExport} aria-label="Esporta scenario JSON completo" title="Esporta JSON completo">
+        <button className="action-button compact" type="button" onClick={onExport} aria-label="Esporta scenario JSON completo">
           <Download size={16} />
+          Esporta JSON
         </button>
-          <button className="icon-button" type="button" onClick={onExportExcel} aria-label="Esporta scenario Excel" title="Esporta Excel">
+        <button
+          className="action-button compact"
+          type="button"
+          onClick={onExportAll}
+          aria-label="Esporta tutti gli scenari"
+          title={`Esporta tutti i ${libraryEntries.length} scenari in un file unico. Nome file previsto: scenari-glm-${libraryEntries.length}-YYYY-MM-DD.json`}
+        >
+          <Files size={16} />
+          Esporta tutti
+        </button>
+        <button className="action-button compact" type="button" onClick={onExportExcel} aria-label="Esporta scenario Excel">
           <FileJson size={16} />
+          Esporta Excel
         </button>
-          <button className="icon-button" type="button" onClick={() => fileInputRef.current?.click()} aria-label="Importa scenario JSON" title="Importa JSON">
+        <button className="action-button compact" type="button" onClick={() => fileInputRef.current?.click()} aria-label="Importa scenario JSON">
           <Upload size={16} />
+          Importa
         </button>
       </div>
       <div className="autosave-note">

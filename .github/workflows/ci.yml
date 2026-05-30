@@ -14,10 +14,45 @@ jobs:
   verify:
     name: Verifica simulatore
     runs-on: ubuntu-latest
+    env:
+      DOPPLER_PROJECT: ${{ vars.DOPPLER_PROJECT }}
+      DOPPLER_CONFIG: ${{ vars.DOPPLER_CONFIG }}
+      DOPPLER_TOKEN_PRESENT: ${{ secrets.DOPPLER_TOKEN }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Verifica variabili Doppler
+        run: |
+          if [ -z "${DOPPLER_PROJECT:-}" ]; then
+            echo "::warning::DOPPLER_PROJECT non impostato"
+          fi
+          if [ -z "${DOPPLER_CONFIG:-}" ]; then
+            echo "::warning::DOPPLER_CONFIG non impostata"
+          fi
+          if [ -z "${DOPPLER_TOKEN_PRESENT:-}" ]; then
+            echo "::notice::DOPPLER_TOKEN assente: il fetch non verrà eseguito."
+          fi
+
+      - name: Determina se eseguire il fetch Doppler
+        id: doppler_fetch_gate
+        run: |
+          if [ -n "${DOPPLER_TOKEN_PRESENT:-}" ] && [ -n "${DOPPLER_PROJECT:-}" ] && [ -n "${DOPPLER_CONFIG:-}" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Fetch secrets from Doppler
+        if: ${{ steps.doppler_fetch_gate.outputs.run == 'true' }}
+        continue-on-error: true
+        uses: dopplerhq/secrets-fetch-action@v2.0.0
+        with:
+          doppler-token: ${{ secrets.DOPPLER_TOKEN }}
+          doppler-project: ${{ vars.DOPPLER_PROJECT }}
+          doppler-config: ${{ vars.DOPPLER_CONFIG }}
+          inject-env-vars: true
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -41,8 +76,11 @@ jobs:
     name: Preview Cloudflare Pages
     runs-on: ubuntu-latest
     needs: verify
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'pull_request'
     env:
+      DOPPLER_PROJECT: ${{ vars.DOPPLER_PROJECT }}
+      DOPPLER_CONFIG: ${{ vars.DOPPLER_CONFIG }}
+      DOPPLER_TOKEN_PRESENT: ${{ secrets.DOPPLER_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       SMOKE_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
@@ -52,6 +90,37 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Determina se eseguire il fetch Doppler
+        id: deploy_doppler_fetch_gate
+        run: |
+          if [ -n "${{ secrets.DOPPLER_TOKEN }}" ] && [ -n "${{ vars.DOPPLER_PROJECT }}" ] && [ -n "${{ vars.DOPPLER_CONFIG }}" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verifica variabili Doppler
+        run: |
+          if [ -z "${DOPPLER_PROJECT:-}" ]; then
+            echo "::warning::DOPPLER_PROJECT non impostato"
+          fi
+          if [ -z "${DOPPLER_CONFIG:-}" ]; then
+            echo "::warning::DOPPLER_CONFIG non impostata"
+          fi
+          if [ -z "${DOPPLER_TOKEN_PRESENT:-}" ]; then
+            echo "::notice::DOPPLER_TOKEN assente: il fetch non verrà eseguito."
+          fi
+
+      - name: Fetch secrets from Doppler
+        if: ${{ steps.deploy_doppler_fetch_gate.outputs.run == 'true' }}
+        continue-on-error: true
+        uses: dopplerhq/secrets-fetch-action@v2.0.0
+        with:
+          doppler-token: ${{ secrets.DOPPLER_TOKEN }}
+          doppler-project: ${{ vars.DOPPLER_PROJECT }}
+          doppler-config: ${{ vars.DOPPLER_CONFIG }}
+          inject-env-vars: true
 
       - name: Setup Node
         uses: actions/setup-node@v6

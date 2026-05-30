@@ -6,6 +6,31 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.8.3] — 2026-05-30
+
+### Correzioni
+
+- **Interfaccia**: corretta la gestione dello scroll autonomo di sidebar e area lavoro, in modo che i pannelli a sinistra scorrano indipendentemente dal contenuto.
+
+## [1.8.2] — 2026-05-30
+
+### Correzioni
+
+- **Interfaccia**: rifatto il layout della partecipazione concorrente in modo leggibile su sidebar compatta, con toggle lotto e azione “Duplica” su riga pulita per evitare sovrapposizione e testo fuori contenitore.
+
+## [1.8.1] — 2026-05-30
+
+### Correzioni
+
+- **Interfaccia**: migliorata la leggibilità del pulsante di copia dell’offerta tra lotti, con etichetta esplicita e allineamento più stabile nella riga di partecipazione.
+
+## [1.8.0] — 2026-05-30
+
+### Novità
+
+- **Scenari**: aggiunta l'esportazione completa di tutti gli scenari in un file unico dalla barra `Scenario`, con nome `scenari-glm-<totale>-<data>.json`.
+- **Concorrenti**: ora puoi duplicare rapidamente l'offerta di un lotto su un altro lotto dal pannello `Partecipazione` del concorrente attivo.
+
 ## [1.7.0] — 2026-05-30
 
 ### Novità

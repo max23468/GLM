@@ -36,8 +36,11 @@ type WorkspaceSidebarProps = {
   onSelectBidder: (bidderId: string) => void;
   onSelectedBidderNameChange: (name: string) => void;
   onLotParticipationChange: (lotId: LotId, checked: boolean) => void;
+  onDuplicateBidderLotOffer: (sourceLotId: LotId, targetLotId: LotId) => void;
+  onExportAll: () => void;
   onComboParticipationChange: (pairId: PairId, checked: boolean) => void;
   onSettingsChange: (patch: Partial<Settings>) => void;
+  selectedLotId: LotId;
 };
 
 export function WorkspaceSidebar({
@@ -69,8 +72,11 @@ export function WorkspaceSidebar({
   onSelectBidder,
   onSelectedBidderNameChange,
   onLotParticipationChange,
+  onDuplicateBidderLotOffer,
+  onExportAll,
   onComboParticipationChange,
   onSettingsChange,
+  selectedLotId,
 }: WorkspaceSidebarProps) {
   const activeThresholdOption = THRESHOLD_OPTIONS.find((option) => option.value === settings.threshold) ?? THRESHOLD_OPTIONS[0];
 
@@ -120,6 +126,7 @@ export function WorkspaceSidebar({
         onDuplicate={onDuplicate}
         onDelete={onDelete}
         onExport={onExport}
+        onExportAll={onExportAll}
         onExportExcel={onExportExcel}
         onImportFile={onImportFile}
         onLoadEntry={loadLibraryEntry}
@@ -195,12 +202,18 @@ export function WorkspaceSidebar({
             Partecipazione
             <HelpTooltip>Attiva lotti e combinatorie del concorrente selezionato. Queste opzioni si gestiscono solo dalla barra laterale.</HelpTooltip>
           </div>
-          <div className="sidebar-participation-grid" aria-label={`Partecipazione ${selectedBidder.name}`}>
-            {LOTS.map((lot) => {
-              const lotScore = result.lotScores[selectedBidder.id][lot.id];
-              return (
-                <label key={lot.id} className={selectedBidder.lots[lot.id].enabled ? (lotScore.admitted ? "ok" : "warn") : ""}>
-                  <span>{lot.shortLabel}</span>
+          <div className="sidebar-participation-list" aria-label={`Partecipazione ${selectedBidder.name}`}>
+          {LOTS.map((lot) => {
+            const lotScore = result.lotScores[selectedBidder.id][lot.id];
+            const isSourceLot = lot.id === selectedLotId;
+            const sourceLotLabel = LOTS.find((item) => item.id === selectedLotId)?.shortLabel ?? "lotto attivo";
+            return (
+              <div key={lot.id} className="sidebar-participation-row">
+                <label
+                  className={`sidebar-lot-toggle ${selectedBidder.lots[lot.id].enabled ? (lotScore.admitted ? "ok" : "warn") : ""}`}
+                  title={lot.shortLabel}
+                >
+                  <span className="sidebar-lot-toggle-name">{lot.shortLabel}</span>
                   <input
                     type="checkbox"
                     aria-label={`Partecipa al ${lot.shortLabel} con ${selectedBidder.name}`}
@@ -208,9 +221,25 @@ export function WorkspaceSidebar({
                     onChange={(event) => onLotParticipationChange(lot.id, event.target.checked)}
                   />
                 </label>
-              );
-            })}
-          </div>
+                <button
+                  className="sidebar-duplicate-lot-button"
+                  type="button"
+                  onClick={() => onDuplicateBidderLotOffer(selectedLotId, lot.id)}
+                  disabled={isSourceLot}
+                  aria-label={`Copia offerta dal ${sourceLotLabel} a ${lot.shortLabel}`}
+                  title={
+                    isSourceLot
+                      ? "Questo lotto è la sorgente: seleziona un altro lotto per incollare la copia"
+                      : `Copia offerta dal ${sourceLotLabel} a ${lot.shortLabel}`
+                  }
+                >
+                  <CopyPlus size={14} />
+                  <span>{isSourceLot ? "Origine" : "Duplica"}</span>
+                </button>
+              </div>
+            );
+          })}
+        </div>
           <div className="section-title compact">Combinatorie presentate</div>
           <div className="sidebar-participation-grid two" aria-label={`Combinatorie ${selectedBidder.name}`}>
             {PAIRS.map((pair) => {
