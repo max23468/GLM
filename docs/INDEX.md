@@ -41,7 +41,7 @@ Le decisioni operative esistenti sono oggi documentate in `AGENTS.md`, `README.m
 
 ## GitHub
 
-- Repository: `git@github.com:max23468/Gare-Lotti-Milanesi.git`
+- Repository: `git@github.com:max23468/GLM.git`
 - Branch principale: `main`
 - Codex feedback inbox: issue GitHub `Codex feedback inbox`.
 - Workflow principali: `.github/workflows/ci.yml`, `.github/workflows/codex-pr-comments.yml`, `.github/workflows/pr-title.yml`.

@@ -7,7 +7,7 @@
 - Versione applicativa: leggere `version` in `package.json` come source of truth.
 - Deploy produzione: Cloudflare Pages progetto `gare-lotti-milanesi`, URL `https://gare-lotti-milanesi.pages.dev`.
 - Branch principale: `main`.
-- Remote: `git@github.com:max23468/Gare-Lotti-Milanesi.git`.
+- Remote: `git@github.com:max23468/GLM.git`.
 
 ## Fonte di verità
 

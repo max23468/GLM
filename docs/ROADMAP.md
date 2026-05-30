@@ -59,7 +59,7 @@ Legenda stato: `Fatto`, `In corso`, `Da fare`, `Idea`, `Bloccato`.
 | Fatto | Cloudflare Pages | Produzione solo su progetto `gare-lotti-milanesi`, tramite `npm run deploy:cloudflare` e solo su richiesta esplicita. |
 | Fatto | Preview Cloudflare PR | Preview PR interna presente quando i secret sono configurati. |
 | Fatto | Codex feedback inbox | Issue GitHub presente; nessun thread actionable al controllo del 2026-05-24. |
-| Fatto | Baseline Atlas | Indice, roadmap, backlog, contesto, toolchain, ADR index/template e template GitHub introdotti con PR `max23468/Gare-Lotti-Milanesi#7`. |
+| Fatto | Baseline Atlas | Indice, roadmap, backlog, contesto, toolchain, ADR index/template e template GitHub introdotti con PR `max23468/GLM#7`. |
 | Da fare | ADR autonome | Valutare ADR per Cloudflare-only, stabilità URL e policy allegati Git LFS. |
 | Idea | Branch protection/CODEOWNERS | Da valutare solo se aggiunge controllo reale. |
 
