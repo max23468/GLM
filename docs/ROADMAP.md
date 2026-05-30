@@ -38,7 +38,7 @@ Legenda stato: `Fatto`, `In corso`, `Da fare`, `Idea`, `Bloccato`.
 | Stato | Voce | Note |
 | --- | --- | --- |
 | Fatto | Storage browser e chiavi legacy | Le chiavi `tpl-simulator-*` restano leggibili in fallback. |
-| Fatto | Export/import con `schemaVersion` | Gli snapshot correnti usano `schemaVersion: 7`. |
+| Fatto | Export/import con `schemaVersion` | Gli snapshot correnti usano `schemaVersion: 8`. |
 | Da fare | Test su migrazioni snapshot | Rafforzare test quando cambiano campi di scenario, ottimizzazione o normalizzazione. |
 | Da fare | Robustezza import JSON | Presidiare snapshot incompleti, legacy o costruiti manualmente. |
 

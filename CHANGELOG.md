@@ -6,6 +6,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.8.4] — 2026-05-30
+
+### Correzioni
+
+- **Ottimizzazione**: reso più stabile il calcolo del piano consigliato, evitando rallentamenti e timeout sui profili base più articolati.
+
 ## [1.8.3] — 2026-05-30
 
 ### Correzioni

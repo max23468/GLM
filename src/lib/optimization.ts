@@ -467,12 +467,15 @@ const candidateQuantities = (availableUnits: number, granularityUnits: number, c
 
   const granularity = Math.max(0.0001, granularityUnits || 1);
   const stepCount = Math.max(1, Math.ceil(available / granularity));
-  const sampleEvery = stepCount <= 5 ? 1 : Math.max(1, Math.ceil(stepCount / 3));
   const values = new Set<number>();
 
   values.add(round4(Math.min(available, granularity)));
-  for (let index = sampleEvery; index <= stepCount; index += sampleEvery) {
-    values.add(round4(Math.min(available, index * granularity)));
+  if (stepCount <= 3) {
+    for (let index = 2; index <= stepCount; index += 1) {
+      values.add(round4(Math.min(available, index * granularity)));
+    }
+  } else {
+    values.add(round4(Math.min(available, Math.ceil(stepCount / 2) * granularity)));
   }
   values.add(available);
 

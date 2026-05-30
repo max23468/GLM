@@ -141,7 +141,7 @@ Lo stato vive nel browser:
 
 Le chiavi legacy `tpl-simulator-*` restano lette in fallback. L'import/export usa JSON con snapshot dello scenario; se cambia la forma dei dati, aggiornare i normalizzatori in `src/lib/scenario-persistence.ts` e mantenere compatibilità ragionevole con scenari esportati in precedenza.
 
-Gli snapshot correnti usano `schemaVersion: 7` e includono la configurazione di ottimizzazione senza tetti finanziari esterni, step economici o massimi di ribasso. La normalizzazione deve continuare ad accettare snapshot precedenti privi del blocco `optimization` o con i vecchi campi legacy.
+Gli snapshot correnti usano `schemaVersion: 8` e includono la configurazione di ottimizzazione senza tetti finanziari esterni, step economici o massimi di ribasso. La normalizzazione deve continuare ad accettare snapshot precedenti privi del blocco `optimization` o con i vecchi campi legacy.
 
 La gestione di scenari, concorrenti e opzioni di partecipazione è concentrata nella barra laterale, sempre visibile senza passaggi intermedi. Il lotto di lavoro si cambia dalla scheda centrale, così tecnica, economica e risultati restano sempre allineati al lotto selezionato.
 
