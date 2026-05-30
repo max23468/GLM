@@ -6,7 +6,7 @@ Istruzioni operative per agenti che lavorano in questa repository.
 
 1. Istruzioni di sistema/developer ricevute nella sessione corrente.
 2. Questo file `AGENTS.md`.
-3. Eventuali `AGENTS.md` più profondi nella cartella toccata.
+3. Eventuali `AGENTS.md` più profondi nella cartella toccata, che prevalgono sulle regole root per il loro scope.
 4. `README.md`, `docs/INDEX.md`, `docs/CONTEXT.md`, `docs/ROADMAP.md`, `docs/BACKLOG.md`, `docs/TOOLCHAIN.md`, `docs/DECISIONS.md`, `docs/DECISIONS_PENDING.md`, `docs/LOGICA_SIMULATORE.md` e documenti di progetto collegati.
 5. Allegati e fonti ufficiali di gara, quando la task riguarda dati, criteri o regole.
 6. Convenzioni dedotte da codice, test e configurazioni vicine.
@@ -169,6 +169,9 @@ La cartella `docs/milano-lotti-extraurbani-om/` contiene file binari e documenti
 - Usa path quotati nei comandi shell perché molti file hanno spazi, apostrofi o maiuscole.
 - Prima di aggiungere nuovi allegati pesanti, verifica `.gitattributes` e Git LFS.
 - Non committare estrazioni temporanee, output o log: `tmp/`, `output/` e `dist/` sono ignorati.
+- Durante migrazioni, rinomini o merge documentali non perdere contenuti utili:
+  aggiorna link e indici, preserva ciò che resta valido e dichiara nel riepilogo
+  ciò che viene rimosso perché superato.
 
 ## Sicurezza, privacy e file sensibili
 
@@ -205,6 +208,9 @@ Il changelog segue `CHANGELOG.md` con sezioni in italiano:
 Il changelog è mostrato nel frontend: non includere voci rivolte a chi sviluppa il tool, come commit, PR, file interni, CI, test, release, deploy, dipendenze, script o regole agenti. Se una modifica tecnica ha un effetto reale per l'utente, descrivi solo l'effetto pratico nel simulatore.
 
 Non creare una nuova versione visibile nel frontend se il blocco non contiene punti interessanti per l'utente finale. In quel caso lascia la modifica fuori dalle release pubbliche o, se serve traccia interna, usa `### Non versionato` senza eseguire una release SemVer.
+
+Release Please non è adottato in GLM: non delegare changelog, versioni, tag o
+GitHub Release a bot automatici senza nuova decisione esplicita.
 
 Per preparare una nuova versione, aggiungi le voci sotto `## [Non rilasciato]` ed esegui:
 
@@ -274,6 +280,10 @@ Le chiavi `tpl-simulator-*` sono legacy e vanno mantenute leggibili in fallback.
 
 Scegli verifiche proporzionate al tipo di diff: copri il rischio reale della modifica senza trasformare ogni chiusura in uno smoke test completo.
 
+Usa tre corsie: `veloce` per docs/governance a basso rischio, `standard` per
+codice/config ordinari, `completa` per release, deploy, dati di gara, UI
+sostanziale, persistenza, import/export o modifiche trasversali.
+
 - Solo documentazione non renderizzata dall'app: `git diff --check`.
 - Microcopy o testi statici nell'app, senza modifiche a stato, logica o layout: `npm run build`; aggiungi una verifica browser mirata solo se il testo può rompere layout o leggibilità.
 - UI piccola e localizzata: `npm run build`, `npm run preview -- --port 4173` e controllo browser mirato della schermata coinvolta, includendo viewport o tema solo se pertinenti.
@@ -293,6 +303,10 @@ Esegui `npm run smoke` solo quando il diff tocca o rischia di rompere flussi cop
 - Prima di PR ready, merge, pubblicazione, deploy o release, controlla la `Codex feedback inbox` e risolvi i thread actionable o dichiarali fuori scope.
 - Nella descrizione PR o nel riepilogo operativo indica cosa è cambiato, perché, verifiche eseguite, verifiche saltate intenzionalmente e rischi residui.
 - Non aggiungere workflow GitHub Actions, policy di release o canali deploy alternativi senza richiesta esplicita.
+- Usa PR template, issue template e PR title check o controllo equivalente quando
+  lavori via GitHub. Dopo merge/pubblicazione controlla `git branch -vv` e
+  `git worktree list`, poi pulisci branch/worktree non più necessari o dichiara
+  cosa resta aperto intenzionalmente.
 
 ## Risposte finali e prossimi passi
 
