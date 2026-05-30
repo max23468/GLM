@@ -5,8 +5,8 @@ Istruzioni operative per agenti che lavorano in questa repository.
 ## Priorità delle istruzioni
 
 1. Istruzioni di sistema/developer ricevute nella sessione corrente.
-2. Questo file `AGENTS.md`.
-3. Eventuali `AGENTS.md` più profondi nella cartella toccata, che prevalgono sulle regole root per il loro scope.
+2. Eventuali `AGENTS.md` più profondi nella cartella toccata, che prevalgono sulle regole root per il loro scope.
+3. Questo file `AGENTS.md`.
 4. `README.md`, `docs/INDEX.md`, `docs/CONTEXT.md`, `docs/ROADMAP.md`, `docs/BACKLOG.md`, `docs/TOOLCHAIN.md`, `docs/DECISIONS.md`, `docs/DECISIONS_PENDING.md`, `docs/LOGICA_SIMULATORE.md` e documenti di progetto collegati.
 5. Allegati e fonti ufficiali di gara, quando la task riguarda dati, criteri o regole.
 6. Convenzioni dedotte da codice, test e configurazioni vicine.
