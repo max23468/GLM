@@ -131,6 +131,8 @@ npm run deploy:cloudflare
 - `docs/guides/cloudflare-pages.md`: runbook deploy Cloudflare, preview, Access, Web Analytics, WAF/cache e rollback.
 - `docs/guides/versioning-e-release.md`: procedura SemVer e rilascio.
 - `docs/milano-lotti-extraurbani-om/`: allegati gara, da trattare come fonti e non come file da riscrivere.
+- `excel-vba/EXCEL_VBA_GUIDE.md`: guida del toolkit Excel/VBA; resta fuori
+  da `docs/` perché accompagna l'artefatto Excel, non la governance generale.
 - `wrangler.toml`: configurazione Cloudflare Pages.
 
 ## Mappa modifiche, file e verifiche
