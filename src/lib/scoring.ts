@@ -210,6 +210,14 @@ export const emptyLotOffer = (): LotOffer => ({
   averageDiscount: 0,
 });
 
+export const applyQualitativeReadyDefaults = (offer: LotOffer) => {
+  for (const criterion of CRITERIA) {
+    if (criterion.kind === "T") offer.tValues[criterion.id] = true;
+    if (criterion.kind === "D") offer.dValues[criterion.id] = 1;
+  }
+  return offer;
+};
+
 const emptyTradeoffs = () =>
   Object.fromEntries(CRITERIA.map((criterion) => [criterion.id, { deltaUnits: 0, unitCost: 0, denominator: 0 } satisfies TradeoffPlan]));
 

@@ -1,5 +1,5 @@
-import { BarChart3, CopyPlus, Plus, Route, SlidersHorizontal, X } from "lucide-react";
-import { useMemo } from "react";
+import { BarChart3, ChevronDown, CopyPlus, GripVertical, Plus, Route, SlidersHorizontal, X } from "lucide-react";
+import { useEffect, useMemo, useState, type DragEvent, type PointerEvent } from "react";
 import { getBaseScenario } from "../data/base-scenarios";
 import { LOTS, PAIRS, THRESHOLD_OPTIONS, type LotId, type PairId } from "../data/tender";
 import { baseIdFromPresetScenarioId, type SavedScenarioSnapshot } from "../lib/scenario-persistence";
@@ -23,6 +23,7 @@ type WorkspaceSidebarProps = {
   onExportExcel: () => void;
   onImportFile: (file: File) => void;
   onLoadSaved: (scenarioId: string) => void;
+  onReorderSavedScenario: (sourceScenarioId: string, targetScenarioId: string) => void;
   onResetModel: () => void;
   onResetTool: () => void;
   onRestoreRemovedPresets: () => void;
@@ -33,6 +34,7 @@ type WorkspaceSidebarProps = {
   onAddBidder: () => void;
   onDuplicateBidder: (bidderId: string) => void;
   onRemoveBidder: (bidderId: string) => void;
+  onReorderBidder: (sourceBidderId: string, targetBidderId: string) => void;
   onSelectBidder: (bidderId: string) => void;
   onSelectedBidderNameChange: (name: string) => void;
   onLotParticipationChange: (lotId: LotId, checked: boolean) => void;
@@ -59,6 +61,7 @@ export function WorkspaceSidebar({
   onExportExcel,
   onImportFile,
   onLoadSaved,
+  onReorderSavedScenario,
   onResetModel,
   onResetTool,
   onRestoreRemovedPresets,
@@ -69,6 +72,7 @@ export function WorkspaceSidebar({
   onAddBidder,
   onDuplicateBidder,
   onRemoveBidder,
+  onReorderBidder,
   onSelectBidder,
   onSelectedBidderNameChange,
   onLotParticipationChange,
@@ -79,6 +83,23 @@ export function WorkspaceSidebar({
   selectedLotId,
 }: WorkspaceSidebarProps) {
   const activeThresholdOption = THRESHOLD_OPTIONS.find((option) => option.value === settings.threshold) ?? THRESHOLD_OPTIONS[0];
+  const [draggedBidderId, setDraggedBidderId] = useState<string>();
+  const [dropTargetBidderId, setDropTargetBidderId] = useState<string>();
+  const [openMobilePanels, setOpenMobilePanels] = useState({
+    bidders: true,
+    participation: true,
+    settings: false,
+  });
+
+  const toggleMobilePanel = (panel: keyof typeof openMobilePanels) => {
+    setOpenMobilePanels((current) => ({ ...current, [panel]: !current[panel] }));
+  };
+
+  useEffect(() => {
+    if (!draggedBidderId) return undefined;
+    document.addEventListener("pointerup", clearBidderDrag);
+    return () => document.removeEventListener("pointerup", clearBidderDrag);
+  }, [draggedBidderId]);
 
   const libraryEntries = useMemo<ScenarioLibraryEntry[]>(
     () =>
@@ -112,6 +133,42 @@ export function WorkspaceSidebar({
     onDeleteSaved(entry.key);
   };
 
+  const startBidderDrag = (event: DragEvent<HTMLButtonElement>, bidder: Bidder) => {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", bidder.id);
+    setDraggedBidderId(bidder.id);
+    setDropTargetBidderId(undefined);
+  };
+
+  const startBidderPointerDrag = (event: PointerEvent<HTMLButtonElement>, bidder: Bidder) => {
+    event.preventDefault();
+    setDraggedBidderId(bidder.id);
+    setDropTargetBidderId(undefined);
+  };
+
+  const markBidderDropTarget = (event: DragEvent<HTMLDivElement>, bidder: Bidder) => {
+    if (!draggedBidderId || draggedBidderId === bidder.id) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setDropTargetBidderId(bidder.id);
+  };
+
+  const dropBidder = (event: DragEvent<HTMLDivElement>, bidder: Bidder) => {
+    event.preventDefault();
+    finishBidderDrop(bidder);
+  };
+
+  const finishBidderDrop = (bidder: Bidder) => {
+    if (draggedBidderId && draggedBidderId !== bidder.id) onReorderBidder(draggedBidderId, bidder.id);
+    setDraggedBidderId(undefined);
+    setDropTargetBidderId(undefined);
+  };
+
+  const clearBidderDrag = () => {
+    setDraggedBidderId(undefined);
+    setDropTargetBidderId(undefined);
+  };
+
   return (
     <aside className="left-rail">
       <ScenarioTools
@@ -131,22 +188,35 @@ export function WorkspaceSidebar({
         onImportFile={onImportFile}
         onLoadEntry={loadLibraryEntry}
         onDeleteEntry={deleteLibraryEntry}
+        onReorderEntry={onReorderSavedScenario}
         onRestoreHiddenEntries={onRestoreRemovedPresets}
         onResetModel={onResetModel}
         onResetTool={onResetTool}
       />
 
-      <section className="panel">
-        <div className="section-title between">
+      <section className={`panel mobile-collapsible-panel ${openMobilePanels.bidders ? "" : "mobile-collapsed"}`}>
+        <div className="section-title between mobile-collapsible-title">
           <span>
             <Route size={18} />
             Concorrenti
             <HelpTooltip>Da qui aggiungi, duplichi, rinomini, selezioni o elimini i concorrenti. La duplicazione copia offerte, partecipazioni e combinatorie del concorrente scelto.</HelpTooltip>
           </span>
-          <button className="icon-button primary" type="button" onClick={onAddBidder} aria-label="Aggiungi concorrente" title="Aggiungi concorrente">
-            <Plus size={17} />
-          </button>
+          <div className="section-title-actions">
+            <button className="icon-button primary" type="button" onClick={onAddBidder} aria-label="Aggiungi concorrente" title="Aggiungi concorrente">
+              <Plus size={17} />
+            </button>
+            <button
+              className="mobile-panel-toggle"
+              type="button"
+              onClick={() => toggleMobilePanel("bidders")}
+              aria-expanded={openMobilePanels.bidders}
+              aria-label={openMobilePanels.bidders ? "Chiudi pannello Concorrenti" : "Apri pannello Concorrenti"}
+            >
+              <ChevronDown size={16} />
+            </button>
+          </div>
         </div>
+        <div className="mobile-collapsible-body">
         {selectedBidder && (
           <div className="sidebar-admin-block">
             <label className="field compact">
@@ -163,7 +233,29 @@ export function WorkspaceSidebar({
             const activeLots = LOTS.filter((lot) => bidder.lots[lot.id].enabled).length;
             const isSelected = bidder.id === selectedBidder?.id;
             return (
-              <div key={bidder.id} className={`sidebar-row-actions ${isSelected ? "selected" : ""}`}>
+              <div
+                key={bidder.id}
+                className={`sidebar-row-actions ${isSelected ? "selected" : ""} ${bidder.id === draggedBidderId ? "dragging" : ""} ${bidder.id === dropTargetBidderId ? "drop-target" : ""}`}
+                onDragEnter={(event) => markBidderDropTarget(event, bidder)}
+                onDragOver={(event) => markBidderDropTarget(event, bidder)}
+                onDrop={(event) => dropBidder(event, bidder)}
+                onPointerEnter={() => {
+                  if (draggedBidderId && draggedBidderId !== bidder.id) setDropTargetBidderId(bidder.id);
+                }}
+                onPointerUp={() => finishBidderDrop(bidder)}
+              >
+                <button
+                  className="drag-handle"
+                  type="button"
+                  draggable
+                  onPointerDown={(event) => startBidderPointerDrag(event, bidder)}
+                  onDragStart={(event) => startBidderDrag(event, bidder)}
+                  onDragEnd={clearBidderDrag}
+                  aria-label={`Riordina concorrente ${bidder.name}`}
+                  title="Trascina per riordinare"
+                >
+                  <GripVertical size={14} />
+                </button>
                 <button className="offeror-row" type="button" onClick={() => onSelectBidder(bidder.id)}>
                   <span>{bidder.name}</span>
                   <small>
@@ -193,15 +285,28 @@ export function WorkspaceSidebar({
             );
           })}
         </div>
+        </div>
       </section>
 
       {selectedBidder && (
-        <section className="panel">
-          <div className="section-title">
-            <BarChart3 size={18} />
-            Partecipazione
-            <HelpTooltip>Attiva lotti e combinatorie del concorrente selezionato. Queste opzioni si gestiscono solo dalla barra laterale.</HelpTooltip>
+        <section className={`panel mobile-collapsible-panel ${openMobilePanels.participation ? "" : "mobile-collapsed"}`}>
+          <div className="section-title mobile-collapsible-title">
+            <span>
+              <BarChart3 size={18} />
+              Partecipazione
+              <HelpTooltip>Attiva lotti e combinatorie del concorrente selezionato. Queste opzioni si gestiscono solo dalla barra laterale.</HelpTooltip>
+            </span>
+            <button
+              className="mobile-panel-toggle"
+              type="button"
+              onClick={() => toggleMobilePanel("participation")}
+              aria-expanded={openMobilePanels.participation}
+              aria-label={openMobilePanels.participation ? "Chiudi pannello Partecipazione" : "Apri pannello Partecipazione"}
+            >
+              <ChevronDown size={16} />
+            </button>
           </div>
+          <div className="mobile-collapsible-body">
           <div className="sidebar-participation-list" aria-label={`Partecipazione ${selectedBidder.name}`}>
           {LOTS.map((lot) => {
             const lotScore = result.lotScores[selectedBidder.id][lot.id];
@@ -263,15 +368,28 @@ export function WorkspaceSidebar({
             })}
           </div>
           <div className="hint">Per una combinatoria servono anche i due lotti singoli collegati.</div>
+          </div>
         </section>
       )}
 
-      <section className="panel">
-        <div className="section-title">
-          <SlidersHorizontal size={18} />
-          Parametri
-          <HelpTooltip>Qui scegli la soglia di sbarramento e l'eventuale deroga: cambia questi parametri quando vuoi testare una lettura più o meno selettiva.</HelpTooltip>
+      <section className={`panel mobile-collapsible-panel ${openMobilePanels.settings ? "" : "mobile-collapsed"}`}>
+        <div className="section-title mobile-collapsible-title">
+          <span>
+            <SlidersHorizontal size={18} />
+            Parametri
+            <HelpTooltip>Qui scegli la soglia di sbarramento e l'eventuale deroga: cambia questi parametri quando vuoi testare una lettura più o meno selettiva.</HelpTooltip>
+          </span>
+          <button
+            className="mobile-panel-toggle"
+            type="button"
+            onClick={() => toggleMobilePanel("settings")}
+            aria-expanded={openMobilePanels.settings}
+            aria-label={openMobilePanels.settings ? "Chiudi pannello Parametri" : "Apri pannello Parametri"}
+          >
+            <ChevronDown size={16} />
+          </button>
         </div>
+        <div className="mobile-collapsible-body">
         <label className="field">
           <span>
             Soglia di sbarramento
@@ -296,6 +414,7 @@ export function WorkspaceSidebar({
         </label>
         <div className="hint">Soglia attiva: scenario disciplinare se resta a 37 pt. Le letture alternative più selettive restano nel menu. Le incongruenze sono nel pannello criticità.</div>
         <div className="hint">Fonte soglia attiva: {activeThresholdOption.source}.</div>
+        </div>
       </section>
     </aside>
   );

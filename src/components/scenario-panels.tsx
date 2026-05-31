@@ -1,16 +1,18 @@
 import {
   Files,
+  ChevronDown,
   CopyPlus,
   Download,
   FileJson,
   GitCompareArrows,
+  GripVertical,
   Plus,
   RotateCcw,
   Save,
   Upload,
   X,
 } from "lucide-react";
-import { useRef } from "react";
+import { useEffect, useRef, useState, type DragEvent, type PointerEvent } from "react";
 import { LOTS } from "../data/tender";
 import { candidateLotScore, formatPoints, type AssignmentCandidate, type SimulationResult } from "../lib/scoring";
 import type { SavedScenarioSnapshot } from "../lib/scenario-persistence";
@@ -39,6 +41,7 @@ type ScenarioToolsProps = {
   onImportFile: (file: File) => void;
   onLoadEntry: (entry: ScenarioLibraryEntry) => void;
   onDeleteEntry: (entry: ScenarioLibraryEntry) => void;
+  onReorderEntry: (sourceKey: string, targetKey: string) => void;
   onRestoreHiddenEntries?: () => void;
   onResetModel: () => void;
   onResetTool: () => void;
@@ -61,19 +64,77 @@ export function ScenarioTools({
   onImportFile,
   onLoadEntry,
   onDeleteEntry,
+  onReorderEntry,
   onRestoreHiddenEntries,
   onResetModel,
   onResetTool,
 }: ScenarioToolsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [draggedEntryKey, setDraggedEntryKey] = useState<string>();
+  const [dropTargetEntryKey, setDropTargetEntryKey] = useState<string>();
+  const [isPanelOpen, setIsPanelOpen] = useState(true);
+
+  useEffect(() => {
+    if (!draggedEntryKey) return undefined;
+    document.addEventListener("pointerup", clearEntryDrag);
+    return () => document.removeEventListener("pointerup", clearEntryDrag);
+  }, [draggedEntryKey]);
+
+  const startEntryDrag = (event: DragEvent<HTMLButtonElement>, entry: ScenarioLibraryEntry) => {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", entry.key);
+    setDraggedEntryKey(entry.key);
+    setDropTargetEntryKey(undefined);
+  };
+
+  const startEntryPointerDrag = (event: PointerEvent<HTMLButtonElement>, entry: ScenarioLibraryEntry) => {
+    event.preventDefault();
+    setDraggedEntryKey(entry.key);
+    setDropTargetEntryKey(undefined);
+  };
+
+  const markEntryDropTarget = (event: DragEvent<HTMLDivElement>, entry: ScenarioLibraryEntry) => {
+    if (!draggedEntryKey || draggedEntryKey === entry.key) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setDropTargetEntryKey(entry.key);
+  };
+
+  const dropEntry = (event: DragEvent<HTMLDivElement>, entry: ScenarioLibraryEntry) => {
+    event.preventDefault();
+    finishEntryDrop(entry);
+  };
+
+  const finishEntryDrop = (entry: ScenarioLibraryEntry) => {
+    if (draggedEntryKey && draggedEntryKey !== entry.key) onReorderEntry(draggedEntryKey, entry.key);
+    setDraggedEntryKey(undefined);
+    setDropTargetEntryKey(undefined);
+  };
+
+  const clearEntryDrag = () => {
+    setDraggedEntryKey(undefined);
+    setDropTargetEntryKey(undefined);
+  };
 
   return (
-    <section className="panel scenario-tools">
-      <div className="section-title">
-        <FileJson size={18} />
-        Scenario
-        <HelpTooltip>Scegli uno scenario dalla libreria, rinominalo e salvalo quando vuoi conservarlo o confrontarlo.</HelpTooltip>
+    <section className={`panel scenario-tools mobile-collapsible-panel ${isPanelOpen ? "" : "mobile-collapsed"}`}>
+      <div className="section-title mobile-collapsible-title">
+        <span>
+          <FileJson size={18} />
+          Scenario
+          <HelpTooltip>Scegli uno scenario dalla libreria, rinominalo e salvalo quando vuoi conservarlo o confrontarlo.</HelpTooltip>
+        </span>
+        <button
+          className="mobile-panel-toggle"
+          type="button"
+          onClick={() => setIsPanelOpen((current) => !current)}
+          aria-expanded={isPanelOpen}
+          aria-label={isPanelOpen ? "Chiudi pannello Scenario" : "Apri pannello Scenario"}
+        >
+          <ChevronDown size={16} />
+        </button>
       </div>
+      <div className="mobile-collapsible-body">
       <label className="field">
         <span>
           Nome scenario
@@ -151,7 +212,29 @@ export function ScenarioTools({
         <div className="saved-scenario-list">
           {libraryEntries.length ? (
             libraryEntries.map((entry) => (
-              <div key={entry.key} className={`saved-scenario-row ${entry.key === activeLibraryKey ? "selected" : ""}`}>
+              <div
+                key={entry.key}
+                className={`saved-scenario-row ${entry.key === activeLibraryKey ? "selected" : ""} ${entry.key === draggedEntryKey ? "dragging" : ""} ${entry.key === dropTargetEntryKey ? "drop-target" : ""}`}
+                onDragEnter={(event) => markEntryDropTarget(event, entry)}
+                onDragOver={(event) => markEntryDropTarget(event, entry)}
+                onDrop={(event) => dropEntry(event, entry)}
+                onPointerEnter={() => {
+                  if (draggedEntryKey && draggedEntryKey !== entry.key) setDropTargetEntryKey(entry.key);
+                }}
+                onPointerUp={() => finishEntryDrop(entry)}
+              >
+                <button
+                  className="drag-handle"
+                  type="button"
+                  draggable
+                  onPointerDown={(event) => startEntryPointerDrag(event, entry)}
+                  onDragStart={(event) => startEntryDrag(event, entry)}
+                  onDragEnd={clearEntryDrag}
+                  aria-label={`Riordina scenario ${entry.name}`}
+                  title="Trascina per riordinare"
+                >
+                  <GripVertical size={14} />
+                </button>
                 <button className="saved-scenario-main" type="button" onClick={() => onLoadEntry(entry)}>
                   <span>{entry.name}</span>
                   <small>{entry.detail}</small>
@@ -186,6 +269,7 @@ export function ScenarioTools({
         Reset totale tool
       </button>
       {scenarioNotice && <div className="scenario-notice">{scenarioNotice}</div>}
+      </div>
     </section>
   );
 }

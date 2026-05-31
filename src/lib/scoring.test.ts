@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CRITERIA, LOTS, PAIRS } from "../data/tender";
 import {
   candidateLotScore,
+  applyQualitativeReadyDefaults,
   computeWeightedRibasso,
   createBidder,
   economicBreakdown,
@@ -40,6 +41,17 @@ const assignedLotCount = (result: ReturnType<typeof simulate>, bidderId: string)
     .reduce((sum, assignment) => sum + assignment.lotIds.length, 0) ?? 0;
 
 describe("TPL tender scoring", () => {
+  it("precompila come presenti i campi qualitativi per un nuovo concorrente", () => {
+    const bidder = createBidder("a", "A");
+    applyQualitativeReadyDefaults(bidder.lots.L1);
+
+    for (const criterion of CRITERIA) {
+      if (criterion.kind === "T") expect(bidder.lots.L1.tValues[criterion.id]).toBe(true);
+      if (criterion.kind === "D") expect(bidder.lots.L1.dValues[criterion.id]).toBe(1);
+      if (criterion.kind === "Q") expect(bidder.lots.L1.qValues[criterion.id]).toBe(0);
+    }
+  });
+
   it("keeps lot participation separate for each operator", () => {
     const first = createBidder("a", "A");
     const second = createBidder("b", "B");

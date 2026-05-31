@@ -600,10 +600,30 @@ button {
 }
 
 .section-title.between > span,
+.mobile-collapsible-title > span,
 .warn-title {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+.mobile-collapsible-title {
+  justify-content: space-between;
+}
+
+.section-title-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.mobile-panel-toggle {
+  display: none;
+}
+
+.mobile-collapsible-body {
+  display: contents;
 }
 
 .section-actions {
@@ -986,10 +1006,46 @@ input[type="checkbox"] {
   padding: 5px;
 }
 
+.saved-scenario-row.dragging,
+.sidebar-row-actions.dragging {
+  opacity: 0.58;
+}
+
+.saved-scenario-row.drop-target,
+.sidebar-row-actions.drop-target {
+  border-color: var(--teal);
+  box-shadow: inset 3px 0 0 var(--teal);
+}
+
 .saved-scenario-row.selected,
 .sidebar-row-actions.selected {
   border-color: var(--teal-border);
   background: var(--teal-soft);
+}
+
+.drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 28px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  cursor: grab;
+  touch-action: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.drag-handle:hover,
+.drag-handle:focus-visible {
+  background: var(--control-bg);
+  color: var(--body-soft);
 }
 
 .saved-scenario-main {
@@ -3682,11 +3738,11 @@ input[type="checkbox"] {
 
   .layout {
     grid-template-areas:
-      "workspace"
       "rail"
+      "workspace"
       "insights";
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 55vh) auto auto;
+    grid-template-rows: auto auto auto;
     height: auto;
     max-height: none;
     overflow: visible;
@@ -3696,16 +3752,58 @@ input[type="checkbox"] {
     grid-row: auto;
     position: static;
     top: auto;
-    max-height: min(70vh, 640px);
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding-right: 4px;
+    max-height: none;
+    overflow: visible;
+    overscroll-behavior: auto;
+    padding-right: 0;
+    scrollbar-gutter: auto;
   }
 
   .workspace {
+    height: auto;
     max-height: none;
     min-height: 0;
+    overflow: visible;
+    overscroll-behavior: auto;
+    scrollbar-gutter: auto;
+  }
+
+  .mobile-collapsible-panel {
+    padding: 12px;
+  }
+
+  .mobile-collapsible-title {
+    margin-bottom: 10px;
+  }
+
+  .mobile-panel-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface-soft);
+    color: var(--body-soft);
+    cursor: pointer;
+  }
+
+  .mobile-panel-toggle svg {
+    transition: transform 150ms ease;
+  }
+
+  .mobile-collapsed .mobile-panel-toggle svg {
+    transform: rotate(-90deg);
+  }
+
+  .mobile-collapsed .mobile-collapsible-title {
+    margin-bottom: 0;
+  }
+
+  .mobile-collapsed .mobile-collapsible-body {
+    display: none;
   }
 
   .right-panel {

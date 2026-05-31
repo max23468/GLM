@@ -6,6 +6,22 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.9.0] — 2026-05-31
+
+### Novità
+
+- **Sidebar**: aggiunto il riordino manuale di scenari e concorrenti tramite trascinamento, mantenendo l'ordine scelto nel workspace.
+
+### Correzioni
+
+- **Mobile**: resa più lineare la navigazione della sidebar su schermi piccoli, con controlli prima del workspace, scroll unico della pagina e pannelli richiudibili.
+
+## [1.8.6] — 2026-05-31
+
+### Correzioni
+
+- **Concorrenti**: i nuovi concorrenti partono con i campi qualitativi dell'offerta tecnica già impostati su `Presente` e coefficiente massimo, evitando valori iniziali penalizzanti.
+
 ## [1.8.5] — 2026-05-31
 
 ### Correzioni

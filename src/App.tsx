@@ -38,6 +38,7 @@ import {
 import { BASE_SCENARIOS, DEFAULT_SETTINGS, getBaseScenario } from "./data/base-scenarios";
 import {
   applyPhaseDiscountDelta,
+  applyQualitativeReadyDefaults,
   computeQuantityInputValue,
   createBidder,
   criteriaByParent,
@@ -415,6 +416,16 @@ type StateUpdater<T> = T | ((current: T) => T);
 const resolveStateUpdater = <T,>(updater: StateUpdater<T>, current: T) =>
   typeof updater === "function" ? (updater as (value: T) => T)(current) : updater;
 
+const reorderById = <T extends { id: string }>(items: T[], sourceId: string, targetId: string) => {
+  const sourceIndex = items.findIndex((item) => item.id === sourceId);
+  const targetIndex = items.findIndex((item) => item.id === targetId);
+  if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return items;
+  const next = [...items];
+  const [moved] = next.splice(sourceIndex, 1);
+  next.splice(targetIndex, 0, moved);
+  return next;
+};
+
 const buildDuplicateBidderName = (name: string, bidders: Bidder[]) => {
   const base = name.replace(/\s+copia(?:\s+\d+)?$/i, "").trim() || name;
   const firstCandidate = `${base} copia`;
@@ -765,6 +776,7 @@ function useSimulatorController() {
   const addBidder = () => {
     const nextId = `offerente-${Date.now()}`;
     const next = createBidder(nextId, `Nuovo concorrente ${bidders.length + 1}`);
+    for (const lot of LOTS) applyQualitativeReadyDefaults(next.lots[lot.id]);
     next.lots.L1.enabled = true;
     setBidders((current) => [...current, next]);
     setSelectedBidderId(nextId);
@@ -784,6 +796,10 @@ function useSimulatorController() {
       selectedLotId: getFirstEnabledLotId(next, selectedLotId),
       scenarioNotice: `Duplicato: ${next.name}`,
     });
+  };
+
+  const reorderBidder = (sourceBidderId: string, targetBidderId: string) => {
+    setBidders((current) => reorderById(current, sourceBidderId, targetBidderId));
   };
 
   const duplicateBidderLotOffer = (sourceLotId: LotId, targetLotId: LotId) => {
@@ -851,7 +867,11 @@ function useSimulatorController() {
   const saveCurrentScenario = () => {
     const nextId = activeSavedScenarioId ?? `scenario-${Date.now()}`;
     const snapshot = currentScenarioSnapshot(nextId);
-    setSavedScenarios((current) => [snapshot, ...current.filter((scenario) => scenario.id !== nextId)]);
+    setSavedScenarios((current) =>
+      current.some((scenario) => scenario.id === nextId)
+        ? current.map((scenario) => (scenario.id === nextId ? snapshot : scenario))
+        : [snapshot, ...current],
+    );
     setActiveSavedScenarioId(nextId);
     setScenarioNotice(`Salvato: ${snapshot.name}`);
   };
@@ -992,6 +1012,10 @@ function useSimulatorController() {
     if (scenario) applyScenarioSnapshot(scenario);
   };
 
+  const reorderSavedScenario = (sourceScenarioId: string, targetScenarioId: string) => {
+    setSavedScenarios((current) => reorderById(current, sourceScenarioId, targetScenarioId));
+  };
+
   const resetCurrentScenarioModel = () => {
     const profileId = resolveOriginProfileId(activeSavedScenario);
     const factory = buildPresetScenarioSnapshot(getBaseScenario(profileId));
@@ -1109,6 +1133,7 @@ function useSimulatorController() {
     exportExcelScenario,
     importScenarioFile,
     loadSavedScenario,
+    reorderSavedScenario,
     resetCurrentScenarioModel,
     resetToolToInitialState,
     restoreRemovedPresets,
@@ -1121,6 +1146,7 @@ function useSimulatorController() {
     duplicateBidder,
     duplicateBidderLotOffer,
     removeBidder,
+    reorderBidder,
     selectBidder,
     updateBidder,
     changeSelectedBidderLotParticipation,
@@ -1257,6 +1283,7 @@ function SimulatorSidebar({ controller }: { controller: SimulatorController }) {
     exportExcelScenario,
     importScenarioFile,
     loadSavedScenario,
+    reorderSavedScenario,
     resetCurrentScenarioModel,
     resetToolToInitialState,
     restoreRemovedPresets,
@@ -1270,6 +1297,7 @@ function SimulatorSidebar({ controller }: { controller: SimulatorController }) {
     duplicateBidder,
     duplicateBidderLotOffer,
     removeBidder,
+    reorderBidder,
     selectBidder,
     updateBidder,
     changeSelectedBidderLotParticipation,
@@ -1293,6 +1321,7 @@ function SimulatorSidebar({ controller }: { controller: SimulatorController }) {
       onExportExcel={exportExcelScenario}
       onImportFile={importScenarioFile}
       onLoadSaved={loadSavedScenario}
+      onReorderSavedScenario={reorderSavedScenario}
       onResetModel={resetCurrentScenarioModel}
       onResetTool={resetToolToInitialState}
       removedPresetCount={removedPresetCount}
@@ -1305,6 +1334,7 @@ function SimulatorSidebar({ controller }: { controller: SimulatorController }) {
       onDuplicateBidder={duplicateBidder}
       onDuplicateBidderLotOffer={duplicateBidderLotOffer}
       onRemoveBidder={removeBidder}
+      onReorderBidder={reorderBidder}
       onSelectBidder={selectBidder}
       onSelectedBidderNameChange={(name) => {
         if (!selectedBidder) return;
