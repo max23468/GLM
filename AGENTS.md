@@ -306,7 +306,7 @@ Esegui `npm run smoke` solo quando il diff tocca o rischia di rompere flussi cop
 - Prima di commit o PR, fai self-review del diff e verifica che non includa modifiche estranee, file generati o allegati toccati per errore.
 - Se lavori su `main` direttamente, stage solo i file pertinenti alla richiesta.
 - Per lavori non banali o quando il worktree è già sporco, preferisci branch/worktree `codex/<tema>` e PR o merge esplicito verso `main`.
-- Prima di PR ready, merge, pubblicazione, deploy o release, controlla la `Codex feedback inbox` e risolvi i thread actionable o dichiarali fuori scope.
+- Prima di PR ready, merge, pubblicazione, deploy o release, controlla la `Codex feedback inbox`, marcata dalla label `codex-feedback-inbox`, e risolvi i thread actionable o dichiarali fuori scope.
 - Nella descrizione PR o nel riepilogo operativo indica cosa è cambiato, perché, verifiche eseguite, verifiche saltate intenzionalmente e rischi residui.
 - Non aggiungere workflow GitHub Actions, policy di release o canali deploy alternativi senza richiesta esplicita.
 - Usa PR template, issue template e PR title check o controllo equivalente quando
