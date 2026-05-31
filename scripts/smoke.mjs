@@ -83,6 +83,20 @@ const verifyPublicRoutes = async (page, suffix) => {
   }
 };
 
+const waitForActivityNotification = async (page, title, bodyParts = []) => {
+  await page.waitForFunction(
+    ({ expectedTitle, expectedBodyParts }) => {
+      const workspace = JSON.parse(localStorage.getItem("tpl-lotti-1-4-workspace") || "{}");
+      const notifications = Array.isArray(workspace.notifications) ? workspace.notifications : [];
+      return notifications.some((notification) => {
+        const body = notification.body || "";
+        return notification.title === expectedTitle && expectedBodyParts.every((part) => body.includes(part));
+      });
+    },
+    { expectedTitle: title, expectedBodyParts: bodyParts },
+  );
+};
+
 const verifyImportExportAndComparison = async (page, suffix) => {
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Esporta scenario JSON completo" }).click();
@@ -118,15 +132,12 @@ const verifyImportExportAndComparison = async (page, suffix) => {
 
     await writeFile(importPath, JSON.stringify(payload, null, 2));
     await page.locator('input[type="file"]').setInputFiles(importPath);
-    await page.waitForFunction(
-      (name) => document.body.innerText.includes(`Importato: ${name}`),
+    await waitForActivityNotification(page, "Scenario importato", [
       importName,
-    );
-
-    const noticeText = await page.locator(".scenario-notice").innerText();
-    for (const expected of ["Schema aggiornato", "Profilo di riferimento legacy", "Configurazione Ottimizzazione"]) {
-      if (!noticeText.includes(expected)) throw new Error(`${suffix}: import senza dettaglio riparazione ${expected}`);
-    }
+      "Schema aggiornato",
+      "Profilo di riferimento legacy",
+      "Configurazione Ottimizzazione",
+    ]);
 
     const excelName = `Excel ${suffix}`;
     const excelPath = path.join(tempDir, `${excelName.replace(/\s+/g, "-").toLowerCase()}.json`);
@@ -152,10 +163,7 @@ const verifyImportExportAndComparison = async (page, suffix) => {
       ),
     );
     await page.locator('input[type="file"]').setInputFiles(excelPath);
-    await page.waitForFunction(
-      (name) => document.body.innerText.includes(`Importato: ${name}`) && document.body.innerText.includes("Formato Excel importato"),
-      excelName,
-    );
+    await waitForActivityNotification(page, "Scenario importato", [excelName, "Formato Excel importato"]);
 
     await page.locator(".comparison-panel select").selectOption({ label: importName });
     const comparisonText = await page.locator(".comparison-panel").innerText();
