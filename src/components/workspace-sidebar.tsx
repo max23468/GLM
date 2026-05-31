@@ -12,7 +12,6 @@ type WorkspaceSidebarProps = {
   scenarioName: string;
   savedScenarios: SavedScenarioSnapshot[];
   activeSavedScenarioId?: string;
-  scenarioNotice?: string;
   removedPresetCount: number;
   onScenarioNameChange: (name: string) => void;
   onNew: () => void;
@@ -48,7 +47,6 @@ export function WorkspaceSidebar({
   scenarioName,
   savedScenarios,
   activeSavedScenarioId,
-  scenarioNotice,
   removedPresetCount,
   onScenarioNameChange,
   onNew,
@@ -127,7 +125,6 @@ export function WorkspaceSidebar({
         scenarioName={scenarioName}
         libraryEntries={libraryEntries}
         activeLibraryKey={activeLibraryKey}
-        scenarioNotice={scenarioNotice}
         hiddenLibraryCount={removedPresetCount}
         onScenarioNameChange={onScenarioNameChange}
         onNew={onNew}
@@ -182,8 +179,9 @@ export function WorkspaceSidebar({
         )}
         <div className="offeror-list">
           {bidders.map((bidder) => {
-            const activeLots = LOTS.filter((lot) => bidder.lots[lot.id].enabled).length;
+            const activeLots = LOTS.filter((lot) => bidder.lots[lot.id].enabled);
             const isSelected = bidder.id === selectedBidder?.id;
+            const lotSummary = activeLots.length ? activeLots.map((lot) => lot.shortLabel).join(", ") : "nessun lotto";
             return (
               <div
                 key={bidder.id}
@@ -199,7 +197,7 @@ export function WorkspaceSidebar({
                     sortableBidders.startDrag(event, {
                       id: bidder.id,
                       title: bidder.name,
-                      detail: `${activeLots} ${activeLots === 1 ? "lotto" : "lotti"}`,
+                      detail: activeLots.length ? `Lotti ${lotSummary}` : "Nessun lotto attivo",
                     })
                   }
                   aria-label={`Riordina concorrente ${bidder.name}`}
@@ -207,10 +205,12 @@ export function WorkspaceSidebar({
                 >
                   <GripVertical size={14} />
                 </button>
-                <button className="offeror-row" type="button" onClick={() => onSelectBidder(bidder.id)}>
+                <button className="offeror-row" type="button" onClick={() => onSelectBidder(bidder.id)} aria-label={`Seleziona concorrente ${bidder.name}, lotti attivi: ${lotSummary}`}>
                   <span>{bidder.name}</span>
-                  <small>
-                    {activeLots} {activeLots === 1 ? "lotto" : "lotti"}
+                  <small className={`offeror-lot-badges ${activeLots.length ? "" : "empty"}`} aria-hidden="true">
+                    {activeLots.length
+                      ? activeLots.map((lot) => <span key={lot.id}>{lot.shortLabel}</span>)
+                      : <span>Nessun lotto</span>}
                   </small>
                 </button>
                 <button

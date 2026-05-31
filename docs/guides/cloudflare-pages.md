@@ -84,8 +84,11 @@ Non inserire il token direttamente nel codice. Anche se è un identificatore pub
 Il repo versiona:
 
 - `public/_headers`: header di sicurezza e cache lunga per gli asset Vite hashati;
+- `public/robots.txt`: blocco dell'indicizzazione per crawler e motori che rispettano robots.txt;
 - `public/_redirects`: canonicalizzazione `/istruzioni`;
 - `public/_routes.json`: limita l'invocazione Pages Functions alle rotte `/api/*`.
+
+La produzione deve restare non indicizzata: `index.html` espone meta `noindex`, `_headers` applica `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex` a tutte le risposte statiche e `robots.txt` usa `Disallow: /`. Questi segnali riducono l'indicizzazione da crawler conformi, ma non sostituiscono una protezione di accesso se serve riservatezza forte.
 
 Il fallback SPA è lasciato al comportamento predefinito di Cloudflare Pages: in assenza di `404.html`, Pages serve l'app root per le rotte non trovate. Evita quindi un rewrite globale `/* /index.html 200`, perché Wrangler può segnalarlo come loop con la normalizzazione di `index.html`.
 

@@ -6,6 +6,42 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.10.0] — 2026-05-31
+
+### Novità
+
+- **Attività**: aggiunto un centro notifiche con campanella, toast per gli eventi principali e storico locale del workspace.
+
+### Correzioni
+
+- **Interfaccia**: resa più compatta la barra alta, rimuovendo il sottotitolo e mantenendo titolo a sinistra e comandi a destra.
+- **Tecnica**: ridotta la doppia indicazione grezzo/riparametrato ai soli casi in cui i due punteggi differiscono.
+
+## [1.9.5] — 2026-05-31
+
+### Correzioni
+
+- **Prestazioni**: ridotti i ricalcoli durante l'inserimento dati e il cambio schede, limitando l'ottimizzazione alla relativa tab e alleggerendo il salvataggio locale.
+
+## [1.9.4] — 2026-05-31
+
+### Correzioni
+
+- **Tecnica**: chiarita la lettura dei criteri discrezionali, mostrando il punteggio base e, quando diverso, il valore riparametrato.
+
+## [1.9.3] — 2026-05-31
+
+### Correzioni
+
+- **Sidebar**: i concorrenti mostrano direttamente i lotti attivi con badge `L1`-`L4`, senza limitarsi al conteggio dei lotti.
+- **Privacy**: aggiunti segnali `noindex` e blocco crawler per mantenere il simulatore fuori dall'indicizzazione pubblica.
+
+## [1.9.2] — 2026-05-31
+
+### Correzioni
+
+- **Tecnica**: gli ambiti A-G mostrano il punteggio grezzo anche quando l'offerta è sotto soglia, così il parziale resta leggibile prima dell'ammissione.
+
 ## [1.9.1] — 2026-05-31
 
 ### Correzioni

@@ -29,7 +29,6 @@ type ScenarioToolsProps = {
   scenarioName: string;
   libraryEntries: ScenarioLibraryEntry[];
   activeLibraryKey: string;
-  scenarioNotice?: string;
   hiddenLibraryCount?: number;
   onScenarioNameChange: (name: string) => void;
   onNew: () => void;
@@ -52,7 +51,6 @@ export function ScenarioTools({
   scenarioName,
   libraryEntries,
   activeLibraryKey,
-  scenarioNotice,
   hiddenLibraryCount = 0,
   onScenarioNameChange,
   onNew,
@@ -232,7 +230,6 @@ export function ScenarioTools({
         <RotateCcw size={16} />
         Reset totale tool
       </button>
-      {scenarioNotice && <div className="scenario-notice">{scenarioNotice}</div>}
       </div>
     </section>
   );

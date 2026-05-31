@@ -75,6 +75,7 @@ src/components/instructions-page.tsx   Pagina web navigabile con istruzioni di c
 src/components/release-panel.tsx       Scheda Versione e changelog
 src/styles.css                         Design system locale e layout responsive
 public/_headers                        Header Cloudflare Pages per sicurezza e cache asset
+public/robots.txt                      Blocco robots per mantenere il sito fuori dall'indicizzazione
 public/_redirects                      Redirect canonico Cloudflare Pages per URL /istruzioni
 public/_routes.json                    Invocazione Pages Functions limitata a /api/*
 .github/workflows/ci.yml               CI GitHub Actions con validazione, build e preview PR

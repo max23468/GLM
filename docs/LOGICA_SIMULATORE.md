@@ -102,6 +102,8 @@ La tab `Ottimizzazione` affianca al piano due letture sintetiche:
 
 I criteri discrezionali `D` sono esclusi dall'ottimizzazione automatica perché dipendono dal giudizio della Commissione e non hanno una funzione deterministica costo-punteggio nel disciplinare. Restano compilabili manualmente nella tab `Tecnica`.
 
+Nella tab `Tecnica`, i criteri discrezionali mostrano come lettura principale il punteggio base derivato da `coefficiente x punti massimi`. Quando la simulazione riparametra quel criterio rispetto alla migliore offerta del lotto, la UI espone anche il valore riparametrato per evitare di confondere il valore inserito con il punteggio comparativo.
+
 Per ogni leva tecnica l'utente può indicare:
 
 - `enabled`: se la leva entra nel piano;

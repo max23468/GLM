@@ -1,10 +1,13 @@
 import {
   AlertTriangle,
   BarChart3,
+  Bell,
   BookOpen,
+  CheckCheck,
   Download,
   CheckCircle2,
   CircleDollarSign,
+  Info,
   LineChart,
   type LucideIcon,
   Monitor,
@@ -13,6 +16,7 @@ import {
   Route,
   SlidersHorizontal,
   Sun,
+  Trash2,
   Trophy,
   X,
 } from "lucide-react";
@@ -86,6 +90,7 @@ import {
   readStoredWorkspace,
   resolveOriginProfileId,
   type SavedScenarioSnapshot,
+  type StoredNotification,
   type StoredWorkspace,
 } from "./lib/scenario-persistence";
 import {
@@ -113,6 +118,12 @@ const euroPerKmFormatter = new Intl.NumberFormat("it-IT", {
 });
 type ThemePreference = "auto" | "light" | "dark";
 type WorkspaceTab = "tecnica" | "economica" | "ottimizza" | "combinatorie" | "risultati";
+type ActivityNotificationInput = {
+  tone: StoredNotification["tone"];
+  title: string;
+  body?: string;
+  toast?: boolean;
+};
 type AppView = "simulatore" | "istruzioni";
 
 type ExcelPackageManifest = {
@@ -365,6 +376,37 @@ const formatCriterionRowValue = (criterion: Criterion, value: number | boolean |
   return `${formatPlainNumber(quantityInput.numerator)}/${formatPlainNumber(quantityInput.denominator)} -> ${formatCriterionValue(criterion, value)}`;
 };
 
+const discretionaryBaseScore = (criterion: Criterion, value: number | boolean | undefined) => {
+  if (criterion.kind !== "D") return undefined;
+  return round4(Math.min(Math.max(Number(value ?? 0) * criterion.maxPoints, 0), criterion.maxPoints));
+};
+
+const scoreValuesDiffer = (left: number, right: number) => Math.abs(left - right) >= 0.0001;
+
+const formatDiscretionaryOption = (criterion: Criterion, value: number) =>
+  `${formatPoints(discretionaryBaseScore(criterion, value) ?? 0)} pt (coeff. ${value.toLocaleString("it-IT", { maximumFractionDigits: 3 })})`;
+
+function CriterionPoints({
+  criterion,
+  value,
+  score,
+}: {
+  criterion: Criterion;
+  value?: number | boolean;
+  score: number;
+}) {
+  const baseScore = discretionaryBaseScore(criterion, value);
+  const primaryScore = baseScore ?? score;
+  const hasRiparametratedScore = typeof baseScore === "number" && scoreValuesDiffer(baseScore, score);
+
+  return (
+    <span className={`criterion-points-display ${hasRiparametratedScore ? "with-secondary" : ""}`}>
+      <span>{formatPoints(primaryScore)} / {formatPoints(criterion.maxPoints)}</span>
+      {hasRiparametratedScore && <small>riparam. {formatPoints(score)}</small>}
+    </span>
+  );
+}
+
 const buildScenarioLotSummaries = (assignments: AssignmentCandidate[]) =>
   LOTS.map((lot) => {
     const assignment = assignments.find((item) => item.lotIds.includes(lot.id));
@@ -401,7 +443,8 @@ type SimulatorState = {
   scenarioName: string;
   activeSavedScenarioId?: string;
   compareScenarioId: string;
-  scenarioNotice: string;
+  notifications: StoredNotification[];
+  activeToastId?: string;
   isSuggestionsPanelExpanded: boolean;
   isWarningsPanelExpanded: boolean;
 };
@@ -457,7 +500,8 @@ const createInitialSimulatorState = (): SimulatorState => {
     scenarioName: initialWorkspace?.scenarioName ?? fallbackScenario.title,
     activeSavedScenarioId: initialWorkspace?.activeSavedScenarioId,
     compareScenarioId: "",
-    scenarioNotice: "",
+    notifications: initialWorkspace?.notifications ?? [],
+    activeToastId: undefined,
     isSuggestionsPanelExpanded: false,
     isWarningsPanelExpanded: false,
   };
@@ -484,7 +528,8 @@ function useSimulatorController() {
     scenarioName,
     activeSavedScenarioId,
     compareScenarioId,
-    scenarioNotice,
+    notifications,
+    activeToastId,
     isSuggestionsPanelExpanded,
     isWarningsPanelExpanded,
   } = simulatorState;
@@ -511,7 +556,28 @@ function useSimulatorController() {
   const setScenarioName = (scenarioName: string) => patchSimulatorState({ scenarioName });
   const setActiveSavedScenarioId = (activeSavedScenarioId: string | undefined) => patchSimulatorState({ activeSavedScenarioId });
   const setCompareScenarioId = (compareScenarioId: string) => patchSimulatorState({ compareScenarioId });
-  const setScenarioNotice = (scenarioNotice: string) => patchSimulatorState({ scenarioNotice });
+  const pushNotification = ({ tone, title, body, toast = true }: ActivityNotificationInput) => {
+    const notification: StoredNotification = {
+      id: `activity-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      tone,
+      title,
+      body,
+      createdAt: new Date().toISOString(),
+      read: false,
+    };
+    updateSimulatorState((state) => ({
+      ...state,
+      notifications: [notification, ...state.notifications].slice(0, 20),
+      activeToastId: toast ? notification.id : state.activeToastId,
+    }));
+  };
+  const markNotificationsRead = () =>
+    updateSimulatorState((state) => ({
+      ...state,
+      notifications: state.notifications.map((notification) => ({ ...notification, read: true })),
+    }));
+  const clearNotifications = () => updateSimulatorState((state) => ({ ...state, notifications: [], activeToastId: undefined }));
+  const dismissActivityToast = () => patchSimulatorState({ activeToastId: undefined });
   const setSuggestionsPanelExpanded = (updater: StateUpdater<boolean>) =>
     updateSimulatorState((state) => ({ ...state, isSuggestionsPanelExpanded: resolveStateUpdater(updater, state.isSuggestionsPanelExpanded) }));
   const setWarningsPanelExpanded = (updater: StateUpdater<boolean>) =>
@@ -538,21 +604,32 @@ function useSimulatorController() {
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem(
-      STORAGE_KEYS.workspace,
-      JSON.stringify({
-        schemaVersion: 8,
-        scenarioName,
-        activeSavedScenarioId,
-        bidders,
-        optimization: optimizationConfig,
-        settings,
-        selectedBidderId,
-        selectedLotId,
-        selectedPairId,
-      } satisfies StoredWorkspace),
-    );
-  }, [activeSavedScenarioId, bidders, optimizationConfig, scenarioName, selectedBidderId, selectedLotId, selectedPairId, settings]);
+    if (!activeToastId) return undefined;
+    const handle = window.setTimeout(() => dismissActivityToast(), 4200);
+    return () => window.clearTimeout(handle);
+  }, [activeToastId]);
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      window.localStorage.setItem(
+        STORAGE_KEYS.workspace,
+        JSON.stringify({
+          schemaVersion: 8,
+          scenarioName,
+          activeSavedScenarioId,
+          bidders,
+          optimization: optimizationConfig,
+          settings,
+          selectedBidderId,
+          selectedLotId,
+          selectedPairId,
+          notifications,
+        } satisfies StoredWorkspace),
+      );
+    }, 250);
+
+    return () => window.clearTimeout(handle);
+  }, [activeSavedScenarioId, bidders, notifications, optimizationConfig, scenarioName, selectedBidderId, selectedLotId, selectedPairId, settings]);
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEYS.scenarios, JSON.stringify(savedScenarios));
@@ -575,8 +652,8 @@ function useSimulatorController() {
   );
   const result = useMemo(() => simulate(bidders, settings, selectedBidder?.id ?? ""), [bidders, settings, selectedBidder?.id]);
   const optimizationResult = useMemo(
-    () => optimizeOffer(bidders, settings, selectedBidder?.id ?? "", selectedLotId, optimizationConfig),
-    [bidders, optimizationConfig, selectedBidder?.id, selectedLotId, settings],
+    () => activeTab === "ottimizza" ? optimizeOffer(bidders, settings, selectedBidder?.id ?? "", selectedLotId, optimizationConfig) : undefined,
+    [activeTab, bidders, optimizationConfig, selectedBidder?.id, selectedLotId, settings],
   );
   const selectedLotScore = selectedBidder ? result.lotScores[selectedBidder.id][selectedLotId] : undefined;
   const selectedComboScore = selectedBidder ? result.comboScores[selectedBidder.id][selectedPairId] : undefined;
@@ -605,14 +682,14 @@ function useSimulatorController() {
     const bidder = bidders.find((item) => item.id === bidderId);
     if (!bidder) return;
     const nextLotId = bidder.lots[selectedLotId].enabled ? selectedLotId : getFirstEnabledLotId(bidder, selectedLotId);
-    patchSimulatorState({
-      selectedBidderId: bidderId,
-      selectedLotId: nextLotId,
-      scenarioNotice:
-        nextLotId === selectedLotId
-          ? scenarioNotice
-          : `Lotto di lavoro riallineato a ${nextLotId}: il concorrente selezionato non partecipa al lotto precedente.`,
-    });
+    patchSimulatorState({ selectedBidderId: bidderId, selectedLotId: nextLotId });
+    if (nextLotId !== selectedLotId) {
+      pushNotification({
+        tone: "info",
+        title: "Lotto riallineato",
+        body: `Il concorrente selezionato non partecipa al lotto precedente. Focus spostato su ${nextLotId}.`,
+      });
+    }
   };
 
   const buildTradeoffPreview = (criterion: Criterion) => {
@@ -621,6 +698,7 @@ function useSimulatorController() {
     const plan = offer.tradeoffs[criterion.id] ?? defaultTradeoff();
     const currentSubScore = selectedLotScore.subScores[criterion.id];
     if (!currentSubScore || criterion.kind === "D") return undefined;
+    if (plan.deltaUnits <= 0 && plan.unitCost <= 0) return undefined;
 
     const nextBidders = structuredClone(bidders);
     const nextBidder = nextBidders.find((bidder) => bidder.id === selectedBidder.id);
@@ -722,7 +800,11 @@ function useSimulatorController() {
 
     const selectWorkingLot = (lotId: LotId) => {
       if (!selectedBidder?.lots[lotId].enabled) {
-        setScenarioNotice("Lotto non selezionabile: attiva prima la partecipazione del concorrente selezionato.");
+        pushNotification({
+          tone: "warning",
+          title: "Lotto non selezionabile",
+          body: "Attiva prima la partecipazione del concorrente selezionato.",
+        });
         return;
       }
       setSelectedLotId(lotId);
@@ -730,30 +812,37 @@ function useSimulatorController() {
 
     const changeSelectedBidderLotParticipation = (lotId: LotId, checked: boolean) => {
       if (!selectedBidder) return;
+      const nextSelectedBidder = structuredClone(selectedBidder);
+      nextSelectedBidder.lots[lotId].enabled = checked;
+      const nextSelectedLotId =
+        !checked && lotId === selectedLotId ? getFirstEnabledLotId(nextSelectedBidder, selectedLotId) : selectedLotId;
       updateSimulatorState((state) => {
-        let nextSelectedLotId = state.selectedLotId;
-        let nextNotice = state.scenarioNotice;
         const nextBidders = state.bidders.map((bidder) => {
           if (bidder.id !== state.selectedBidderId) return bidder;
           const nextBidder = structuredClone(bidder);
           nextBidder.lots[lotId].enabled = checked;
-          if (!checked && lotId === state.selectedLotId) {
-            nextSelectedLotId = getFirstEnabledLotId(nextBidder, state.selectedLotId);
-            if (nextSelectedLotId !== state.selectedLotId) {
-              nextNotice = `Lotto di lavoro riallineato a ${nextSelectedLotId}: il concorrente selezionato non partecipa al lotto precedente.`;
-            }
-          }
           return nextBidder;
         });
-        return { ...state, bidders: nextBidders, selectedLotId: nextSelectedLotId, scenarioNotice: nextNotice };
+        return { ...state, bidders: nextBidders, selectedLotId: nextSelectedLotId };
       });
+      if (nextSelectedLotId !== selectedLotId) {
+        pushNotification({
+          tone: "info",
+          title: "Lotto riallineato",
+          body: `Il concorrente selezionato non partecipa più al lotto precedente. Focus spostato su ${nextSelectedLotId}.`,
+        });
+      }
     };
 
   const applyOptimizationPlan = () => {
-    if (!selectedBidder || !optimizationResult.steps.length) return;
+    if (!selectedBidder || !optimizationResult?.steps.length) return;
     setBidders(structuredClone(optimizationResult.optimizedBidders));
     setActiveSavedScenarioId(undefined);
-    setScenarioNotice(`Piano ottimizzato applicato: ${formatPoints(optimizationResult.objectiveDelta)} punti stimati.`);
+    pushNotification({
+      tone: "success",
+      title: "Piano ottimizzato applicato",
+      body: `${formatPoints(optimizationResult.objectiveDelta)} punti stimati.`,
+    });
   };
 
   const applyTradeoff = (criterion: Criterion) => {
@@ -793,8 +882,8 @@ function useSimulatorController() {
     patchSimulatorState({
       selectedBidderId: nextId,
       selectedLotId: getFirstEnabledLotId(next, selectedLotId),
-      scenarioNotice: `Duplicato: ${next.name}`,
     });
+    pushNotification({ tone: "success", title: "Concorrente duplicato", body: next.name });
   };
 
   const reorderBidder = (sourceBidderId: string, targetBidderId: string) => {
@@ -813,7 +902,7 @@ function useSimulatorController() {
       return bidder;
     });
     setSelectedLotId(targetLotId);
-    setScenarioNotice(`Copiata l'offerta da ${sourceLabel} a ${targetLabel}.`);
+    pushNotification({ tone: "success", title: "Offerta lotto copiata", body: `Da ${sourceLabel} a ${targetLabel}.` });
   };
 
     const removeBidder = (bidderId: string) => {
@@ -843,7 +932,7 @@ function useSimulatorController() {
     selectedPairId,
   });
 
-    const applyScenarioSnapshot = (scenario: SavedScenarioSnapshot) => {
+    const applyScenarioSnapshot = (scenario: SavedScenarioSnapshot, options: { notify?: boolean } = {}) => {
       const nextBidders = structuredClone(scenario.bidders);
       const nextSelectedBidderId = nextBidders.some((bidder) => bidder.id === scenario.selectedBidderId) ? scenario.selectedBidderId : nextBidders[0]?.id ?? "";
       const nextSelectedBidder = nextBidders.find((bidder) => bidder.id === nextSelectedBidderId);
@@ -860,7 +949,7 @@ function useSimulatorController() {
       setSelectedBidderId(nextSelectedBidderId);
       setSelectedLotId(nextSelectedLotId);
     setSelectedPairId(scenario.selectedPairId);
-    setScenarioNotice(`Caricato: ${scenario.name}`);
+    if (options.notify !== false) pushNotification({ tone: "info", title: "Scenario caricato", body: scenario.name });
   };
 
   const saveCurrentScenario = () => {
@@ -872,14 +961,14 @@ function useSimulatorController() {
         : [snapshot, ...current],
     );
     setActiveSavedScenarioId(nextId);
-    setScenarioNotice(`Salvato: ${snapshot.name}`);
+    pushNotification({ tone: "success", title: "Scenario salvato", body: snapshot.name });
   };
 
   const duplicateCurrentScenario = () => {
     const snapshot = currentScenarioSnapshot(`scenario-${Date.now()}`, `${scenarioName || "Scenario"} copia`);
     setSavedScenarios((current) => [snapshot, ...current]);
-    applyScenarioSnapshot(snapshot);
-    setScenarioNotice(`Duplicato: ${snapshot.name}`);
+    applyScenarioSnapshot(snapshot, { notify: false });
+    pushNotification({ tone: "success", title: "Scenario duplicato", body: snapshot.name });
   };
 
   const exportCurrentScenario = () => {
@@ -891,7 +980,7 @@ function useSimulatorController() {
     link.download = makeDownloadName(snapshot.name);
     link.click();
     URL.revokeObjectURL(url);
-    setScenarioNotice(`Esportato: ${snapshot.name}`);
+    pushNotification({ tone: "success", title: "Scenario esportato", body: snapshot.name });
   };
 
   const exportAllScenarios = () => {
@@ -909,7 +998,7 @@ function useSimulatorController() {
     link.download = makeAllScenariosDownloadName(savedScenarios.length);
     link.click();
     URL.revokeObjectURL(url);
-    setScenarioNotice(`Esportati ${savedScenarios.length} scenari`);
+    pushNotification({ tone: "success", title: "Libreria esportata", body: `${savedScenarios.length} scenari.` });
   };
 
   const exportExcelScenario = () => {
@@ -985,7 +1074,7 @@ function useSimulatorController() {
     link.download = makeExcelDownloadName(payload.name);
     link.click();
     URL.revokeObjectURL(url);
-    setScenarioNotice(`Esportato formato Excel: ${payload.name}`);
+    pushNotification({ tone: "success", title: "Export Excel generato", body: payload.name });
   };
 
   const importScenarioFile = async (file: File) => {
@@ -993,15 +1082,19 @@ function useSimulatorController() {
       const parsed = JSON.parse(await file.text());
       const { snapshot, messages } = normalizeScenarioSnapshotWithReport(parsed);
       if (!snapshot) {
-        setScenarioNotice(messages[0] ?? "File JSON non riconosciuto.");
+        pushNotification({ tone: "error", title: "Import non riuscito", body: messages[0] ?? "File JSON non riconosciuto." });
         return;
       }
       const imported = { ...snapshot, id: snapshot.id || `scenario-${Date.now()}`, savedAt: new Date().toISOString() };
       setSavedScenarios((current) => [imported, ...current.filter((scenario) => scenario.id !== imported.id)]);
-      applyScenarioSnapshot(imported);
-      setScenarioNotice(messages.length ? `Importato: ${imported.name}. ${messages.join(" ")}` : `Importato: ${imported.name}`);
+      applyScenarioSnapshot(imported, { notify: false });
+      pushNotification({
+        tone: messages.length ? "warning" : "success",
+        title: "Scenario importato",
+        body: messages.length ? `${imported.name}. ${messages.join(" ")}` : imported.name,
+      });
     } catch {
-      setScenarioNotice("Import non riuscito: controlla il file JSON.");
+      pushNotification({ tone: "error", title: "Import non riuscito", body: "Controlla il file JSON." });
     }
   };
 
@@ -1026,7 +1119,7 @@ function useSimulatorController() {
         savedAt: activeSavedScenario?.savedAt ?? factory.savedAt,
       };
       setSavedScenarios((current) => current.map((scenario) => (scenario.id === activeSavedScenarioId ? restored : scenario)));
-      applyScenarioSnapshot(restored);
+      applyScenarioSnapshot(restored, { notify: false });
     } else {
       setBidders(factory.bidders);
       setOptimizationConfig(factory.optimization);
@@ -1035,12 +1128,12 @@ function useSimulatorController() {
       setSelectedLotId(factory.selectedLotId);
       setSelectedPairId(factory.selectedPairId);
     }
-    setScenarioNotice(`Modello ripristinato: ${factory.name}`);
+    pushNotification({ tone: "success", title: "Modello ripristinato", body: factory.name });
   };
 
   const restoreRemovedPresets = () => {
     setSavedScenarios((current) => hydrateScenarioLibrary(current, []));
-    setScenarioNotice("Profili predefiniti ripristinati in libreria.");
+    pushNotification({ tone: "success", title: "Profili ripristinati", body: "Gli scenari predefiniti sono tornati in libreria." });
   };
 
   const resetToolToInitialState = () => {
@@ -1055,13 +1148,17 @@ function useSimulatorController() {
     setView("simulatore");
     window.history.pushState({}, "", "/");
     setSavedScenarios(library);
-    applyScenarioSnapshot(initialScenario);
+    applyScenarioSnapshot(initialScenario, { notify: false });
     setCompareScenarioId("");
     setActiveTab("tecnica");
     setSelectedAmbitId(AMBITS[0].id);
     setSelectedCriterionId(CRITERIA[0].id);
     setThemePreference("auto");
-    setScenarioNotice("Tool ripristinato allo stato iniziale: libreria e input sono tornati ai valori predefiniti.");
+    pushNotification({
+      tone: "warning",
+      title: "Tool ripristinato",
+      body: "Libreria e input sono tornati ai valori predefiniti.",
+    });
   };
 
   const renameCurrentScenario = (name: string) => {
@@ -1083,20 +1180,20 @@ function useSimulatorController() {
     setSelectedLotId(template.selectedLotId);
     setSelectedPairId(template.selectedPairId);
     setCompareScenarioId("");
-    setScenarioNotice("Nuovo scenario creato: salvalo in libreria quando vuoi conservarlo.");
+    pushNotification({ tone: "info", title: "Nuovo scenario creato", body: "Salvalo in libreria quando vuoi conservarlo." });
   };
 
   const deleteSavedScenario = (scenarioId?: string) => {
     const targetId = scenarioId ?? activeSavedScenarioId;
     if (!targetId) {
-      setScenarioNotice("Seleziona uno scenario salvato prima di eliminarlo.");
+      pushNotification({ tone: "warning", title: "Nessuno scenario selezionato", body: "Seleziona uno scenario salvato prima di eliminarlo." });
       return;
     }
     const removed = savedScenarios.find((scenario) => scenario.id === targetId);
     setSavedScenarios((current) => current.filter((scenario) => scenario.id !== targetId));
     if (compareScenarioId === targetId) setCompareScenarioId("");
     if (activeSavedScenarioId === targetId) setActiveSavedScenarioId(undefined);
-    setScenarioNotice(`Eliminato: ${removed?.name ?? "scenario salvato"}`);
+    pushNotification({ tone: "warning", title: "Scenario eliminato", body: removed?.name ?? "Scenario salvato" });
   };
 
   const navigateToInstructions = () => {
@@ -1121,7 +1218,11 @@ function useSimulatorController() {
     scenarioName,
     savedScenarios,
     activeSavedScenarioId,
-    scenarioNotice,
+    notifications,
+    activeToastId,
+    markNotificationsRead,
+    clearNotifications,
+    dismissActivityToast,
     renameCurrentScenario,
     createNewScenario,
     saveCurrentScenario,
@@ -1203,11 +1304,129 @@ function SimulatorApp({ controller }: { controller: SimulatorController }) {
   return (
     <div className="app-shell">
       <SimulatorHeader controller={controller} />
+      <ActivityToastStack controller={controller} />
       <div className="layout">
         <SimulatorSidebar controller={controller} />
         <WorkspaceMain controller={controller} />
         <InsightSidebar controller={controller} />
       </div>
+    </div>
+  );
+}
+
+const activityToneIcons: Record<StoredNotification["tone"], LucideIcon> = {
+  success: CheckCircle2,
+  info: Info,
+  warning: AlertTriangle,
+  error: X,
+};
+
+const activityToneLabels: Record<StoredNotification["tone"], string> = {
+  success: "Ok",
+  info: "Info",
+  warning: "Attenzione",
+  error: "Errore",
+};
+
+const formatActivityTime = (createdAt: string) =>
+  new Date(createdAt).toLocaleString("it-IT", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+function ActivityToastStack({ controller }: { controller: SimulatorController }) {
+  const { notifications, activeToastId, dismissActivityToast } = controller;
+  const notification = notifications.find((item) => item.id === activeToastId);
+  if (!notification) return null;
+  const Icon = activityToneIcons[notification.tone];
+  return (
+    <div className="activity-toast-stack" role="status" aria-live="polite">
+      <div className={`activity-toast ${notification.tone}`}>
+        <Icon size={18} />
+        <div>
+          <strong>{notification.title}</strong>
+          {notification.body ? <span>{notification.body}</span> : null}
+        </div>
+        <button type="button" onClick={dismissActivityToast} aria-label="Chiudi notifica">
+          <X size={15} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ActivityCenter({ controller }: { controller: SimulatorController }) {
+  const { notifications, markNotificationsRead, clearNotifications } = controller;
+  const [isOpen, setIsOpen] = useState(false);
+  const unreadCount = notifications.filter((notification) => !notification.read).length;
+
+  return (
+    <div className="activity-center">
+      <button
+        className={`activity-button ${isOpen ? "active" : ""}`}
+        type="button"
+        onClick={() => setIsOpen((current) => !current)}
+        aria-expanded={isOpen}
+        aria-label={unreadCount ? `Apri attività, ${unreadCount} non lette` : "Apri attività"}
+        title="Attività"
+      >
+        <Bell size={17} />
+        {unreadCount > 0 ? <span className="activity-badge">{unreadCount > 9 ? "9+" : unreadCount}</span> : null}
+      </button>
+      {isOpen ? (
+        <div className="activity-popover" role="dialog" aria-label="Centro attività">
+          <div className="activity-popover-head">
+            <div>
+              <strong>Attività</strong>
+              <span>{notifications.length ? `${notifications.length} eventi recenti` : "Nessun evento"}</span>
+            </div>
+            <div className="activity-popover-actions">
+              <button
+                type="button"
+                onClick={markNotificationsRead}
+                disabled={!unreadCount}
+                title="Segna tutte come lette"
+                aria-label="Segna tutte le attività come lette"
+              >
+                <CheckCheck size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={clearNotifications}
+                disabled={!notifications.length}
+                title="Svuota attività"
+                aria-label="Svuota attività"
+              >
+                <Trash2 size={15} />
+              </button>
+            </div>
+          </div>
+          <div className="activity-list">
+            {notifications.length ? (
+              notifications.map((notification) => {
+                const Icon = activityToneIcons[notification.tone];
+                return (
+                  <article key={notification.id} className={`activity-item ${notification.tone} ${notification.read ? "read" : "unread"}`}>
+                    <Icon size={16} />
+                    <div>
+                      <div className="activity-item-title">
+                        <strong>{notification.title}</strong>
+                        <span>{formatActivityTime(notification.createdAt)}</span>
+                      </div>
+                      {notification.body ? <p>{notification.body}</p> : null}
+                      <small>{activityToneLabels[notification.tone]}</small>
+                    </div>
+                  </article>
+                );
+              })
+            ) : (
+              <div className="activity-empty">Le azioni importanti del workspace compariranno qui.</div>
+            )}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1232,7 +1451,6 @@ function SimulatorHeader({ controller }: { controller: SimulatorController }) {
     <header className="topbar">
       <div>
         <h1>Simulatore gara TPL lotti 1-4</h1>
-        <p>Console operativa per confrontare lotti singoli, combinatorie, soglia di sbarramento, ribassi e criticità documentali.</p>
       </div>
       <div className="topbar-actions">
         <div className="theme-control" aria-label="Tema interfaccia">
@@ -1253,14 +1471,16 @@ function SimulatorHeader({ controller }: { controller: SimulatorController }) {
             );
           })}
         </div>
-        <button className="doc-link" type="button" onClick={navigateToInstructions}>
+        <button className="doc-link" type="button" onClick={navigateToInstructions} aria-label="Apri istruzioni" title="Istruzioni">
           <BookOpen size={16} />
-          Istruzioni
+          <span>Istruzioni</span>
         </button>
-        <a className="doc-link" href={excelPackageHref} download>
+        <a className="doc-link" href={excelPackageHref} download aria-label="Scarica pacchetto Excel" title="Pacchetto Excel">
           <Download size={16} />
-          Pacchetto Excel
+          <span className="label-wide">Pacchetto Excel</span>
+          <span className="label-narrow">Excel</span>
         </a>
+        <ActivityCenter controller={controller} />
       </div>
     </header>
   );
@@ -1271,7 +1491,6 @@ function SimulatorSidebar({ controller }: { controller: SimulatorController }) {
     scenarioName,
     savedScenarios,
     activeSavedScenarioId,
-    scenarioNotice,
     renameCurrentScenario,
     createNewScenario,
     saveCurrentScenario,
@@ -1306,7 +1525,6 @@ function SimulatorSidebar({ controller }: { controller: SimulatorController }) {
       scenarioName={scenarioName}
       savedScenarios={savedScenarios}
       activeSavedScenarioId={activeSavedScenarioId}
-      scenarioNotice={scenarioNotice}
       onScenarioNameChange={renameCurrentScenario}
       onNew={createNewScenario}
       onSave={saveCurrentScenario}
@@ -1584,7 +1802,7 @@ function ActiveWorkbench({ controller }: { controller: SimulatorController }) {
         />
       );
     }
-    if (activeTab === "ottimizza") {
+    if (activeTab === "ottimizza" && optimizationResult) {
       return (
         <OptimizationWorkbench
           bidder={selectedBidder}
@@ -1782,18 +2000,29 @@ function TechnicalWorkbench({
   return (
     <div className="technical-workbench">
       <div className="ambit-strip" aria-label="Ambiti tecnici">
-        {AMBITS.map((ambit) => (
+        {AMBITS.map((ambit) => {
+          const rawAmbitScore = lotScore.rawByAmbit[ambit.id] ?? 0;
+          const riparamAmbitScore = lotScore.riparamByAmbit[ambit.id] ?? 0;
+          const displayAmbitScore = lotScore.admitted ? riparamAmbitScore : rawAmbitScore;
+          const showRawAmbitScore = lotScore.admitted && scoreValuesDiffer(rawAmbitScore, riparamAmbitScore);
+          return (
             <button
               key={ambit.id}
               type="button"
               className={`ambit-button ${ambit.id === selectedAmbitId ? "active" : ""}`}
-            onClick={() => onAmbitSelect(ambit.id)}
-          >
-            <small>{ambit.id}</small>
-            <span>{ambit.label}</span>
-            <strong>{formatPoints(lotScore.riparamByAmbit[ambit.id] ?? 0)} / {formatPoints(ambit.maxPoints)}</strong>
-          </button>
-        ))}
+              onClick={() => onAmbitSelect(ambit.id)}
+            >
+              <small>{ambit.id}</small>
+              <span>{ambit.label}</span>
+              <strong>{formatPoints(displayAmbitScore)} / {formatPoints(ambit.maxPoints)}</strong>
+              {showRawAmbitScore || !lotScore.admitted ? (
+                <small className="ambit-button-score-note">
+                  {showRawAmbitScore ? `grezzo ${formatPoints(rawAmbitScore)}` : "sotto soglia"}
+                </small>
+              ) : null}
+            </button>
+          );
+        })}
       </div>
 
       <div className="criteria-filter-bar">
@@ -1820,7 +2049,7 @@ function TechnicalWorkbench({
                 >
                   <strong>{criterion.id}</strong>
                   <span>{criterion.label}</span>
-                  <small>{formatPoints(subScore?.rawScore ?? 0)} / {formatPoints(criterion.maxPoints)} pt</small>
+                  <CriterionPoints criterion={criterion} value={subScore?.value} score={subScore?.rawScore ?? 0} />
                 </button>
               );
             }),
@@ -1909,7 +2138,9 @@ function CriterionRow({
         <span>{criterion.label}</span>
       </span>
       <span className="criterion-row-value">{formatCriterionRowValue(criterion, value, quantityInput)}</span>
-      <span className="criterion-row-points">{formatPoints(score)} / {formatPoints(criterion.maxPoints)}</span>
+      <span className="criterion-row-points">
+        <CriterionPoints criterion={criterion} value={value} score={score} />
+      </span>
       <span className={`row-status ${status.tone}`}>{status.label}</span>
     </button>
   );
@@ -1945,6 +2176,10 @@ function CriterionInspector({
   const value = criterion.kind === "Q" ? getQuantitativeCriterionValue(offer, criterion) : criterion.kind === "T" ? offer.tValues[criterion.id] : offer.dValues[criterion.id];
   const status = criterionStatus(criterion, score, note);
   const tradeoffDenominatorValue = effectiveTradeoffDenominator(criterion, quantityInput, tradeoff);
+  const currentDiscretionaryValue = Number(value ?? 0);
+  const hasDiscretionaryScaleOption =
+    criterion.kind !== "D" ||
+    DISCRETIONARY_SCALE.some((item) => Math.abs(item.value - currentDiscretionaryValue) < 0.0001);
 
   return (
     <aside className="criterion-inspector">
@@ -1954,7 +2189,9 @@ function CriterionInspector({
             <strong>{criterion.id}</strong>
             <span>{criterion.label}</span>
           </div>
-          <b>{formatPoints(score)} / {formatPoints(criterion.maxPoints)}</b>
+          <b>
+            <CriterionPoints criterion={criterion} value={value} score={score} />
+          </b>
         </div>
 
         <div className="criterion-entry-panel">
@@ -1977,10 +2214,10 @@ function CriterionInspector({
                       {criterion.quantityInput.numeratorLabel}
                       <HelpTooltip>Inserisci le unità che soddisfano il requisito, per esempio mezzi o corse coperte.</HelpTooltip>
                     </span>
-                      <input
-                        type="number"
-                        aria-label={criterion.quantityInput.numeratorLabel}
-                        min={0}
+                    <input
+                      type="number"
+                      aria-label={criterion.quantityInput.numeratorLabel}
+                      min={0}
                       step={1}
                       value={quantityInput.numerator}
                       onChange={(event) => onQuantityInputChange({ numerator: Number(event.target.value) })}
@@ -1991,10 +2228,10 @@ function CriterionInspector({
                       {criterion.quantityInput.denominatorLabel}
                       <HelpTooltip>Inserisci la base totale coerente con il criterio; senza denominatore il rapporto non è affidabile.</HelpTooltip>
                     </span>
-                      <input
-                        type="number"
-                        aria-label={criterion.quantityInput.denominatorLabel}
-                        min={0}
+                    <input
+                      type="number"
+                      aria-label={criterion.quantityInput.denominatorLabel}
+                      min={0}
                       step={1}
                       value={quantityInput.denominator}
                       onChange={(event) => onQuantityInputChange({ denominator: Number(event.target.value) })}
@@ -2012,10 +2249,10 @@ function CriterionInspector({
             )}
             {criterion.kind === "Q" && !criterion.quantityInput && (
               <div className="input-with-unit">
-                  <input
-                    type="number"
-                    aria-label={`Valore ${criterion.id}`}
-                    min={criterion.formula === "soil" ? undefined : 0}
+                <input
+                  type="number"
+                  aria-label={`Valore ${criterion.id}`}
+                  min={criterion.formula === "soil" ? undefined : 0}
                   max={criterion.input === "ratio" ? 1 : undefined}
                   step={criterion.input === "ratio" ? 0.05 : criterion.input === "percent" ? 0.01 : 1}
                   value={Number(value)}
@@ -2026,19 +2263,24 @@ function CriterionInspector({
             )}
             {criterion.kind === "T" && (
               <div className="segmented">
-                    <button className={value ? "selected" : ""} type="button" onClick={() => onChange(true)}>
-                      Presente
-                    </button>
-                    <button className={!value ? "selected" : ""} type="button" onClick={() => onChange(false)}>
-                      Assente
-                    </button>
+                <button className={value ? "selected" : ""} type="button" onClick={() => onChange(true)}>
+                  Presente
+                </button>
+                <button className={!value ? "selected" : ""} type="button" onClick={() => onChange(false)}>
+                  Assente
+                </button>
               </div>
             )}
             {criterion.kind === "D" && (
-                <select aria-label={`Coefficiente discrezionale ${criterion.id}`} value={Number(value)} onChange={(event) => onChange(Number(event.target.value))}>
+              <select aria-label={`Coefficiente discrezionale ${criterion.id}`} value={Number(value)} onChange={(event) => onChange(Number(event.target.value))}>
+                {!hasDiscretionaryScaleOption && (
+                  <option value={currentDiscretionaryValue}>
+                    Valore corrente - {formatDiscretionaryOption(criterion, currentDiscretionaryValue)}
+                  </option>
+                )}
                 {DISCRETIONARY_SCALE.map((item) => (
                   <option key={item.label} value={item.value}>
-                    {item.label} - {item.value}
+                    {item.label} - {formatDiscretionaryOption(criterion, item.value)}
                   </option>
                 ))}
               </select>
@@ -3382,7 +3624,7 @@ function SubcriteriaScoreSection({
       <div className="subcriteria-score-heading">
         <div className="section-title compact">
           Punteggi sotto criterio: {selectedLotId}
-          <HelpTooltip>Confronto dei punti grezzi per sotto-criterio sul lotto selezionato. Le righe di ambito riportano anche il tecnico riparametrato.</HelpTooltip>
+          <HelpTooltip>Confronto dei punti per sotto-criterio sul lotto selezionato. Le righe di ambito mostrano anche il grezzo solo quando differisce dal riparametrato.</HelpTooltip>
         </div>
         {bidderCount > 0 ? (
           <p className="subcriteria-score-meta">
@@ -3420,10 +3662,14 @@ function SubcriteriaScoreSection({
                       <td>{formatPoints(ambit.maxPoints)}</td>
                       {scoreBidders.map((bidder) => {
                         const lotScore = result.lotScores[bidder.id]?.[selectedLotId];
+                        const rawAmbitScore = lotScore?.rawByAmbit[ambit.id] ?? 0;
+                        const riparamAmbitScore = lotScore?.riparamByAmbit[ambit.id] ?? 0;
+                        const displayAmbitScore = lotScore?.admitted ? riparamAmbitScore : rawAmbitScore;
+                        const showRawAmbitScore = Boolean(lotScore?.admitted && scoreValuesDiffer(rawAmbitScore, riparamAmbitScore));
                         return (
                           <td key={bidder.id}>
-                            <strong>{formatPoints(lotScore?.riparamByAmbit[ambit.id] ?? 0)}</strong>
-                            <small>grezzo {formatPoints(lotScore?.rawByAmbit[ambit.id] ?? 0)}</small>
+                            <strong>{formatPoints(displayAmbitScore)}</strong>
+                            {showRawAmbitScore ? <small>grezzo {formatPoints(rawAmbitScore)}</small> : null}
                           </td>
                         );
                       })}

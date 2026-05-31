@@ -51,6 +51,17 @@ export type SavedScenarioSnapshot = {
   selectedPairId: PairId;
 };
 
+export type StoredNotificationTone = "success" | "info" | "warning" | "error";
+
+export type StoredNotification = {
+  id: string;
+  tone: StoredNotificationTone;
+  title: string;
+  body?: string;
+  createdAt: string;
+  read: boolean;
+};
+
 export type StoredWorkspace = {
   schemaVersion: 8;
   scenarioName: string;
@@ -61,6 +72,7 @@ export type StoredWorkspace = {
   selectedBidderId: string;
   selectedLotId: LotId;
   selectedPairId: PairId;
+  notifications: StoredNotification[];
 };
 
 type LegacyScenarioLike = Partial<SavedScenarioSnapshot> & {
@@ -209,6 +221,32 @@ const normalizeBaseScenarioId = (value: unknown): BaseScenarioId =>
   typeof value === "string" && isBaseScenarioId(value) ? value : BASE_SCENARIOS[0].id;
 
 const recordValue = (value: unknown, key: string) => (isRecord(value) ? value[key] : undefined);
+
+const notificationTones: StoredNotificationTone[] = ["success", "info", "warning", "error"];
+
+const isNotificationTone = (value: unknown): value is StoredNotificationTone =>
+  typeof value === "string" && notificationTones.includes(value as StoredNotificationTone);
+
+const normalizeStoredNotification = (value: unknown, index: number): StoredNotification | undefined => {
+  if (!isRecord(value)) return undefined;
+  const title = normalizedName(value.title, "");
+  if (!title) return undefined;
+  const body = typeof value.body === "string" && value.body.trim() ? value.body.trim().slice(0, 280) : undefined;
+  return {
+    id: normalizedId(value.id, `activity-${Date.now()}-${index}`),
+    tone: isNotificationTone(value.tone) ? value.tone : "info",
+    title: title.slice(0, 90),
+    body,
+    createdAt: typeof value.createdAt === "string" && value.createdAt.trim() ? value.createdAt : new Date().toISOString(),
+    read: normalizeBoolean(value.read, false),
+  };
+};
+
+const normalizeStoredNotifications = (value: unknown): StoredNotification[] =>
+  (Array.isArray(value) ? value : [])
+    .map(normalizeStoredNotification)
+    .filter((notification): notification is StoredNotification => Boolean(notification))
+    .slice(0, 20);
 
 const extractScenarioImportCandidate = (value: unknown) => {
   if (Array.isArray(value)) return value.find(isRecord);
@@ -686,6 +724,7 @@ export const normalizeStoredWorkspace = (value: unknown): StoredWorkspace | unde
       : bidders[0]?.id ?? fallbackScenario.defaultBidderId,
     selectedLotId: isLotId(candidate.selectedLotId) ? candidate.selectedLotId : fallbackScenario.defaultLotId,
     selectedPairId: isPairId(candidate.selectedPairId) ? candidate.selectedPairId : fallbackScenario.defaultPairId,
+    notifications: normalizeStoredNotifications(candidate.notifications),
   };
 };
 

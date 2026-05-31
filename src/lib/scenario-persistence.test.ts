@@ -77,6 +77,29 @@ describe("scenario persistence normalization", () => {
     expect(workspace?.bidders.length).toBeGreaterThan(0);
   });
 
+  it("normalizza lo storico attività del workspace senza superare gli ultimi 20 eventi", () => {
+    const workspace = normalizeStoredWorkspace({
+      schemaVersion: 8,
+      scenarioName: "Workspace",
+      baseScenarioId: "market",
+      bidders: [{ id: "a", lots: { L1: { enabled: true } } }],
+      notifications: Array.from({ length: 22 }, (_, index) => ({
+        id: `activity-${index}`,
+        tone: index === 0 ? "bad-tone" : "success",
+        title: index === 1 ? "" : `Evento ${index}`,
+        body: index === 2 ? "Dettaglio evento" : undefined,
+        createdAt: "2026-05-31T10:00:00.000Z",
+        read: index % 2 === 0,
+      })),
+    });
+
+    expect(workspace).toBeDefined();
+    expect(workspace?.notifications).toHaveLength(20);
+    expect(workspace?.notifications[0]).toMatchObject({ id: "activity-0", tone: "info", title: "Evento 0", read: true });
+    expect(workspace?.notifications.some((notification) => notification.title === "")).toBe(false);
+    expect(workspace?.notifications.some((notification) => notification.body === "Dettaglio evento")).toBe(true);
+  });
+
   it("normalizza gli input di ottimizzazione negli snapshot importati", () => {
     const snapshot = normalizeScenarioSnapshot({
       id: "optimizer",
