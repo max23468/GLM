@@ -22,7 +22,7 @@
 | `git` | locale | stato repository, branch e commit |
 | `gh` | locale | GitHub, PR, issue e Codex feedback inbox |
 | `wrangler` | `^4.95.0` | Cloudflare Pages deploy e diagnosi |
-| `react-doctor` | `^0.2.8` | qualità React dopo release minor o modifiche React trasversali |
+| React Doctor | `npx react-doctor@latest` via `npm run quality:react-doctor` | qualità React dopo release major/minor o modifiche React trasversali |
 | Playwright | `^1.60.0` | smoke browser |
 
 ## Comandi
@@ -65,4 +65,4 @@
 
 - Gli allegati in `docs/milano-lotti-extraurbani-om/` sono fonti Git LFS, non contenuto da normalizzare o riscrivere.
 - `CHANGELOG.md` è visibile nel frontend: non usarlo per note interne se non nella sezione `### Non versionato` prevista dalla policy.
-- React Doctor è obbligatorio prima della prossima release minor React o quando una modifica React trasversale lo rende proporzionato.
+- React Doctor è obbligatorio prima della prossima release major/minor React o quando una modifica React trasversale lo rende proporzionato.
