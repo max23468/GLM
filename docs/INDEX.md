@@ -21,6 +21,8 @@ La root resta il punto di ingresso operativo. `docs/` contiene governance, logic
 
 - `docs/LOGICA_SIMULATORE.md`: logica, assunzioni, flusso di calcolo, ottimizzazione, persistenza e verifiche.
 - `docs/milano-lotti-extraurbani-om/`: allegati ufficiali di gara versionati con Git LFS. Non modificarli, convertirli o rinominarli senza richiesta esplicita.
+- `excel-vba/EXCEL_VBA_GUIDE.md`: guida del toolkit Excel/VBA, mantenuta
+  accanto al pacchetto Excel come eccezione operativa fuori da `docs/`.
 
 ## Pubblicazione e operatività
 
