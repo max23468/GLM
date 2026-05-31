@@ -1,4 +1,4 @@
-import { CRITERIA, LOTS, PAIRS, THRESHOLD_OPTIONS, type LotId, type PairId } from "../data/tender";
+import { CRITERIA, LOTS, PAIRS, type LotId, type PairId } from "../data/tender";
 import {
   BASE_SCENARIOS,
   DEFAULT_SETTINGS,
@@ -549,16 +549,9 @@ const normalizeBidders = (value: unknown, baseScenarioId: BaseScenarioId): Bidde
   });
 };
 
-export const normalizeSettings = (value: unknown): Settings => {
-  const source = isRecord(value) ? value : {};
-  const threshold = finiteNumber(source.threshold, DEFAULT_SETTINGS.threshold);
-  const allowedThresholds = THRESHOLD_OPTIONS.map((option) => option.value) as number[];
+export const normalizeSettings = (_value: unknown): Settings => {
   return {
-    threshold: allowedThresholds.includes(threshold) ? threshold : DEFAULT_SETTINGS.threshold,
-    applyAwardLimitDerogation:
-      typeof source.applyAwardLimitDerogation === "boolean"
-        ? source.applyAwardLimitDerogation
-        : DEFAULT_SETTINGS.applyAwardLimitDerogation,
+    ...DEFAULT_SETTINGS,
   };
 };
 
@@ -658,9 +651,9 @@ export const normalizeScenarioSnapshotWithReport = (value: unknown): ScenarioImp
   if (hasDuplicateBidderIds(candidate.bidders)) messages.push("ID concorrente duplicati resi univoci per evitare sovrapposizioni nei punteggi.");
   if (!isRecord(candidate.optimization)) messages.push("Configurazione Ottimizzazione assente o non valida: usati i valori dello scenario base.");
   if (!isRecord(candidate.settings)) {
-    messages.push("Parametri scenario assenti o non validi: usati i valori predefiniti.");
+    messages.push("Parametri scenario assenti o non validi: usati i valori fissi del simulatore.");
   } else if (snapshot.settings.threshold !== candidate.settings.threshold || snapshot.settings.applyAwardLimitDerogation !== candidate.settings.applyAwardLimitDerogation) {
-    messages.push("Parametri scenario non validi riallineati ai valori supportati.");
+    messages.push("Parametri scenario riallineati alla soglia fissa del simulatore.");
   }
   if (snapshot.selectedBidderId !== candidate.selectedBidderId || snapshot.selectedLotId !== candidate.selectedLotId || snapshot.selectedPairId !== candidate.selectedPairId) {
     messages.push("Focus di lavoro non valido riallineato a concorrente, lotto e combinatoria disponibili.");

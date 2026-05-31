@@ -6,6 +6,13 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.9.1] — 2026-05-31
+
+### Correzioni
+
+- **Sidebar**: reso più fluido il riordino di scenari e concorrenti, con anteprima visibile della riga trascinata.
+- **Sidebar**: rimosso il box `Parametri`; il simulatore usa soglia di sbarramento fissa a 37 punti e deroga al limite di due lotti disattivata.
+
 ## [1.9.0] — 2026-05-31
 
 ### Novità

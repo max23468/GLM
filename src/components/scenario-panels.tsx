@@ -12,11 +12,12 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState, type DragEvent, type PointerEvent } from "react";
+import { useRef, useState } from "react";
 import { LOTS } from "../data/tender";
 import { candidateLotScore, formatPoints, type AssignmentCandidate, type SimulationResult } from "../lib/scoring";
 import type { SavedScenarioSnapshot } from "../lib/scenario-persistence";
 import { HelpTooltip } from "./help-tooltip";
+import { useSortableDrag } from "./use-sortable-drag";
 
 export type ScenarioLibraryEntry = {
   key: string;
@@ -70,51 +71,8 @@ export function ScenarioTools({
   onResetTool,
 }: ScenarioToolsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [draggedEntryKey, setDraggedEntryKey] = useState<string>();
-  const [dropTargetEntryKey, setDropTargetEntryKey] = useState<string>();
   const [isPanelOpen, setIsPanelOpen] = useState(true);
-
-  useEffect(() => {
-    if (!draggedEntryKey) return undefined;
-    document.addEventListener("pointerup", clearEntryDrag);
-    return () => document.removeEventListener("pointerup", clearEntryDrag);
-  }, [draggedEntryKey]);
-
-  const startEntryDrag = (event: DragEvent<HTMLButtonElement>, entry: ScenarioLibraryEntry) => {
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", entry.key);
-    setDraggedEntryKey(entry.key);
-    setDropTargetEntryKey(undefined);
-  };
-
-  const startEntryPointerDrag = (event: PointerEvent<HTMLButtonElement>, entry: ScenarioLibraryEntry) => {
-    event.preventDefault();
-    setDraggedEntryKey(entry.key);
-    setDropTargetEntryKey(undefined);
-  };
-
-  const markEntryDropTarget = (event: DragEvent<HTMLDivElement>, entry: ScenarioLibraryEntry) => {
-    if (!draggedEntryKey || draggedEntryKey === entry.key) return;
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-    setDropTargetEntryKey(entry.key);
-  };
-
-  const dropEntry = (event: DragEvent<HTMLDivElement>, entry: ScenarioLibraryEntry) => {
-    event.preventDefault();
-    finishEntryDrop(entry);
-  };
-
-  const finishEntryDrop = (entry: ScenarioLibraryEntry) => {
-    if (draggedEntryKey && draggedEntryKey !== entry.key) onReorderEntry(draggedEntryKey, entry.key);
-    setDraggedEntryKey(undefined);
-    setDropTargetEntryKey(undefined);
-  };
-
-  const clearEntryDrag = () => {
-    setDraggedEntryKey(undefined);
-    setDropTargetEntryKey(undefined);
-  };
+  const sortableEntries = useSortableDrag(onReorderEntry);
 
   return (
     <section className={`panel scenario-tools mobile-collapsible-panel ${isPanelOpen ? "" : "mobile-collapsed"}`}>
@@ -214,22 +172,15 @@ export function ScenarioTools({
             libraryEntries.map((entry) => (
               <div
                 key={entry.key}
-                className={`saved-scenario-row ${entry.key === activeLibraryKey ? "selected" : ""} ${entry.key === draggedEntryKey ? "dragging" : ""} ${entry.key === dropTargetEntryKey ? "drop-target" : ""}`}
-                onDragEnter={(event) => markEntryDropTarget(event, entry)}
-                onDragOver={(event) => markEntryDropTarget(event, entry)}
-                onDrop={(event) => dropEntry(event, entry)}
-                onPointerEnter={() => {
-                  if (draggedEntryKey && draggedEntryKey !== entry.key) setDropTargetEntryKey(entry.key);
-                }}
-                onPointerUp={() => finishEntryDrop(entry)}
+                data-sortable-row
+                data-sortable-id={entry.key}
+                className={`saved-scenario-row ${entry.key === activeLibraryKey ? "selected" : ""} ${entry.key === sortableEntries.draggedId ? "dragging" : ""} ${entry.key === sortableEntries.dropTargetId ? "drop-target" : ""}`}
+                onPointerEnter={() => sortableEntries.markDropTarget(entry.key)}
               >
                 <button
                   className="drag-handle"
                   type="button"
-                  draggable
-                  onPointerDown={(event) => startEntryPointerDrag(event, entry)}
-                  onDragStart={(event) => startEntryDrag(event, entry)}
-                  onDragEnd={clearEntryDrag}
+                  onPointerDown={(event) => sortableEntries.startDrag(event, { id: entry.key, title: entry.name, detail: entry.detail })}
                   aria-label={`Riordina scenario ${entry.name}`}
                   title="Trascina per riordinare"
                 >
@@ -254,6 +205,19 @@ export function ScenarioTools({
             <div className="empty-sidebar-note">Nessuno scenario in libreria</div>
           )}
         </div>
+        {sortableEntries.preview && (
+          <div
+            className="sortable-drag-preview"
+            style={{
+              left: sortableEntries.preview.x,
+              top: sortableEntries.preview.y,
+              width: sortableEntries.preview.width,
+            }}
+          >
+            <strong>{sortableEntries.preview.title}</strong>
+            {sortableEntries.preview.detail ? <small>{sortableEntries.preview.detail}</small> : null}
+          </div>
+        )}
         {hiddenLibraryCount > 0 && onRestoreHiddenEntries ? (
           <button className="action-button compact" type="button" onClick={onRestoreHiddenEntries}>
             Ripristina scenari rimossi ({hiddenLibraryCount})

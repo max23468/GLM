@@ -4,7 +4,7 @@ Questa nota descrive come è organizzata la simulazione di `Simulatore gara TPL 
 
 ## Perimetro
 
-Il simulatore modella scenari di aggiudicazione per i lotti `L1`-`L4` della gara TPL 2026. La finalità è esplorativa e operativa: confrontare combinazioni di offerenti, offerte singole, offerte combinatorie, soglie di sbarramento e ribassi.
+Il simulatore modella scenari di aggiudicazione per i lotti `L1`-`L4` della gara TPL 2026. La finalità è esplorativa e operativa: confrontare combinazioni di offerenti, offerte singole, offerte combinatorie, soglia di sbarramento e ribassi.
 
 Non va usato come fonte ufficiale autonoma. Ogni dato deve restare riconducibile a una delle tre categorie già presenti in `src/data/tender.ts`:
 
@@ -39,7 +39,7 @@ La fiducia nel simulatore non deriva dal fatto che gli scenari base siano "veri"
 
 1. Ogni concorrente ha offerte per lotti singoli e combinatorie.
 2. Per ogni lotto attivo il simulatore calcola i sub-score dei criteri tecnici.
-3. I criteri quantitativi e tabellari concorrono alla soglia di sbarramento configurata.
+3. I criteri quantitativi e tabellari concorrono alla soglia di sbarramento operativa fissata a 37 punti.
 4. Solo le offerte ammesse superano la fase tecnica e ricevono riparametrazione per ambito.
 5. Il punteggio economico deriva dai ribassi di fase pesati sulle basi d'asta.
 6. Le combinatorie sono ammissibili solo se:
@@ -51,7 +51,7 @@ La fiducia nel simulatore non deriva dal fatto che gli scenari base siano "veri"
    - il valore combinatorio è economicamente migliorativo rispetto alle offerte singole.
 7. I candidati singoli e combinatori sono enumerati per costruire scenari di assegnazione.
 8. Lo scenario migliore viene ordinato internamente sulla somma dei punteggi delle assegnazioni, poi sulla somma tecnica; la UI espone sempre i punteggi separati per lotto.
-9. Il limite ordinario di due lotti per concorrente può essere derogato solo se l'impostazione è attiva e il limite lascerebbe lotti non assegnati.
+9. Il simulatore applica il limite ordinario di due lotti per concorrente senza esporre deroga nella UI operativa.
 10. La tab `Ottimizzazione` non sostituisce lo scoring: applica mosse candidate su una copia dello scenario e rivaluta sempre tramite `simulate()`.
 
 ## Dati tecnici e quantitativi
@@ -147,7 +147,7 @@ La gestione di scenari, concorrenti e opzioni di partecipazione è concentrata n
 
 Il reset totale rimuove workspace corrente, libreria scenari, preferenze tema, scenari base nascosti e chiavi legacy dal browser, poi ricostruisce lo stato iniziale dallo scenario base predefinito. Non recupera dati esportati altrove e non tocca file locali o allegati.
 
-Il confronto fra scenari deve aiutare una decisione, non solo mostrare numeri grezzi: per questo espone delta totale sui lotti, assegnazioni cambiate, warning nuovi o risolti e dettaglio lotto per lotto. La tab `Risultati` aggiunge una lettura decisionale con vincitore, scarto dal primo candidato alternativo e una matrice batch di stabilità. La matrice ricalcola varianti temporanee incrociando soglie documentali, deroga al limite di due lotti e piccoli stress di ribasso sul concorrente selezionato; serve a capire quali lotti sono fragili, non a creare o salvare scenari ufficiali.
+Il confronto fra scenari deve aiutare una decisione, non solo mostrare numeri grezzi: per questo espone delta totale sui lotti, assegnazioni cambiate, warning nuovi o risolti e dettaglio lotto per lotto. La tab `Risultati` aggiunge una lettura decisionale con vincitore e scarto dal primo candidato alternativo, usando la soglia operativa fissa a 37 punti e il limite ordinario di due lotti.
 
 ## Scenari base
 

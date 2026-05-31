@@ -1,11 +1,12 @@
-import { BarChart3, ChevronDown, CopyPlus, GripVertical, Plus, Route, SlidersHorizontal, X } from "lucide-react";
-import { useEffect, useMemo, useState, type DragEvent, type PointerEvent } from "react";
+import { BarChart3, ChevronDown, CopyPlus, GripVertical, Plus, Route, X } from "lucide-react";
+import { useMemo, useState } from "react";
 import { getBaseScenario } from "../data/base-scenarios";
-import { LOTS, PAIRS, THRESHOLD_OPTIONS, type LotId, type PairId } from "../data/tender";
+import { LOTS, PAIRS, type LotId, type PairId } from "../data/tender";
 import { baseIdFromPresetScenarioId, type SavedScenarioSnapshot } from "../lib/scenario-persistence";
-import type { Bidder, Settings, SimulationResult } from "../lib/scoring";
+import type { Bidder, SimulationResult } from "../lib/scoring";
 import { HelpTooltip } from "./help-tooltip";
 import { ScenarioTools, type ScenarioLibraryEntry } from "./scenario-panels";
+import { useSortableDrag } from "./use-sortable-drag";
 
 type WorkspaceSidebarProps = {
   scenarioName: string;
@@ -30,7 +31,6 @@ type WorkspaceSidebarProps = {
   bidders: Bidder[];
   selectedBidder?: Bidder;
   result: SimulationResult;
-  settings: Settings;
   onAddBidder: () => void;
   onDuplicateBidder: (bidderId: string) => void;
   onRemoveBidder: (bidderId: string) => void;
@@ -41,7 +41,6 @@ type WorkspaceSidebarProps = {
   onDuplicateBidderLotOffer: (sourceLotId: LotId, targetLotId: LotId) => void;
   onExportAll: () => void;
   onComboParticipationChange: (pairId: PairId, checked: boolean) => void;
-  onSettingsChange: (patch: Partial<Settings>) => void;
   selectedLotId: LotId;
 };
 
@@ -68,7 +67,6 @@ export function WorkspaceSidebar({
   bidders,
   selectedBidder,
   result,
-  settings,
   onAddBidder,
   onDuplicateBidder,
   onRemoveBidder,
@@ -79,27 +77,17 @@ export function WorkspaceSidebar({
   onDuplicateBidderLotOffer,
   onExportAll,
   onComboParticipationChange,
-  onSettingsChange,
   selectedLotId,
 }: WorkspaceSidebarProps) {
-  const activeThresholdOption = THRESHOLD_OPTIONS.find((option) => option.value === settings.threshold) ?? THRESHOLD_OPTIONS[0];
-  const [draggedBidderId, setDraggedBidderId] = useState<string>();
-  const [dropTargetBidderId, setDropTargetBidderId] = useState<string>();
+  const sortableBidders = useSortableDrag(onReorderBidder);
   const [openMobilePanels, setOpenMobilePanels] = useState({
     bidders: true,
     participation: true,
-    settings: false,
   });
 
   const toggleMobilePanel = (panel: keyof typeof openMobilePanels) => {
     setOpenMobilePanels((current) => ({ ...current, [panel]: !current[panel] }));
   };
-
-  useEffect(() => {
-    if (!draggedBidderId) return undefined;
-    document.addEventListener("pointerup", clearBidderDrag);
-    return () => document.removeEventListener("pointerup", clearBidderDrag);
-  }, [draggedBidderId]);
 
   const libraryEntries = useMemo<ScenarioLibraryEntry[]>(
     () =>
@@ -131,42 +119,6 @@ export function WorkspaceSidebar({
 
   const deleteLibraryEntry = (entry: ScenarioLibraryEntry) => {
     onDeleteSaved(entry.key);
-  };
-
-  const startBidderDrag = (event: DragEvent<HTMLButtonElement>, bidder: Bidder) => {
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", bidder.id);
-    setDraggedBidderId(bidder.id);
-    setDropTargetBidderId(undefined);
-  };
-
-  const startBidderPointerDrag = (event: PointerEvent<HTMLButtonElement>, bidder: Bidder) => {
-    event.preventDefault();
-    setDraggedBidderId(bidder.id);
-    setDropTargetBidderId(undefined);
-  };
-
-  const markBidderDropTarget = (event: DragEvent<HTMLDivElement>, bidder: Bidder) => {
-    if (!draggedBidderId || draggedBidderId === bidder.id) return;
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-    setDropTargetBidderId(bidder.id);
-  };
-
-  const dropBidder = (event: DragEvent<HTMLDivElement>, bidder: Bidder) => {
-    event.preventDefault();
-    finishBidderDrop(bidder);
-  };
-
-  const finishBidderDrop = (bidder: Bidder) => {
-    if (draggedBidderId && draggedBidderId !== bidder.id) onReorderBidder(draggedBidderId, bidder.id);
-    setDraggedBidderId(undefined);
-    setDropTargetBidderId(undefined);
-  };
-
-  const clearBidderDrag = () => {
-    setDraggedBidderId(undefined);
-    setDropTargetBidderId(undefined);
   };
 
   return (
@@ -235,22 +187,21 @@ export function WorkspaceSidebar({
             return (
               <div
                 key={bidder.id}
-                className={`sidebar-row-actions ${isSelected ? "selected" : ""} ${bidder.id === draggedBidderId ? "dragging" : ""} ${bidder.id === dropTargetBidderId ? "drop-target" : ""}`}
-                onDragEnter={(event) => markBidderDropTarget(event, bidder)}
-                onDragOver={(event) => markBidderDropTarget(event, bidder)}
-                onDrop={(event) => dropBidder(event, bidder)}
-                onPointerEnter={() => {
-                  if (draggedBidderId && draggedBidderId !== bidder.id) setDropTargetBidderId(bidder.id);
-                }}
-                onPointerUp={() => finishBidderDrop(bidder)}
+                data-sortable-row
+                data-sortable-id={bidder.id}
+                className={`sidebar-row-actions ${isSelected ? "selected" : ""} ${bidder.id === sortableBidders.draggedId ? "dragging" : ""} ${bidder.id === sortableBidders.dropTargetId ? "drop-target" : ""}`}
+                onPointerEnter={() => sortableBidders.markDropTarget(bidder.id)}
               >
                 <button
                   className="drag-handle"
                   type="button"
-                  draggable
-                  onPointerDown={(event) => startBidderPointerDrag(event, bidder)}
-                  onDragStart={(event) => startBidderDrag(event, bidder)}
-                  onDragEnd={clearBidderDrag}
+                  onPointerDown={(event) =>
+                    sortableBidders.startDrag(event, {
+                      id: bidder.id,
+                      title: bidder.name,
+                      detail: `${activeLots} ${activeLots === 1 ? "lotto" : "lotti"}`,
+                    })
+                  }
                   aria-label={`Riordina concorrente ${bidder.name}`}
                   title="Trascina per riordinare"
                 >
@@ -285,6 +236,19 @@ export function WorkspaceSidebar({
             );
           })}
         </div>
+        {sortableBidders.preview && (
+          <div
+            className="sortable-drag-preview"
+            style={{
+              left: sortableBidders.preview.x,
+              top: sortableBidders.preview.y,
+              width: sortableBidders.preview.width,
+            }}
+          >
+            <strong>{sortableBidders.preview.title}</strong>
+            {sortableBidders.preview.detail ? <small>{sortableBidders.preview.detail}</small> : null}
+          </div>
+        )}
         </div>
       </section>
 
@@ -372,50 +336,6 @@ export function WorkspaceSidebar({
         </section>
       )}
 
-      <section className={`panel mobile-collapsible-panel ${openMobilePanels.settings ? "" : "mobile-collapsed"}`}>
-        <div className="section-title mobile-collapsible-title">
-          <span>
-            <SlidersHorizontal size={18} />
-            Parametri
-            <HelpTooltip>Qui scegli la soglia di sbarramento e l'eventuale deroga: cambia questi parametri quando vuoi testare una lettura più o meno selettiva.</HelpTooltip>
-          </span>
-          <button
-            className="mobile-panel-toggle"
-            type="button"
-            onClick={() => toggleMobilePanel("settings")}
-            aria-expanded={openMobilePanels.settings}
-            aria-label={openMobilePanels.settings ? "Chiudi pannello Parametri" : "Apri pannello Parametri"}
-          >
-            <ChevronDown size={16} />
-          </button>
-        </div>
-        <div className="mobile-collapsible-body">
-        <label className="field">
-          <span>
-            Soglia di sbarramento
-            <HelpTooltip>Un'offerta sotto soglia non passa alla valutazione economica. Le tre opzioni corrispondono alle letture già richiamate nelle istruzioni.</HelpTooltip>
-          </span>
-          <select value={settings.threshold} onChange={(event) => onSettingsChange({ threshold: Number(event.target.value) })}>
-            {THRESHOLD_OPTIONS.map((option) => (
-              <option key={option.id} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="toggle-row">
-          <input
-            type="checkbox"
-            aria-label="Applica deroga al limite di due lotti"
-            checked={settings.applyAwardLimitDerogation}
-            onChange={(event) => onSettingsChange({ applyAwardLimitDerogation: event.target.checked })}
-          />
-          <span>Applica deroga al limite di due lotti se necessaria per evitare lotti non assegnati</span>
-        </label>
-        <div className="hint">Soglia attiva: scenario disciplinare se resta a 37 pt. Le letture alternative più selettive restano nel menu. Le incongruenze sono nel pannello criticità.</div>
-        <div className="hint">Fonte soglia attiva: {activeThresholdOption.source}.</div>
-        </div>
-      </section>
     </aside>
   );
 }

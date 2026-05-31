@@ -1009,6 +1009,7 @@ input[type="checkbox"] {
 .saved-scenario-row.dragging,
 .sidebar-row-actions.dragging {
   opacity: 0.58;
+  transform: scale(0.98);
 }
 
 .saved-scenario-row.drop-target,
@@ -1036,6 +1037,7 @@ input[type="checkbox"] {
   color: var(--muted);
   cursor: grab;
   touch-action: none;
+  user-select: none;
 }
 
 .drag-handle:active {
@@ -1046,6 +1048,35 @@ input[type="checkbox"] {
 .drag-handle:focus-visible {
   background: var(--control-bg);
   color: var(--body-soft);
+}
+
+.sortable-drag-preview {
+  position: fixed;
+  z-index: 80;
+  display: grid;
+  gap: 3px;
+  max-width: calc(100vw - 28px);
+  border: 1px solid var(--teal-border);
+  border-radius: 7px;
+  background: var(--surface);
+  box-shadow: 0 12px 30px rgba(15, 48, 51, 0.18);
+  padding: 9px 10px;
+  color: var(--strong-text);
+  pointer-events: none;
+  transform: translate(-18px, -50%) rotate(-1deg);
+}
+
+.sortable-drag-preview strong {
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.sortable-drag-preview small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 680;
+  line-height: 1.25;
 }
 
 .saved-scenario-main {

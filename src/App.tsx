@@ -30,7 +30,6 @@ import {
   LOT_CONTEXT,
   LOTS,
   PAIRS,
-  THRESHOLD_OPTIONS,
   type Criterion,
   type LotId,
   type PairId,
@@ -453,7 +452,7 @@ const createInitialSimulatorState = (): SimulatorState => {
     activeTab: "tecnica",
     selectedAmbitId: AMBITS[0].id,
     selectedCriterionId: CRITERIA[0].id,
-    settings: initialWorkspace?.settings ?? DEFAULT_SETTINGS,
+    settings: DEFAULT_SETTINGS,
     optimizationConfig: initialWorkspace?.optimization ?? fallbackScenario.buildOptimizationConfig(),
     scenarioName: initialWorkspace?.scenarioName ?? fallbackScenario.title,
     activeSavedScenarioId: initialWorkspace?.activeSavedScenarioId,
@@ -593,7 +592,7 @@ function useSimulatorController() {
   const selectedCriterion = selectedAmbitCriteria.find((criterion) => criterion.id === selectedCriterionId) ?? selectedAmbitCriteria[0] ?? CRITERIA[0];
   const compareScenario = savedScenarios.find((scenario) => scenario.id === compareScenarioId);
   const compareResult = useMemo(
-    () => (compareScenario ? simulate(compareScenario.bidders, compareScenario.settings, compareScenario.selectedBidderId) : undefined),
+    () => (compareScenario ? simulate(compareScenario.bidders, DEFAULT_SETTINGS, compareScenario.selectedBidderId) : undefined),
     [compareScenario],
   );
 
@@ -838,7 +837,7 @@ function useSimulatorController() {
     originProfileId: resolveOriginProfileId(activeSavedScenario),
     bidders: structuredClone(bidders),
     optimization: structuredClone(optimizationConfig),
-    settings: { ...settings },
+    settings: { ...DEFAULT_SETTINGS },
     selectedBidderId: selectedBidder?.id ?? bidders[0]?.id ?? "",
     selectedLotId,
     selectedPairId,
@@ -857,7 +856,7 @@ function useSimulatorController() {
       setActiveSavedScenarioId(scenario.id);
       setBidders(nextBidders);
       setOptimizationConfig(scenario.optimization);
-      setSettings(scenario.settings);
+      setSettings(DEFAULT_SETTINGS);
       setSelectedBidderId(nextSelectedBidderId);
       setSelectedLotId(nextSelectedLotId);
     setSelectedPairId(scenario.selectedPairId);
@@ -922,7 +921,7 @@ function useSimulatorController() {
       name: scenarioName.trim() || "Scenario Excel",
       savedAt,
       originProfileId: resolveOriginProfileId(activeSavedScenario),
-      settings: { ...settings },
+      settings: { ...DEFAULT_SETTINGS },
       selectedBidderId: selectedBidder?.id ?? bidders[0]?.id ?? "",
       selectedLotId,
       selectedPairId,
@@ -1031,7 +1030,7 @@ function useSimulatorController() {
     } else {
       setBidders(factory.bidders);
       setOptimizationConfig(factory.optimization);
-      setSettings(factory.settings);
+      setSettings(DEFAULT_SETTINGS);
       setSelectedBidderId(factory.selectedBidderId);
       setSelectedLotId(factory.selectedLotId);
       setSelectedPairId(factory.selectedPairId);
@@ -1079,7 +1078,7 @@ function useSimulatorController() {
     setActiveSavedScenarioId(undefined);
     setBidders(template.bidders);
     setOptimizationConfig(template.optimization);
-    setSettings(template.settings);
+    setSettings(DEFAULT_SETTINGS);
     setSelectedBidderId(template.selectedBidderId);
     setSelectedLotId(template.selectedLotId);
     setSelectedPairId(template.selectedPairId);
@@ -1233,7 +1232,7 @@ function SimulatorHeader({ controller }: { controller: SimulatorController }) {
     <header className="topbar">
       <div>
         <h1>Simulatore gara TPL lotti 1-4</h1>
-        <p>Console operativa per confrontare lotti singoli, combinatorie, soglie di sbarramento, ribassi e criticità documentali.</p>
+        <p>Console operativa per confrontare lotti singoli, combinatorie, soglia di sbarramento, ribassi e criticità documentali.</p>
       </div>
       <div className="topbar-actions">
         <div className="theme-control" aria-label="Tema interfaccia">
@@ -1292,7 +1291,6 @@ function SimulatorSidebar({ controller }: { controller: SimulatorController }) {
     selectedBidder,
     selectedLotId,
     result,
-    settings,
     addBidder,
     duplicateBidder,
     duplicateBidderLotOffer,
@@ -1301,7 +1299,6 @@ function SimulatorSidebar({ controller }: { controller: SimulatorController }) {
     selectBidder,
     updateBidder,
     changeSelectedBidderLotParticipation,
-    setSettings,
   } = controller;
 
   return (
@@ -1329,7 +1326,6 @@ function SimulatorSidebar({ controller }: { controller: SimulatorController }) {
       bidders={bidders}
       selectedBidder={selectedBidder}
       result={result}
-      settings={settings}
       onAddBidder={addBidder}
       onDuplicateBidder={duplicateBidder}
       onDuplicateBidderLotOffer={duplicateBidderLotOffer}
@@ -1352,7 +1348,6 @@ function SimulatorSidebar({ controller }: { controller: SimulatorController }) {
         });
       }}
       selectedLotId={selectedLotId}
-      onSettingsChange={(patch) => setSettings((current) => ({ ...current, ...patch }))}
     />
   );
 }

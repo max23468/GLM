@@ -32,7 +32,7 @@ type InstructionSection = {
 const quickSteps = [
   "Scegli scenario, concorrente e partecipazioni dalla barra laterale.",
   "Cambia lotto dalla barra `Lotto di lavoro`.",
-  "Compila la parte tecnica e verifica la soglia di sbarramento.",
+  "Compila la parte tecnica e verifica la soglia di sbarramento fissa a 37 punti.",
   "Compila ribassi e controlli economici.",
   "Usa Ottimizzazione per confrontare investimenti tecnici, rinunce tecniche e ribasso.",
   "Salva lo scenario e confrontalo con le simulazioni precedenti.",
@@ -50,7 +50,7 @@ const sections: InstructionSection[] = [
       "Usa il risultato come supporto decisionale interno, non come certificazione dell'esito di gara.",
       "Prima di condividere una simulazione, esporta il JSON e controlla i warning visibili.",
     ],
-    checks: ["Scenario base corretto", "Soglia di sbarramento coerente con l'ipotesi", "Warning letti e accettati"],
+    checks: ["Scenario base corretto", "Soglia di sbarramento a 37 punti verificata", "Warning letti e accettati"],
   },
   {
     id: "istruzioni-scenario",
@@ -106,15 +106,14 @@ const sections: InstructionSection[] = [
     id: "istruzioni-soglia",
     eyebrow: "Soglia di sbarramento",
     title: "Controllare ammissibilità tecnica",
-    body: "La soglia di sbarramento determina se un'offerta passa alla fase successiva. Cambiarla serve a testare le diverse letture documentali già evidenziate nel simulatore.",
+    body: "La soglia di sbarramento determina se un'offerta passa alla fase successiva. Il simulatore usa come default operativo la soglia a 37 punti del disciplinare e non applica la deroga al limite ordinario di due lotti.",
     bullets: [
-      "`37 pt - Disciplinare`: lettura base del disciplinare.",
-      "`38 pt - Allegato 13`: scenario coerente con l'indicazione dell'allegato tecnico.",
-      "`43,4 pt - 70% dei criteri automatici`: stress test più selettivo.",
+      "`37 pt - Disciplinare` è la soglia usata per workspace, scenari salvati, import ed export.",
+      "La deroga al limite ordinario di due lotti resta disattivata.",
       "Un'offerta sotto soglia non contribuisce alla valutazione economica.",
       "Se un lotto risulta non assegnato, valuta se il problema è tecnico, economico o di partecipazione.",
     ],
-    checks: ["Soglia scelta consapevolmente", "Lotti sotto soglia individuati", "Eventuale deroga al limite due lotti valutata"],
+    checks: ["Soglia 37 punti verificata", "Lotti sotto soglia individuati", "Limite ordinario di due lotti considerato"],
   },
   {
     id: "istruzioni-analisi-puntuale",

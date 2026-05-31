@@ -53,7 +53,7 @@ describe("scenario persistence normalization", () => {
     expect(bidder.lots.L1.tradeoffs["C.1.2"].unitCost).toBeGreaterThan(0);
   });
 
-  it("accepts the new baseScenarioId field and falls back to scenario defaults", () => {
+  it("accepts the new baseScenarioId field and keeps fixed simulator settings", () => {
     const workspace = normalizeStoredWorkspace({
       schemaVersion: 2,
       scenarioName: "",
@@ -71,7 +71,7 @@ describe("scenario persistence normalization", () => {
     expect(workspace?.optimization.mode).toBe("technical-economic");
     expect(workspace?.optimization.levers.L4?.["C.2.1"].unitCost).toBeGreaterThan(0);
     expect(workspace?.scenarioName).toBe("Presidio locale");
-    expect(workspace?.settings).toEqual({ threshold: 38, applyAwardLimitDerogation: true });
+    expect(workspace?.settings).toEqual({ threshold: 37, applyAwardLimitDerogation: false });
     expect(workspace?.selectedLotId).toBe("L4");
     expect(workspace?.selectedPairId).toBe("L3+L4");
     expect(workspace?.bidders.length).toBeGreaterThan(0);
@@ -178,7 +178,7 @@ describe("scenario persistence normalization", () => {
     expect(report.messages).toContain("Profilo di riferimento legacy migrato al formato corrente.");
     expect(report.messages).toContain("Offerte incomplete riparate con lotti, combinatorie e campi mancanti.");
     expect(report.messages).toContain("Configurazione Ottimizzazione assente o non valida: usati i valori dello scenario base.");
-    expect(report.messages).toContain("Parametri scenario non validi riallineati ai valori supportati.");
+    expect(report.messages).toContain("Parametri scenario riallineati alla soglia fissa del simulatore.");
     expect(report.messages).toContain("ID concorrente duplicati resi univoci per evitare sovrapposizioni nei punteggi.");
     expect(report.messages).toContain("Focus di lavoro non valido riallineato a concorrente, lotto e combinatoria disponibili.");
     expect(report.snapshot?.bidders.map((bidder) => bidder.id)).toEqual(["a", "a-2"]);
