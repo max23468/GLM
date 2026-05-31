@@ -238,6 +238,10 @@ Regola operativa per gli agenti: ogni modifica visibile e interessante per l'ute
 - Non rompere compatibilità con chiavi `localStorage` legacy o vecchi export JSON senza migrazione.
 - Non introdurre backend, account, database remoto o autenticazione senza decisione esplicita.
 - Non lasciare debiti noti impliciti: se uno step viene rimandato, dichiaralo come rischio o prossimo passo.
+- Aggiorna `docs/ROADMAP.md` solo quando cambiano direzione, priorità, fase o
+  backlog; usa `docs/BACKLOG.md` per idee non promosse e ADR/documenti di
+  dominio per decisioni stabili. Non trasformare la roadmap in changelog o
+  storico di completati.
 
 ## Regole sul motore di scoring
 
