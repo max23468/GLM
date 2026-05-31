@@ -137,6 +137,17 @@ npm run deploy:cloudflare
 
 ## Mappa modifiche, file e verifiche
 
+Usa le corsie in modo proporzionato:
+
+- `veloce`: sola analisi, docs-only e governance non runtime; rilettura e
+  `git diff --check`;
+- `standard`: test-only, UI localizzata, microcopy, dati/scenari mirati o
+  runtime piccolo; test mirati, `npm test` e `npm run build` quando il diff può
+  incidere sul simulatore;
+- `completa`: scoring condiviso, import/export, persistenza, release/versioning,
+  deploy/config, provider/API, dati di gara sensibili o UI sostanziale;
+  includere build, smoke, deploy doctor o React Doctor quando applicabili.
+
 | Tipo di modifica | File da controllare | Verifica minima |
 | --- | --- | --- |
 | Documentazione non runtime | `AGENTS.md`, `README.md`, `docs/**` | Rilettura e `git diff --check` |
