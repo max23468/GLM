@@ -4,11 +4,9 @@
 
 | Area | Versione | Fonte |
 | --- | --- | --- |
-| Node | `22` in CI; usare Node `>=22` in locale | `.github/workflows/ci.yml`, dipendenze in `package-lock.json` |
-| npm | npm con lockfile v3 | `package-lock.json` |
+| Node | `24.x` | `.node-version`, `package.json`, `.github/workflows/ci.yml` |
+| npm | `npm@11.14.1` con lockfile v3 | `package.json`, `package-lock.json` |
 | Python | `python3` con `openpyxl` | solo per rigenerare la base tecnica Excel con `scripts/build-excel-template.py` |
-
-`package.json` non dichiara ancora `engines.node` o `packageManager`.
 
 ## Package manager e lockfile
 
