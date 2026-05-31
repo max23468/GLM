@@ -67,6 +67,11 @@ export type OptimizationResult = {
   steps: OptimizationStep[];
   areas: OptimizationAreaSummary[];
   warnings: string[];
+  diagnostics: {
+    iterations: number;
+    evaluatedCandidates: number;
+    simulationRuns: number;
+  };
 };
 
 type OptimizationCandidate = Omit<OptimizationStep, "id" | "afterScore"> & {
@@ -120,6 +125,15 @@ export const optimizeOffer = (
   let currentScore = initialScore;
   const steps: OptimizationStep[] = [];
   const warnings: string[] = [];
+  const diagnostics = {
+    iterations: 0,
+    evaluatedCandidates: 0,
+    simulationRuns: 1,
+  };
+  const runSimulation = (nextBidders: Bidder[]) => {
+    diagnostics.simulationRuns += 1;
+    return simulate(nextBidders, settings, selectedBidderId);
+  };
 
   if (!currentBidders.some((bidder) => bidder.id === selectedBidderId)) {
     return emptyOptimizationResult(initialSimulation, currentBidders, "Offerente selezionato non trovato nello scenario.");
@@ -141,12 +155,15 @@ export const optimizeOffer = (
       targetLots,
       config,
       currentScore,
+      runSimulation,
     });
+    diagnostics.iterations += 1;
+    diagnostics.evaluatedCandidates += candidates.length;
     const best = pickBestCandidate(candidates);
 
     if (!best || best.objectiveDelta <= 0.0001) break;
     currentBidders = best.bidders;
-    currentSimulation = simulate(currentBidders, settings, selectedBidderId);
+    currentSimulation = runSimulation(currentBidders);
     currentScore = best.score;
     steps.push({
       id: `step-${steps.length + 1}`,
@@ -182,6 +199,7 @@ export const optimizeOffer = (
     steps,
     areas: summarizeAreas(steps),
     warnings,
+    diagnostics,
   };
 };
 
@@ -198,6 +216,11 @@ const emptyOptimizationResult = (
   steps: [],
   areas: [],
   warnings: [warning],
+  diagnostics: {
+    iterations: 0,
+    evaluatedCandidates: 0,
+    simulationRuns: 1,
+  },
 });
 
 const getTargetLots = (bidders: Bidder[], selectedBidderId: string, selectedLotId: LotId, scope: OptimizationScope): LotId[] => {
@@ -245,6 +268,7 @@ const buildCandidates = ({
   targetLots,
   config,
   currentScore,
+  runSimulation,
 }: {
   baselineBidders: Bidder[];
   currentBidders: Bidder[];
@@ -255,6 +279,7 @@ const buildCandidates = ({
   targetLots: LotId[];
   config: OptimizationConfig;
   currentScore: number;
+  runSimulation: (bidders: Bidder[]) => SimulationResult;
 }): OptimizationCandidate[] => {
   const candidates: OptimizationCandidate[] = [];
   const bidder = currentBidders.find((item) => item.id === selectedBidderId);
@@ -283,7 +308,7 @@ const buildCandidates = ({
         if (!nextBidder) continue;
         const plan = technicalUnitsToTradeoff(criterion, lever, units);
         applyTradeoffPlanToOffer(nextBidder.lots[lotId], criterion, plan);
-        const nextSimulation = simulate(nextBidders, settings, selectedBidderId);
+        const nextSimulation = runSimulation(nextBidders);
         const nextScore = objectiveScore(nextSimulation, nextBidders, selectedBidderId, selectedLotId, config.scope);
         const objectiveDelta = round4(nextScore - currentScore);
         if (objectiveDelta <= 0) continue;
@@ -321,6 +346,7 @@ const buildCandidates = ({
             settings,
             config,
             selectedBidderIndex,
+            runSimulation,
           })
         : [];
     candidates.push(...reallocationCandidates);
@@ -341,6 +367,7 @@ const buildReallocationCandidates = ({
   settings,
   config,
   selectedBidderIndex,
+  runSimulation,
 }: {
   baselineOffer: Bidder["lots"][LotId];
   currentBidders: Bidder[];
@@ -352,6 +379,7 @@ const buildReallocationCandidates = ({
   settings: Settings;
   config: OptimizationConfig;
   selectedBidderIndex: number;
+  runSimulation: (bidders: Bidder[]) => SimulationResult;
 }): OptimizationCandidate[] => {
   const lot = LOTS.find((item) => item.id === lotId);
   if (!lot) return [];
@@ -378,14 +406,14 @@ const buildReallocationCandidates = ({
       const reducedBidder = reducedBidders[selectedBidderIndex];
       if (!reducedBidder) continue;
       applyTechnicalReductionToOffer(reducedBidder.lots[lotId], criterion, lever, reductionUnits);
-      const reducedSimulation = simulate(reducedBidders, settings, selectedBidderId);
+      const reducedSimulation = runSimulation(reducedBidders);
       const reducedScore = objectiveScore(reducedSimulation, reducedBidders, selectedBidderId, selectedLotId, config.scope);
 
       const nextBidders = structuredClone(reducedBidders);
       const nextBidder = nextBidders[selectedBidderIndex];
       if (!nextBidder) continue;
       nextBidder.lots[lotId] = applyPhaseDiscountDelta(nextBidder.lots[lotId], economicStep);
-      const nextSimulation = simulate(nextBidders, settings, selectedBidderId);
+      const nextSimulation = runSimulation(nextBidders);
       const nextScore = objectiveScore(nextSimulation, nextBidders, selectedBidderId, selectedLotId, config.scope);
       const objectiveDelta = round4(nextScore - currentScore);
       if (objectiveDelta <= 0) continue;

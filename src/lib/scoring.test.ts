@@ -183,6 +183,17 @@ describe("TPL tender scoring", () => {
     expect(result.lotScores[bidder.id].L1.admitted).toBe(false);
     expect(result.lotScores[bidder.id].L1.singleEconomic).toBe(0);
     expect(result.warnings.some((warning) => warning.includes("Sotto soglia di sbarramento"))).toBe(true);
+    expect(result.warningItems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          bidderId: bidder.id,
+          lotId: "L1",
+          severity: "blocking",
+          sourceType: "runtime",
+          blocksAward: true,
+        }),
+      ]),
+    );
   });
 
   it("uses the imported aggregate technical override when sub-criteria are not available", () => {

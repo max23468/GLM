@@ -15,7 +15,8 @@ Una voce nel backlog non è scope approvato.
 - Rafforzare test e normalizzazione quando cambia lo schema export/import o la compatibilità con chiavi `localStorage` legacy.
 - Valutare controlli periodici su fonti pubbliche, URL e date `verifiedAt`.
 - Valutare un controllo scriptabile leggero su documenti canonici e link interni.
-- Verificare se dichiarare esplicitamente `engines.node` e `packageManager` in `package.json`, allineando CI, dipendenze e setup locale.
+- Mantenere allineati `engines.node`, `packageManager`, `.node-version` e CI
+  quando cambiano dipendenze, action o versione runtime.
 
 ## Pattern emersi dall'allineamento Atlas
 
@@ -39,14 +40,11 @@ Prima di promuovere uno di questi pattern ad Atlas, verificare almeno una second
 
 ## Debiti
 
-- Alcune decisioni stabili sono documentate in `AGENTS.md`, `README.md` e guide, ma non ancora estratte come ADR autonome.
 - La fedeltà del modello dipende da allegati, warning documentali e fonti pubbliche che possono cambiare o richiedere riesame.
 - La robustezza sugli snapshot importati resta un'area da presidiare quando si aggiungono campi a scenari, ottimizzazione o persistenza.
 
 ## Decisioni sospese
 
-- Estrarre subito un'ADR su Cloudflare Pages come unico target deploy o lasciarla nelle guide finché non emerge una modifica di deploy.
-- Estrarre un'ADR sulla stabilità dell'URL pubblico `gare-lotti-milanesi.pages.dev` separata dal nome visibile del prodotto.
 - Definire se aggiungere branch protection/CODEOWNERS oltre alla baseline GitHub già presente.
 - Definire se Atlas deve avere una regola esplicita di discovery degli extra repo-specifici prima di ogni allineamento.
 

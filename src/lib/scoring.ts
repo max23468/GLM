@@ -135,6 +135,24 @@ export type Suggestion = {
   impact: number;
 };
 
+export type SimulationWarningSeverity = "info" | "warning" | "blocking";
+
+export type SimulationWarningSourceType = "runtime" | "document" | "simulation";
+
+export type SimulationWarning = {
+  id: string;
+  title: string;
+  message: string;
+  severity: SimulationWarningSeverity;
+  sourceType: SimulationWarningSourceType;
+  bidderId?: string;
+  bidderName?: string;
+  lotId?: LotId;
+  pairId?: PairId;
+  criterionId?: string;
+  blocksAward: boolean;
+};
+
 export type SimulationResult = {
   lotScores: Record<string, Record<LotId, LotScore>>;
   comboScores: Record<string, Record<PairId, ComboScore>>;
@@ -143,6 +161,7 @@ export type SimulationResult = {
   scenarios: Scenario[];
   selectedScenario?: Scenario;
   lotRankings: Record<LotId, AssignmentCandidate[]>;
+  warningItems: SimulationWarning[];
   warnings: string[];
   suggestions: Suggestion[];
 };
@@ -885,36 +904,134 @@ const candidateLotTechnicalScore = (candidate: AssignmentCandidate, lotId: LotId
   return candidate.technicalScore / candidate.lotIds.length;
 };
 
-const buildWarnings = (
+const warningCriterionId = (warning: string) => {
+  const [candidate] = warning.split(":");
+  return CRITERIA.some((criterion) => criterion.id === candidate) ? candidate : undefined;
+};
+
+const lotWarningSeverity = (warning: string): SimulationWarningSeverity => {
+  if (
+    warning.includes("Sotto soglia") ||
+    warning.includes("richiede offerte singole") ||
+    warning.includes("non supera la soglia") ||
+    warning.includes("sovrapposta") ||
+    warning.includes("non rispettano") ||
+    warning.includes("non economicamente migliorativo")
+  ) {
+    return "blocking";
+  }
+  return "warning";
+};
+
+const warningTitle = (warning: string, context: string) => {
+  if (warning.includes("Sotto soglia")) return `${context} - soglia di sbarramento`;
+  if (warning.includes("Tecnico aggregato")) return `${context} - tecnico aggregato`;
+  if (warning.includes("richiede offerte singole")) return `${context} - combinatoria incompleta`;
+  if (warning.includes("non supera la soglia")) return `${context} - combinatoria sotto soglia`;
+  if (warning.includes("sovrapposta")) return `${context} - coppie sovrapposte`;
+  if (warning.includes("non rispettano")) return `${context} - set combinatorio non ammesso`;
+  if (warning.includes("buste")) return `${context} - verifica buste`;
+  if (warning.includes("PEF")) return `${context} - verifica PEF`;
+  if (warning.includes("non economicamente migliorativo")) return `${context} - ribasso combinatorio`;
+  return context;
+};
+
+const warningId = (parts: Array<string | undefined>) => parts.filter(Boolean).join(":");
+
+const uniqueWarningItems = (items: SimulationWarning[]) => {
+  const seen = new Set<string>();
+  const result: SimulationWarning[] = [];
+  for (const item of items) {
+    const key = `${item.id}:${item.message}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(item);
+  }
+  return result.slice(0, 20);
+};
+
+const buildWarningItems = (
   bidders: Bidder[],
   lotScores: Record<string, Record<LotId, LotScore>>,
   comboScores: Record<string, Record<PairId, ComboScore>>,
   scenarios: Scenario[],
 ) => {
-    const warnings: string[] = [];
-    for (const bidder of bidders) {
-      for (const lot of LOTS) {
-        for (const warning of lotScores[bidder.id][lot.id].warnings) {
-          warnings.push(`${bidder.name} ${lot.shortLabel}: ${warning}`);
-        }
-      }
-      for (const pair of PAIRS) {
-        for (const warning of comboScores[bidder.id][pair.id].warnings) {
-          warnings.push(`${bidder.name} ${pair.label}: ${warning}`);
-        }
+  const items: SimulationWarning[] = [];
+  for (const bidder of bidders) {
+    for (const lot of LOTS) {
+      for (const warning of lotScores[bidder.id][lot.id].warnings) {
+        const context = `${bidder.name} ${lot.shortLabel}`;
+        const severity = lotWarningSeverity(warning);
+        items.push({
+          id: warningId(["lot", bidder.id, lot.id, warningCriterionId(warning), warning]),
+          title: warningTitle(warning, context),
+          message: warning,
+          severity,
+          sourceType: "runtime",
+          bidderId: bidder.id,
+          bidderName: bidder.name,
+          lotId: lot.id,
+          criterionId: warningCriterionId(warning),
+          blocksAward: severity === "blocking",
+        });
       }
     }
+    for (const pair of PAIRS) {
+      for (const warning of comboScores[bidder.id][pair.id].warnings) {
+        const context = `${bidder.name} ${pair.label}`;
+        const severity = lotWarningSeverity(warning);
+        items.push({
+          id: warningId(["combo", bidder.id, pair.id, warning]),
+          title: warningTitle(warning, context),
+          message: warning,
+          severity,
+          sourceType: "runtime",
+          bidderId: bidder.id,
+          bidderName: bidder.name,
+          pairId: pair.id,
+          blocksAward: severity === "blocking",
+        });
+      }
+    }
+  }
   const selected = scenarios[0];
   if (selected?.drawRequired) {
-    warnings.push("Lo scenario migliore è ex aequo anche dopo il criterio tecnico: è richiesto sorteggio pubblico.");
+    items.push({
+      id: "scenario:draw-required",
+      title: "Scenario - ex aequo",
+      message: "Lo scenario migliore è ex aequo anche dopo il criterio tecnico: è richiesto sorteggio pubblico.",
+      severity: "warning",
+      sourceType: "runtime",
+      blocksAward: false,
+    });
   }
   if (selected?.awardLimitDerogationUsed) {
-    warnings.push("Deroga al limite di due lotti applicata solo perché il limite ordinario lasciava almeno un lotto non assegnato.");
+    items.push({
+      id: "scenario:award-limit-derogation",
+      title: "Scenario - deroga limite lotti",
+      message: "Deroga al limite di due lotti applicata solo perché il limite ordinario lasciava almeno un lotto non assegnato.",
+      severity: "warning",
+      sourceType: "runtime",
+      blocksAward: false,
+    });
   }
   if (selected?.unassignedLots.length) {
-    warnings.push(`Scenario selezionato con lotti non assegnati: ${selected.unassignedLots.join(", ")}.`);
+    items.push({
+      id: `scenario:unassigned:${selected.unassignedLots.join("-")}`,
+      title: "Scenario - lotti non assegnati",
+      message: `Scenario selezionato con lotti non assegnati: ${selected.unassignedLots.join(", ")}.`,
+      severity: "blocking",
+      sourceType: "runtime",
+      blocksAward: true,
+    });
   }
-  return [...new Set(warnings)].slice(0, 20);
+  return uniqueWarningItems(items);
+};
+
+const warningItemText = (warning: SimulationWarning) => {
+  const lot = warning.lotId ? LOTS.find((item) => item.id === warning.lotId)?.shortLabel ?? warning.lotId : undefined;
+  const context = warning.bidderName && (lot || warning.pairId) ? `${warning.bidderName} ${lot ?? warning.pairId}` : undefined;
+  return context ? `${context}: ${warning.message}` : warning.message;
 };
 
 const effortWeight = (effort: Criterion["effort"]) => {
@@ -1030,6 +1147,7 @@ export const simulate = (bidders: Bidder[], settings: Settings, selectedBidderId
   const comboScores = computeComboScores(bidders, lotScores, rMaxByLot);
   const candidates = buildCandidates(bidders, lotScores, comboScores);
   const scenarios = enumerateScenariosWithAwardLimitPolicy(candidates, settings);
+  const warningItems = buildWarningItems(bidders, lotScores, comboScores, scenarios);
   return {
     lotScores,
     comboScores,
@@ -1038,7 +1156,8 @@ export const simulate = (bidders: Bidder[], settings: Settings, selectedBidderId
     scenarios,
     selectedScenario: scenarios[0],
     lotRankings: lotRankings(candidates),
-    warnings: buildWarnings(bidders, lotScores, comboScores, scenarios),
+    warningItems,
+    warnings: warningItems.map(warningItemText),
     suggestions: buildSuggestions(bidders, lotScores, comboScores, selectedBidderId),
   };
 };

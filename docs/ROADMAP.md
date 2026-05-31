@@ -20,10 +20,8 @@ decisioni stabili stanno in `docs/decisions/` o nei documenti di dominio.
   costruiti manualmente.
 - Migliorare la lettura decisionale di lotti fragili, warning decisivi e scarti
   tra scenari.
-- Valutare `engines.node` e `packageManager` in `package.json`, allineando CI e
-  setup locale.
-- Decidere se estrarre ADR autonome per Cloudflare-only, stabilità URL e policy
-  allegati Git LFS.
+- Mantenere allineati runtime Node/npm fra `package.json`, `.node-version`,
+  toolchain e CI quando cambiano dipendenze o action.
 
 ## Più avanti
 
@@ -40,6 +38,8 @@ decisioni stabili stanno in `docs/decisions/` o nei documenti di dominio.
 
 - Nome visibile, URL Cloudflare Pages stabile e perimetro esplorativo sono
   definiti.
+- Cloudflare-only, stabilità URL e policy allegati Git LFS sono stati estratti
+  in ADR autonome.
 - La logica simulatore è documentata in `docs/LOGICA_SIMULATORE.md`.
 - Gli allegati gara in Git LFS e la distinzione delle fonti sono preservati.
 - CI, smoke browser, React Doctor e changelog frontend sono disponibili secondo

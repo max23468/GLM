@@ -43,6 +43,9 @@ describe("offer optimization", () => {
     expect(result.steps[0].units).toBeGreaterThan(1);
     expect(planCost).toBeGreaterThan(0);
     expect(result.objectiveDelta).toBeGreaterThan(0);
+    expect(result.diagnostics.iterations).toBeGreaterThan(0);
+    expect(result.diagnostics.evaluatedCandidates).toBeGreaterThan(0);
+    expect(result.diagnostics.simulationRuns).toBeGreaterThan(result.diagnostics.iterations);
   });
 
   it("non crea ribasso diretto non finanziato da una rinuncia tecnica", () => {

@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { LOTS } from "../data/tender";
-import { candidateLotScore, formatPoints, type AssignmentCandidate, type SimulationResult } from "../lib/scoring";
+import { candidateLotScore, formatPoints, type AssignmentCandidate, type SimulationResult, type SimulationWarning } from "../lib/scoring";
 import type { SavedScenarioSnapshot } from "../lib/scenario-persistence";
 import { HelpTooltip } from "./help-tooltip";
 import { useSortableDrag } from "./use-sortable-drag";
@@ -269,8 +269,10 @@ export function ScenarioComparison({
     const compared = compareAssignments[lot.id];
     return current?.bidderName !== compared?.bidderName || current?.kind !== compared?.kind || current?.pairId !== compared?.pairId;
   });
-  const newWarnings = currentResult.warnings.filter((warning) => !(compareResult?.warnings ?? []).includes(warning));
-  const resolvedWarnings = (compareResult?.warnings ?? []).filter((warning) => !currentResult.warnings.includes(warning));
+  const compareWarningIds = new Set((compareResult?.warningItems ?? []).map((warning) => warning.id));
+  const currentWarningIds = new Set(currentResult.warningItems.map((warning) => warning.id));
+  const newWarnings = currentResult.warningItems.filter((warning) => !compareWarningIds.has(warning.id));
+  const resolvedWarnings = (compareResult?.warningItems ?? []).filter((warning) => !currentWarningIds.has(warning.id));
   const currentTotal = LOTS.reduce((sum, lot) => {
     const assignment = currentAssignments[lot.id];
     return sum + (assignment ? candidateLotScore(assignment, lot.id) : 0);
@@ -440,7 +442,7 @@ function LotScoreGrid({ summaries }: { summaries: ReturnType<typeof scenarioLotS
   );
 }
 
-function WarningPreview({ warnings, emptyText }: { warnings: string[]; emptyText: string }) {
+function WarningPreview({ warnings, emptyText }: { warnings: SimulationWarning[]; emptyText: string }) {
   if (!warnings.length) return <p>{emptyText}</p>;
   const visibleWarnings = warnings.slice(0, 3);
   const hiddenCount = warnings.length - visibleWarnings.length;
@@ -448,7 +450,10 @@ function WarningPreview({ warnings, emptyText }: { warnings: string[]; emptyText
   return (
     <ul className="warning-mini-list">
       {visibleWarnings.map((warning) => (
-        <li key={warning}>{warning}</li>
+        <li key={warning.id}>
+          <strong>{warning.severity === "blocking" ? "Bloccante" : "Attenzione"}</strong>
+          <span>{warning.title}: {warning.message}</span>
+        </li>
       ))}
       {hiddenCount > 0 && <li>Altri {hiddenCount} warning nel pannello criticità.</li>}
     </ul>

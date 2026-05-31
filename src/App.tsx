@@ -70,6 +70,7 @@ import {
   type QuantityInputValue,
   type Settings,
   type SimulationResult,
+  type SimulationWarning,
   type Suggestion,
   type TradeoffPlan,
 } from "./lib/scoring";
@@ -108,6 +109,12 @@ import {
   effectiveTradeoffDenominator,
   tradeoffCost,
 } from "./lib/tradeoff";
+import {
+  appendActivityNotification,
+  createActivityNotification,
+  markActivityNotificationsRead,
+  type ActivityNotificationInput,
+} from "./lib/activity-notifications";
 
 const euroFormatter = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 const euroPerKmFormatter = new Intl.NumberFormat("it-IT", {
@@ -118,12 +125,6 @@ const euroPerKmFormatter = new Intl.NumberFormat("it-IT", {
 });
 type ThemePreference = "auto" | "light" | "dark";
 type WorkspaceTab = "tecnica" | "economica" | "ottimizza" | "combinatorie" | "risultati";
-type ActivityNotificationInput = {
-  tone: StoredNotification["tone"];
-  title: string;
-  body?: string;
-  toast?: boolean;
-};
 type AppView = "simulatore" | "istruzioni";
 
 type ExcelPackageManifest = {
@@ -218,6 +219,18 @@ type TradeoffPreview = {
 };
 
 const signedPoints = (amount: number) => `${amount >= 0 ? "+" : ""}${formatPoints(amount)}`;
+
+const warningSeverityLabel: Record<SimulationWarning["severity"], string> = {
+  blocking: "Bloccante",
+  warning: "Attenzione",
+  info: "Info",
+};
+
+const warningSourceLabel: Record<SimulationWarning["sourceType"], string> = {
+  runtime: "Scenario",
+  document: "Documento",
+  simulation: "Assunzione",
+};
 
 type OptimizationInvestmentRow = {
   key: string;
@@ -556,25 +569,19 @@ function useSimulatorController() {
   const setScenarioName = (scenarioName: string) => patchSimulatorState({ scenarioName });
   const setActiveSavedScenarioId = (activeSavedScenarioId: string | undefined) => patchSimulatorState({ activeSavedScenarioId });
   const setCompareScenarioId = (compareScenarioId: string) => patchSimulatorState({ compareScenarioId });
-  const pushNotification = ({ tone, title, body, toast = true }: ActivityNotificationInput) => {
-    const notification: StoredNotification = {
-      id: `activity-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      tone,
-      title,
-      body,
-      createdAt: new Date().toISOString(),
-      read: false,
-    };
+  const pushNotification = (input: ActivityNotificationInput) => {
+    const notification = createActivityNotification(input);
+    const toast = input.toast ?? true;
     updateSimulatorState((state) => ({
       ...state,
-      notifications: [notification, ...state.notifications].slice(0, 20),
+      notifications: appendActivityNotification(state.notifications, notification),
       activeToastId: toast ? notification.id : state.activeToastId,
     }));
   };
   const markNotificationsRead = () =>
     updateSimulatorState((state) => ({
       ...state,
-      notifications: state.notifications.map((notification) => ({ ...notification, read: true })),
+      notifications: markActivityNotificationsRead(state.notifications),
     }));
   const clearNotifications = () => updateSimulatorState((state) => ({ ...state, notifications: [], activeToastId: undefined }));
   const dismissActivityToast = () => patchSimulatorState({ activeToastId: undefined });
@@ -1936,10 +1943,18 @@ function InsightSidebar({ controller }: { controller: SimulatorController }) {
               <p>{warning.body}</p>
             </article>
           ))}
-          {result.warnings.map((warning) => (
-            <article key={warning} className="warning-card runtime">
-              <strong>Scenario</strong>
-              <p>{warning}</p>
+          {result.warningItems.map((warning) => (
+            <article key={warning.id} className={`warning-card runtime ${warning.severity}`}>
+              <div className="warning-card-head">
+                <strong>{warning.title}</strong>
+                <span className={`warning-chip ${warning.severity}`}>{warningSeverityLabel[warning.severity]}</span>
+              </div>
+              <p>{warning.message}</p>
+              <small className="warning-meta">
+                {warningSourceLabel[warning.sourceType]}
+                {warning.criterionId ? ` · ${warning.criterionId}` : ""}
+                {warning.blocksAward ? " · incide sull'ammissibilità" : ""}
+              </small>
             </article>
           ))}
         </div>
@@ -2948,6 +2963,13 @@ function OptimizationMetrics({ result }: { result: OptimizationResult }) {
         <span>Delta stimato</span>
         <strong>{signedPoints(result.objectiveDelta)}</strong>
       </div>
+      <div className="metric-tile">
+        <span>Diagnostica piano</span>
+        <strong>{result.diagnostics.evaluatedCandidates.toLocaleString("it-IT")}</strong>
+        <small>
+          mosse valutate · {result.diagnostics.simulationRuns.toLocaleString("it-IT")} simulazioni
+        </small>
+      </div>
     </div>
   );
 }
@@ -3446,8 +3468,10 @@ function ResultsWorkbench({
     ? "Prima verifica partecipazioni, soglia e combinatorie sui lotti non assegnati: " + result.selectedScenario.unassignedLots.join(", ") + "."
     : result.selectedScenario?.drawRequired
       ? "Scenario in ex aequo: serve trattare il sorteggio come rischio operativo esplicito."
-      : result.warnings.length
-        ? "Leggi i warning prima di usare lo scenario: possono cambiare ammissibilità o lettura documentale."
+      : result.warningItems.some((warning) => warning.blocksAward)
+        ? "Risolvi prima i warning bloccanti: incidono su soglia, combinatorie o assegnazione dei lotti."
+        : result.warningItems.length
+          ? "Leggi i warning prima di usare lo scenario: possono cambiare ammissibilità o lettura documentale."
         : closeLots.length
           ? "Scarti sotto 0,50 pt su " + closeLots.map((row) => row.lot.shortLabel).join(", ") + ": utile stressare ribassi e criteri sensibili."
           : "Scenario completo e senza warning runtime: passa al confronto con scenari salvati o all'ottimizzazione mirata.";
