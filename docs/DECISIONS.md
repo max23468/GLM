@@ -7,6 +7,13 @@ Questo indice raccoglie le decisioni stabili del `Simulatore gara TPL lotti 1-4`
 - [0001 - Tag e GitHub Release](decisions/0001-tag-e-github-release.md): policy
   per tag `vX.Y.Z`, GitHub Release e rapporto con release locale e deploy
   Cloudflare Pages.
+- [0002 - Cloudflare Pages come unico target deploy](decisions/0002-cloudflare-pages-unico-target-deploy.md):
+  conferma Cloudflare Pages progetto `gare-lotti-milanesi` come unico target
+  deploy approvato.
+- [0003 - Stabilità dell'URL pubblico](decisions/0003-stabilita-url-pubblico.md):
+  separa nome visibile del prodotto e URL pubblico stabile.
+- [0004 - Allegati di gara come fonti Git LFS non riscritte](decisions/0004-policy-allegati-git-lfs.md):
+  preserva gli allegati di gara come fonti non normalizzate.
 
 Decisioni operative già effettive sono documentate in:
 
@@ -17,9 +24,7 @@ Decisioni operative già effettive sono documentate in:
 
 ## Decisioni da valutare come ADR
 
-- Cloudflare Pages come unico target deploy e divieto di Vercel/Supabase senza decisione esplicita.
-- Separazione tra nome visibile `Simulatore gara TPL lotti 1-4` e URL pubblico `gare-lotti-milanesi.pages.dev`.
-- Policy su allegati Git LFS e fonti ufficiali di gara.
+- Nessuna decisione già candidata resta da estrarre.
 
 ## Decisioni sostituite o superate
 

@@ -19,6 +19,7 @@ La fiducia nel simulatore non deriva dal fatto che gli scenari base siano "veri"
 - lo scoring vive in `src/lib/scoring.ts` e gli esiti degli scenari base sono bloccati da golden test, così ogni cambio di formula o dato produce un diff esplicito;
 - workspace, scenari salvati e JSON importati passano da `src/lib/scenario-persistence.ts`, che migra snapshot legacy e ripara campi mancanti prima della simulazione;
 - le criticità documentali note restano centralizzate in `DOCUMENT_WARNINGS` e collegate ai criteri interessati tramite fonte o nota;
+- i warning runtime sono esposti anche come `warningItems` strutturati, con severità, contesto e indicazione se incidono sull'ammissibilità;
 - le fonti pubbliche sono contesto esemplificativo per i profili simulati, non un feed aggiornato in tempo reale e non sostituiscono i dati inseriti dall'utente;
 - costi, massimali, tradeoff e leve di ottimizzazione sono ipotesi simulative: quando l'utente compila valori propri, quei dati diventano la base effettiva dello scenario;
 - ogni nuova assunzione rilevante va resa tracciabile in dati, warning, documentazione o test, evitando correzioni implicite nel codice.
@@ -31,6 +32,7 @@ La fiducia nel simulatore non deriva dal fatto che gli scenari base siano "veri"
 - `src/lib/optimization.ts`: genera piani di miglioramento da un'offerta iniziale, con leve tecniche e riallocazioni verso ribasso.
 - `src/lib/tradeoff.ts`: applica l'analisi puntuale criterio e calcola il relativo costo stimato.
 - `src/lib/scenario-persistence.ts`: normalizza workspace, scenari salvati, import JSON e migrazione dai campi legacy.
+- `src/lib/activity-notifications.ts`: centralizza creazione e aggiornamento dello storico attività locale.
 - `src/App.tsx`: gestisce stato UI, gestione workspace laterale, salvataggio locale, import/export JSON, selezione tab, analisi puntuale criterio e ottimizzazione.
 - `src/components/scenario-panels.tsx`: contiene pannelli scenario, riepilogo strategico e confronto.
 - `src/lib/*.test.ts`: copre motore di scoring e normalizzazione della persistenza.
@@ -100,6 +102,10 @@ La tab `Ottimizzazione` affianca al piano due letture sintetiche:
 - `Dashboard dove investire`: ordina le aree del piano per incremento di punteggio, costo/valore, rendimento e numero di mosse;
 - `Mappa impatto per ambito`: mostra per ambito A-G e offerta economica dove il piano aggiunge punti, dove sacrifica tecnica e dove genera punti economici.
 
+La stessa tab mostra anche una diagnostica leggera del piano: numero di mosse
+candidate valutate e simulazioni eseguite. È un controllo di robustezza e
+prestazioni, non una nuova formula di gara.
+
 I criteri discrezionali `D` sono esclusi dall'ottimizzazione automatica perché dipendono dal giudizio della Commissione e non hanno una funzione deterministica costo-punteggio nel disciplinare. Restano compilabili manualmente nella tab `Tecnica`.
 
 Nella tab `Tecnica`, i criteri discrezionali mostrano come lettura principale il punteggio base derivato da `coefficiente x punti massimi`. Quando la simulazione riparametra quel criterio rispetto alla migliore offerta del lotto, la UI espone anche il valore riparametrato per evitare di confondere il valore inserito con il punteggio comparativo.
@@ -149,7 +155,7 @@ La gestione di scenari, concorrenti e opzioni di partecipazione è concentrata n
 
 Il reset totale rimuove workspace corrente, libreria scenari, preferenze tema, scenari base nascosti e chiavi legacy dal browser, poi ricostruisce lo stato iniziale dallo scenario base predefinito. Non recupera dati esportati altrove e non tocca file locali o allegati.
 
-Il confronto fra scenari deve aiutare una decisione, non solo mostrare numeri grezzi: per questo espone delta totale sui lotti, assegnazioni cambiate, warning nuovi o risolti e dettaglio lotto per lotto. La tab `Risultati` aggiunge una lettura decisionale con vincitore e scarto dal primo candidato alternativo, usando la soglia operativa fissa a 37 punti e il limite ordinario di due lotti.
+Il confronto fra scenari deve aiutare una decisione, non solo mostrare numeri grezzi: per questo espone delta totale sui lotti, assegnazioni cambiate, warning nuovi o risolti e dettaglio lotto per lotto. I warning sono confrontati tramite identificativo strutturato, così una criticità bloccante resta riconoscibile anche quando cambia l'ordine di visualizzazione. La tab `Risultati` aggiunge una lettura decisionale con vincitore e scarto dal primo candidato alternativo, usando la soglia operativa fissa a 37 punti e il limite ordinario di due lotti.
 
 ## Scenari base
 

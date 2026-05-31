@@ -38,12 +38,21 @@ La root resta il punto di ingresso operativo. `docs/` contiene governance, logic
 - `docs/decisions/template.md`: template ADR.
 - `docs/decisions/0001-tag-e-github-release.md`: policy tag, GitHub Release e
   relazione con release locale e deploy Cloudflare Pages.
+- `docs/decisions/0002-cloudflare-pages-unico-target-deploy.md`: Cloudflare
+  Pages come unico target deploy approvato.
+- `docs/decisions/0003-stabilita-url-pubblico.md`: stabilità dell'URL pubblico
+  e separazione dal nome prodotto.
+- `docs/decisions/0004-policy-allegati-git-lfs.md`: allegati di gara come fonti
+  Git LFS non riscritte.
 
 Le decisioni operative esistenti sono oggi documentate in `AGENTS.md`, `README.md` e nelle guide. Quando una decisione deve diventare autonoma, crearla in `docs/decisions/` e collegarla qui.
 
 ## GitHub
 
-- Repository: `git@github.com:max23468/GLM.git`
+- Repository locale: `git@github.com:max23468/GLM.git`
+- Alias storico verificato: `git@github.com:max23468/Gare-Lotti-Milanesi.git`
+  punta allo stesso `main`; usare il remote locale salvo task GitHub che
+  richiedano esplicitamente l'alias.
 - Branch principale: `main`
 - Codex feedback inbox: issue GitHub `Codex feedback inbox`.
 - Workflow principali: `.github/workflows/ci.yml`, `.github/workflows/codex-pr-comments.yml`, `.github/workflows/pr-title.yml`.

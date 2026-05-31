@@ -859,6 +859,7 @@ button {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+  min-width: 0;
   margin-bottom: 12px;
   color: var(--section-title);
   font-size: 0.92rem;
@@ -974,6 +975,7 @@ button {
 .field {
   display: grid;
   gap: 6px;
+  min-width: 0;
 }
 
 .field > span {
@@ -994,6 +996,7 @@ button {
 input,
 select {
   width: 100%;
+  min-width: 0;
   min-height: 38px;
   border: 1px solid var(--border-strong);
   border-radius: 6px;
@@ -3666,6 +3669,43 @@ input[type="checkbox"] {
   background: var(--surface-soft);
 }
 
+.warning-card.runtime.blocking {
+  border-color: var(--red);
+  background: var(--red-soft);
+}
+
+.warning-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.warning-chip {
+  min-width: max-content;
+  border-radius: 999px;
+  padding: 3px 7px;
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.warning-chip.blocking {
+  background: var(--red);
+  color: white;
+}
+
+.warning-chip.warning,
+.warning-chip.info {
+  background: var(--amber-soft);
+  color: var(--warning-strong);
+}
+
+.warning-meta {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
 .comparison-panel,
 .release-panel {
   display: grid;
@@ -4009,6 +4049,11 @@ input[type="checkbox"] {
   line-height: 1.35;
 }
 
+.warning-mini-list li {
+  display: grid;
+  gap: 2px;
+}
+
 .comparison-notes {
   display: grid;
   gap: 5px;
@@ -4167,7 +4212,7 @@ input[type="checkbox"] {
       "rail"
       "workspace"
       "insights";
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto auto;
     height: auto;
     max-height: none;
@@ -4178,6 +4223,8 @@ input[type="checkbox"] {
     grid-row: auto;
     position: static;
     top: auto;
+    width: 100%;
+    max-width: 100%;
     max-height: none;
     overflow: visible;
     overscroll-behavior: auto;
@@ -4234,9 +4281,16 @@ input[type="checkbox"] {
 
   .right-panel {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    max-width: 100%;
     overflow: visible;
     padding-right: 0;
+  }
+
+  .right-panel > *,
+  .left-rail > * {
+    min-width: 0;
   }
 
   .editor-header,
@@ -4257,6 +4311,7 @@ input[type="checkbox"] {
   .decision-grid,
   .comparison-decision-strip,
   .comparison-grid,
+  .comparison-grid.per-lot,
   .comparison-lots,
   .comparison-warning-detail,
   .comparison-lot-pair,

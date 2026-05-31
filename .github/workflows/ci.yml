@@ -10,6 +10,9 @@ on:
 permissions:
   contents: read
 
+env:
+  NODE_VERSION: 24.15.0
+
 jobs:
   verify:
     name: Verifica simulatore
@@ -17,7 +20,7 @@ jobs:
     env:
       DOPPLER_PROJECT: ${{ vars.DOPPLER_PROJECT }}
       DOPPLER_CONFIG: ${{ vars.DOPPLER_CONFIG }}
-      DOPPLER_TOKEN_PRESENT: ${{ secrets.DOPPLER_TOKEN }}
+      DOPPLER_TOKEN_PRESENT: ${{ secrets.DOPPLER_TOKEN != '' && 'true' || '' }}
 
     steps:
       - name: Checkout
@@ -57,7 +60,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: 24.15.0
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
       - name: Install dependencies
@@ -80,7 +83,7 @@ jobs:
     env:
       DOPPLER_PROJECT: ${{ vars.DOPPLER_PROJECT }}
       DOPPLER_CONFIG: ${{ vars.DOPPLER_CONFIG }}
-      DOPPLER_TOKEN_PRESENT: ${{ secrets.DOPPLER_TOKEN }}
+      DOPPLER_TOKEN_PRESENT: ${{ secrets.DOPPLER_TOKEN != '' && 'true' || '' }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       SMOKE_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
@@ -94,7 +97,7 @@ jobs:
       - name: Determina se eseguire il fetch Doppler
         id: deploy_doppler_fetch_gate
         run: |
-          if [ -n "${{ secrets.DOPPLER_TOKEN }}" ] && [ -n "${{ vars.DOPPLER_PROJECT }}" ] && [ -n "${{ vars.DOPPLER_CONFIG }}" ]; then
+          if [ -n "${DOPPLER_TOKEN_PRESENT:-}" ] && [ -n "${DOPPLER_PROJECT:-}" ] && [ -n "${DOPPLER_CONFIG:-}" ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
@@ -125,7 +128,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
       - name: Install dependencies

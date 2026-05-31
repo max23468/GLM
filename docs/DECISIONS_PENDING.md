@@ -14,6 +14,12 @@ Decisioni chiuse:
 
 - Tag e GitHub Release: chiusa con
   `docs/decisions/0001-tag-e-github-release.md`.
+- Cloudflare Pages come unico target deploy: chiusa con
+  `docs/decisions/0002-cloudflare-pages-unico-target-deploy.md`.
+- Stabilità dell'URL pubblico: chiusa con
+  `docs/decisions/0003-stabilita-url-pubblico.md`.
+- Policy allegati Git LFS: chiusa con
+  `docs/decisions/0004-policy-allegati-git-lfs.md`.
 
 Quando una decisione viene approvata:
 

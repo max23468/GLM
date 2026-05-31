@@ -48,7 +48,7 @@
 
 ## GitHub Actions
 
-- `.github/workflows/ci.yml`: validazione dati, test, build e preview Cloudflare su PR interne quando i secret sono configurati.
+- `.github/workflows/ci.yml`: validazione dati, test, build e preview Cloudflare su PR interne quando i secret sono configurati; usa `NODE_VERSION` condiviso per evitare divergenze fra job.
 - `.github/workflows/codex-pr-comments.yml`: sincronizza la Codex feedback inbox.
 - `.github/workflows/pr-title.yml`: verifica titolo PR in stile Conventional Commit.
 

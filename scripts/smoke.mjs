@@ -83,6 +83,60 @@ const verifyPublicRoutes = async (page, suffix) => {
   }
 };
 
+const verifyResponsiveLayoutHealth = async (page, suffix) => {
+  const issues = await page.evaluate(() => {
+    const result = [];
+    const viewportWidth = window.innerWidth;
+    const documentWidth = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth);
+    if (documentWidth > viewportWidth + 2) {
+      const offenders = Array.from(document.querySelectorAll("body *"))
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+          const className = typeof element.className === "string" ? element.className.trim().replace(/\s+/g, ".") : "";
+          const label = `${element.tagName.toLowerCase()}${className ? `.${className}` : ""}`;
+          const text = (element.textContent || "").trim().replace(/\s+/g, " ").slice(0, 48);
+          return { label, left: Math.round(rect.left), right: Math.round(rect.right), text, width: Math.round(rect.width) };
+        })
+        .filter((item) => item.right > viewportWidth + 2)
+        .sort((a, b) => b.right - a.right)
+        .slice(0, 12)
+        .map((item) => `${item.label} left=${item.left}px right=${item.right}px width=${item.width}px text="${item.text}"`);
+      result.push(`overflow orizzontale documento ${documentWidth}px su viewport ${viewportWidth}px (${offenders.join("; ")})`);
+    }
+
+    const selectors = [
+      ".workspace-tab",
+      ".metric-tile",
+      ".warning-card",
+      ".comparison-decision-strip > div",
+      ".offeror-row",
+    ];
+
+    for (const selector of selectors) {
+      for (const element of document.querySelectorAll(selector)) {
+        const rect = element.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) {
+          result.push(`${selector} non visibile`);
+          continue;
+        }
+        const style = window.getComputedStyle(element);
+        const canScroll = style.overflowX === "auto" || style.overflowX === "scroll";
+        if (!canScroll && element.scrollWidth > element.clientWidth + 2) {
+          result.push(`${selector} con testo/contenuto fuori contenitore`);
+        }
+      }
+    }
+
+    const visibleText = document.body.innerText;
+    if (/\b(NaN|undefined)\b/.test(visibleText)) {
+      result.push("testo runtime contiene NaN o undefined");
+    }
+    return result;
+  });
+
+  if (issues.length) throw new Error(`${suffix}: problemi layout responsive: ${issues.join(" | ")}`);
+};
+
 const waitForActivityNotification = async (page, title, bodyParts = []) => {
   await page.waitForFunction(
     ({ expectedTitle, expectedBodyParts }) => {
@@ -224,6 +278,8 @@ const verifyOptimization = async (page, suffix, theme) => {
     "solo tecnica",
     "quantità max",
     "non previsto",
+    "diagnostica piano",
+    "mosse valutate",
   ]) {
     if (!lowerText.includes(expected)) throw new Error(`${suffix}: manca ${expected}`);
   }
@@ -309,6 +365,7 @@ const verifyOptimization = async (page, suffix, theme) => {
   }
   const activeTheme = await page.evaluate(() => document.documentElement.dataset.theme);
   if (activeTheme !== theme) throw new Error(`${suffix}: tema atteso ${theme}, trovato ${activeTheme}`);
+  await verifyResponsiveLayoutHealth(page, suffix);
 
   page.once("dialog", async (dialog) => {
     await dialog.accept();

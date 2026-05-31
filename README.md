@@ -27,13 +27,13 @@ npm run preview -- --port 4173
 - Cambia lotto di lavoro dalla scheda centrale, limitandolo ai lotti a cui partecipa il concorrente selezionato.
 - Simula le combinatorie ammesse `L1+L2`, `L2+L3`, `L3+L4`, `L1+L4`.
 - Calcola punteggi tecnici, soglia di sbarramento, riparametrazione per ambito, punteggio economico e scenario vincente.
-- Evidenzia warning su soglie, dipendenze, combinatorie non ammissibili, sorteggio e deroga al limite di due lotti.
+- Evidenzia warning strutturati su soglie, dipendenze, combinatorie non ammissibili, sorteggio e deroga al limite di due lotti, distinguendo criticità bloccanti e avvisi.
 - Offre scenari base con profili simulati ispirati a fonti pubbliche e allegati locali, senza trasformarli in offerte reali.
 - Permette salvataggio locale, duplicazione, import/export JSON, confronto fra scenari e reset totale allo stato iniziale.
 - Evidenzia delta decisionali fra scenari salvati, warning nuovi/risolti e matrice batch di stabilità su soglie, deroga e stress ribasso.
 - Mostra l'analisi puntuale criterio per sub-criterio, con costo stimato e impatto su punteggio/ribasso.
 - Rafforza la lettura economica All. 18 con corrispettivi €/km, segnali PEF/CEA e stress rapido sui ribassi.
-- Usa l'ottimizzazione per partire da un'offerta iniziale, massimizzare il punteggio con leve tecniche e riallocare automaticamente tecnica verso ribasso.
+- Usa l'ottimizzazione per partire da un'offerta iniziale, massimizzare il punteggio con leve tecniche, riallocare automaticamente tecnica verso ribasso e leggere la diagnostica delle mosse valutate.
 - Mostra versione locale, data build e changelog bundlato direttamente nel sito.
 - Espone una pagina web di istruzioni raggiungibile dal pulsante `Istruzioni` nella testata e dall'URL `/istruzioni/`.
 - Supporta tema chiaro/scuro/automatico e layout responsive.
@@ -63,6 +63,7 @@ src/data/base-scenarios.ts             Scenari base, profili simulati e baseline
 src/data/tender.ts                     Lotti, coppie, criteri, soglie, fonti e criticità documentali
 src/lib/optimization.ts                Motore di ottimizzazione punteggio, leve tecniche e riallocazioni verso ribasso
 src/lib/scenario-persistence.ts        Normalizzazione snapshot, migrazione storage e import JSON
+src/lib/activity-notifications.ts      Creazione e normalizzazione dello storico attività locale
 src/lib/scoring.ts                     Motore di scoring e selezione scenario
 src/lib/tradeoff.ts                    Logica interna di analisi puntuale criterio e costo tecnico
 src/lib/version.ts                     Versione iniettata da package.json e data build mostrata nel frontend

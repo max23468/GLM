@@ -7,7 +7,9 @@
 - Versione applicativa: leggere `version` in `package.json` come source of truth.
 - Deploy produzione: Cloudflare Pages progetto `gare-lotti-milanesi`, URL `https://gare-lotti-milanesi.pages.dev`.
 - Branch principale: `main`.
-- Remote: `git@github.com:max23468/GLM.git`.
+- Remote locale: `git@github.com:max23468/GLM.git`.
+- Alias GitHub verificato: `git@github.com:max23468/Gare-Lotti-Milanesi.git`
+  punta allo stesso `main`; per operazioni locali resta valido `origin`.
 
 ## Fonte di verità
 
@@ -28,6 +30,8 @@
 - GLM usa Cloudflare Pages, non Vercel o Supabase.
 - L'URL pubblico `https://gare-lotti-milanesi.pages.dev` resta stabile salvo richiesta esplicita.
 - Il nome visibile del prodotto è separato dallo slug deploy.
+- Il remote locale `max23468/GLM` e l'alias `max23468/Gare-Lotti-Milanesi`
+  sono stati verificati sullo stesso commit `main` il 2026-05-31.
 - La Codex feedback inbox GitHub non segnala thread actionable al controllo del 2026-05-24.
 - L'allineamento Atlas è documentale e di processo: non cambia logica, UI, allegati, release o deploy.
 - Durante l'allineamento non copiare ciecamente template Atlas: censire funzioni, documenti e regole GLM già mature, poi decidere se mantenerle specifiche, promuoverle ad Atlas, sostituirle con pattern più maturi o parcheggiarle in backlog.

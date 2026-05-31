@@ -6,6 +6,17 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.11.0] — 2026-05-31
+
+### Novità
+
+- **Criticità**: i warning dello scenario ora distinguono problemi bloccanti, avvisi e contesto operativo, così è più chiaro cosa incide su ammissibilità o assegnazione.
+- **Ottimizzazione**: la scheda mostra quante mosse e simulazioni sono state valutate per costruire il piano consigliato.
+
+### Correzioni
+
+- **Import JSON**: rafforzata la normalizzazione di scenari incompleti, export incapsulati e payload Excel aggregati prima della simulazione.
+
 ## [1.10.0] — 2026-05-31
 
 ### Novità
