@@ -332,6 +332,9 @@ Esegui `npm run smoke` solo quando il diff tocca o rischia di rompere flussi cop
 
 ## Risposte finali e prossimi passi
 
+- Riassumi cosa è cambiato o scoperto e indica i file principali quando utile.
+- Dichiara stato publish, release e deploy e branch/worktree quando applicabile
+  o quando restano residui da spiegare.
 - Ogni volta che termini un'attività, considera sempre i prossimi passi nelle conclusioni, come nel flusso operativo di Pratix.
 - Se c'è un seguito operativo reale, indica i prossimi passi consigliati: devono essere concreti, ordinati e proporzionati al lavoro appena concluso.
 - Se ci sono alternative sensate, presentale in modo facile da scegliere, indicando l'effetto pratico di ciascuna.
@@ -351,6 +354,8 @@ Un'attività è chiusa quando:
 - aggiorna documentazione, roadmap o note solo quando il cambio lo richiede davvero;
 - dichiara esplicitamente limiti, controlli non eseguiti e rischi residui utili.
 - publish, release e deploy sono stati completati oppure dichiarati non applicabili con motivo.
+- branch/worktree creati per il lavoro sono stati puliti oppure il residuo è
+  dichiarato esplicitamente.
 
 ## Deploy e pubblicazione
 
