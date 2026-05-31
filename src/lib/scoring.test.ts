@@ -143,6 +143,31 @@ describe("TPL tender scoring", () => {
     expect(result.comboScores[bidder.id]["L1+L2"].warnings.some((warning) => warning.includes("non economicamente migliorativo"))).toBe(true);
   });
 
+  it("marks buste and PEF combinatory warnings as blocking", () => {
+    const bidder = createBidder("a", "A");
+    fillOffer(bidder, "L1", 5, 85);
+    fillOffer(bidder, "L2", 5, 85);
+    bidder.combos["L1+L2"] = { enabled: true, phaseDiscounts: [8, 8, 8], insertedInBothBuste: false, pefCoherent: false };
+
+    const result = simulate([bidder], settings, bidder.id);
+    const comboWarnings = result.warningItems.filter((warning) => warning.pairId === "L1+L2");
+
+    expect(comboWarnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: "Inserimento incrociato non pienamente confermato nelle due buste.",
+          severity: "blocking",
+          blocksAward: true,
+        }),
+        expect.objectContaining({
+          message: "PEF combinatorio non dichiarato coerente/presente.",
+          severity: "blocking",
+          blocksAward: true,
+        }),
+      ]),
+    );
+  });
+
   it("does not use the two-lot award derogation when all lots can be assigned under the ordinary limit", () => {
     const first = createBidder("a", "A");
     for (const lot of LOTS) fillOffer(first, lot.id, 8, 95);

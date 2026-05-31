@@ -916,6 +916,8 @@ const lotWarningSeverity = (warning: string): SimulationWarningSeverity => {
     warning.includes("non supera la soglia") ||
     warning.includes("sovrapposta") ||
     warning.includes("non rispettano") ||
+    warning.includes("buste") ||
+    warning.includes("PEF") ||
     warning.includes("non economicamente migliorativo")
   ) {
     return "blocking";
