@@ -22,7 +22,7 @@
 | `git` | locale | stato repository, branch e commit |
 | `gh` | locale | GitHub, PR, issue e Codex feedback inbox |
 | `wrangler` | `^4.95.0` | Cloudflare Pages deploy e diagnosi |
-| React Doctor | `npx react-doctor@latest` via `npm run quality:react-doctor` | qualità React dopo release major/minor o modifiche React trasversali; canale `latest` intenzionale, senza dipendenza pinned nel repo |
+| React Doctor | `npx --yes react-doctor@latest` via `npm run quality:react-doctor` | qualità React dopo release major/minor o modifiche React trasversali; canale `latest` intenzionale, senza dipendenza pinned nel repo e senza prompt interattivi |
 | Playwright | `^1.60.0` | smoke browser |
 
 ## Comandi
