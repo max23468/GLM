@@ -214,6 +214,11 @@ Non creare una nuova versione visibile nel frontend se il blocco non contiene pu
 Release Please non è adottato in GLM: non delegare changelog, versioni, tag o
 GitHub Release a bot automatici senza nuova decisione esplicita.
 
+Per ogni release prodotto reale pubblicata su `main`, crea anche tag Git
+`vX.Y.Z` e GitHub Release derivata dalla sezione rilasciata di `CHANGELOG.md`.
+Questo è il default operativo per release end-user; resta non applicabile a
+modifiche docs-only, governance-only o voci `### Non versionato`.
+
 Per preparare una nuova versione, aggiungi le voci sotto `## [Non rilasciato]` ed esegui:
 
 ```bash
@@ -342,7 +347,7 @@ Deploy solo su richiesta esplicita.
 
 Quando l'utente dice `pubblica`, `rilascia`, `deploya` o formule equivalenti, interpreta la richiesta come flusso completo di pubblicazione, non come solo comando locale: PR pronta/merge su `main`, eventuale deploy su Cloudflare Pages quando la modifica lo richiede o lo richiede l'utente, verifica finale, e pulizia esplicita del checkout (branch/worktree locali e remoti non più necessari). In questa repository il flusso resta specifico di GLM: Cloudflare Pages progetto `gare-lotti-milanesi`, output Vite `dist`, niente Vercel.
 
-Release e deploy vanno valutati insieme quando entrambi sono applicabili: non chiudere una release senza dichiarare lo stato del deploy, e non chiudere un deploy senza dichiarare se la release è necessaria o `N/A`.
+Release e deploy vanno valutati insieme quando entrambi sono applicabili: non chiudere una release senza dichiarare lo stato del deploy, e non chiudere un deploy senza dichiarare se la release è necessaria o `N/A`. Quando una release prodotto reale arriva su `main`, non chiuderla senza tag `vX.Y.Z` e GitHub Release pubblicata.
 
 Prima di pubblicare:
 

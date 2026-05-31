@@ -6,6 +6,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.11.1] — 2026-05-31
+
+### Correzioni
+
+- **Criticità**: le verifiche su buste e PEF delle combinatorie sono ora segnalate come bloccanti quando impediscono l'ammissibilità della coppia.
+
 ## [1.11.0] — 2026-05-31
 
 ### Novità
