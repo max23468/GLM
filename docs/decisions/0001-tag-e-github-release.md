@@ -25,8 +25,8 @@ Quando GLM prepara una release prodotto reale:
   `npm run release`;
 - il tag Git deve avere formato `vX.Y.Z` e corrispondere esattamente alla
   versione in `package.json`;
-- la GitHub Release, se creata, deve partire da quel tag e usare note derivate
-  dalla sezione rilasciata di `CHANGELOG.md`;
+- la GitHub Release è parte del default di pubblicazione: deve partire da quel
+  tag e usare note derivate dalla sezione rilasciata di `CHANGELOG.md`;
 - il deploy Cloudflare Pages resta separato e richiede il flusso dedicato della
   repo;
 - modifiche docs-only, governance-only o `### Non versionato` non creano tag e
@@ -50,15 +50,15 @@ decisione esplicita.
   changelog pubblico.
 - Tecnico: il comando locale `npm run release` resta il gate della versione.
 - Dati/privacy: nessun impatto sui dati di gara o sugli allegati.
-- Deploy/release: tag e GitHub Release diventano ammessi solo per release
+- Deploy/release: tag e GitHub Release diventano obbligatori per release
   prodotto reali; deploy Cloudflare resta indipendente.
 - Documentazione: la guida versioning e l'indice decisioni chiudono la decisione
   pendente.
 
 ## Conseguenze operative
 
-- Alla prossima release prodotto scegliere se taggare la versione corrente
-  allineata o preparare un bump successivo con `npm run release`.
+- Dopo il merge su `main` di una release prodotto reale, creare e pubblicare il
+  tag `vX.Y.Z` e la relativa GitHub Release prima di chiudere il lavoro.
 - Non creare tag o GitHub Release per questo allineamento documentale.
 - Non usare GitHub Release come sostituto del deploy Cloudflare Pages.
 

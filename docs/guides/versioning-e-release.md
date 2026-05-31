@@ -127,13 +127,13 @@ Per una release prodotto reale:
 - `package.json`, aggiornato da `npm run release`, resta la source of truth;
 - il tag Git deve avere formato `vX.Y.Z` e corrispondere esattamente alla
   versione in `package.json`;
-- la GitHub Release, se creata, parte da quel tag e usa note derivate dalla
-  sezione rilasciata di `CHANGELOG.md`;
+- la GitHub Release è parte del default di pubblicazione: parte da quel tag e
+  usa note derivate dalla sezione rilasciata di `CHANGELOG.md`;
 - il deploy Cloudflare Pages resta separato e richiede il flusso dedicato;
 - documentazione interna, governance, piani e voci `### Non versionato` non
   generano tag e non generano GitHub Release.
 
 Lo storico `v1.0.0` già presente su GitHub non va retro-corretto con tag
-inventati. La policy vale dalla prossima release prodotto reale: in quella fase
-si decide se taggare la versione corrente allineata o preparare un bump
-successivo con `npm run release`.
+inventati. La policy vale dalle release prodotto reali preparate con
+`npm run release`: dopo merge su `main`, crea il tag `vX.Y.Z` e pubblica la
+GitHub Release prima di chiudere il lavoro.
