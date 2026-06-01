@@ -25,6 +25,9 @@ La repo combina:
 - documenti di gara pesanti sotto Git LFS;
 - deploy Cloudflare Pages.
 
+Fase operativa: web app React/Vite in produzione leggera su Cloudflare Pages,
+con release prodotto reali solo secondo policy e tag/GitHub Release `vX.Y.Z`.
+
 Il prodotto è un simulatore esplorativo, non una fonte ufficiale di offerta o aggiudicazione.
 
 ### Perimetro e non-obiettivi
@@ -350,10 +353,12 @@ Un'attività è chiusa quando:
 - non sovrascrive modifiche non tue;
 - mantiene coerenza con fonti, dati, UI italiana e deploy Cloudflare;
 - include test o controlli proporzionati al rischio del diff;
+- controlla la `Codex feedback inbox` quando il flusso prevede PR ready, merge,
+  publish, deploy o release;
 - non lascia file temporanei, generati o sensibili nel commit;
 - aggiorna documentazione, roadmap o note solo quando il cambio lo richiede davvero;
-- dichiara esplicitamente limiti, controlli non eseguiti e rischi residui utili.
-- publish, release e deploy sono stati completati oppure dichiarati non applicabili con motivo.
+- dichiara esplicitamente limiti, controlli non eseguiti e rischi residui utili;
+- publish, release e deploy sono stati completati oppure dichiarati non applicabili con motivo;
 - branch/worktree creati per il lavoro sono stati puliti oppure il residuo è
   dichiarato esplicitamente.
 
