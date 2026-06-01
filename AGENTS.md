@@ -63,6 +63,18 @@ Spostamenti verso questi perimetri richiedono richiesta esplicita e aggiornament
 
 Se il worktree contiene modifiche non tue o non collegate alla richiesta, non normalizzarle e non includerle nel tuo diff. Per interventi non minuscoli crea una branch o un worktree dedicato da una base pulita; per interventi piccoli puoi lavorare nello stesso checkout solo se i file non si sovrappongono e lo dichiari nel riepilogo.
 
+## Skill operative
+
+Usa le skill Superpowers pertinenti per lavori non banali: pianificazione,
+debugging sistematico, worktree, esecuzione di piani, review e verifica finale.
+Le skill non sostituiscono le fonti di verità GLM, le regole su allegati gara,
+Cloudflare Pages o Git LFS.
+
+Usa o proponi `grill-me` quando serve stressare architetture, refactor
+trasversali, integrazioni, deploy Cloudflare, logica simulatore, sicurezza o
+scope ambiguo. Non renderla obbligatoria per refusi, micro-docs, cleanup o
+modifiche meccaniche a basso rischio.
+
 ## Fonti primarie e contesto da leggere
 
 Usa queste fonti prima di intervenire sulle aree corrispondenti:
