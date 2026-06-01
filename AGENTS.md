@@ -203,6 +203,11 @@ La cartella `docs/milano-lotti-extraurbani-om/` contiene file binari e documenti
 - UI, microcopy e documentazione devono restare in italiano.
 - Usa accenti e apostrofi corretti.
 - Mantieni tono operativo e chiaro: l'utente deve capire subito cosa può fare.
+- Non creare un brand parallelo senza decisione esplicita: la policy corrente è
+  nome prodotto visibile `Simulatore gara TPL lotti 1-4`, tono da console
+  operativa e separazione netta da URL/slug Cloudflare.
+- Termini operativi da preservare quando rilevanti: `Documento di gara`,
+  `Fonte pubblica` e `Assunzione simulativa`.
 - Evita superfici marketing: questa è una console di simulazione, non una landing page.
 - La prima schermata deve restare l'esperienza applicativa del simulatore, non una pagina promozionale.
 - Evita acronimi o nomi interni poco leggibili nelle label visibili: preferisci nomi espliciti come `Simulatore gara TPL lotti 1-4`.
