@@ -5,6 +5,7 @@
 
 node_modules/
 dist/
+coverage/
 .vite/
 .wrangler/
 .playwright-cli/

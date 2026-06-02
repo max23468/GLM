@@ -106,6 +106,7 @@ Per i dettagli sul calcolo, vedi [`docs/LOGICA_SIMULATORE.md`](docs/LOGICA_SIMUL
 ```bash
 npm run dev -- --port 4173
 npm test
+npm run test:coverage:core
 npm run build
 npm run validate:data
 npm run validate:base
@@ -120,7 +121,7 @@ npm run release
 npm run preview -- --port 4173
 ```
 
-`npm test` esegue i test Vitest su scoring, persistenza e scenari base. `npm run validate:data` concentra i controlli automatici su dati gara e scenari base. `npm run build` esegue TypeScript e build Vite. `npm run smoke` avvia una preview locale e verifica con Playwright ottimizzazione, salvataggio, import/export, confronto, istruzioni e pannello versione. `npm run benchmark:optimization` misura il costo dell'ottimizzazione sui profili base senza entrare nel test ordinario. `npm run deploy:doctor` controlla prerequisiti locali, variabili Cloudflare o login Wrangler senza stampare segreti. `npm run prepublish:check` raggruppa i controlli prima della pubblicazione. `npm run release` prepara una nuova versione locale aggiornando `CHANGELOG.md`, data build in `src/lib/version.ts`, `package.json` e `package-lock.json`, ma non esegue il deploy.
+`npm test` esegue i test Vitest su scoring, persistenza e scenari base. `npm run test:coverage:core` misura la coverage solo del core logico (`scoring`, `optimization`, `scenario-persistence`, `tender`, `base-scenarios`) con soglie minime `85%` linee e `75%` rami, senza trascinare UI o asset di supporto. `npm run validate:data` concentra i controlli automatici su dati gara e scenari base. `npm run build` esegue TypeScript e build Vite. `npm run smoke` avvia una preview locale e verifica con Playwright ottimizzazione, salvataggio, import/export, confronto, istruzioni e pannello versione. `npm run benchmark:optimization` misura il costo dell'ottimizzazione sui profili base senza entrare nel test ordinario. `npm run deploy:doctor` controlla prerequisiti locali, variabili Cloudflare o login Wrangler senza stampare segreti. `npm run prepublish:check` raggruppa i controlli prima della pubblicazione. `npm run release` prepara una nuova versione locale aggiornando `CHANGELOG.md`, data build in `src/lib/version.ts`, `package.json` e `package-lock.json`, ma non esegue il deploy.
 
 ## CI e changelog locale
 
