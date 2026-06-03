@@ -106,7 +106,7 @@ jobs:
           changed_files="$(git diff --name-only "$base_sha" HEAD)"
           printf 'File cambiati nella PR:\n%s\n' "$changed_files"
 
-          if printf '%s\n' "$changed_files" | grep -Eq '^(src/|public/|data/|scripts/(deploy-cloudflare|smoke)\.mjs|package(-lock)?\.json|index\.html|vite\.config\.[cm]?[jt]s|tsconfig.*\.json|wrangler\.toml|_headers|_redirects)'; then
+          if printf '%s\n' "$changed_files" | grep -Eq '^(src/|public/|functions/|data/|scripts/(deploy-cloudflare|smoke)\.mjs|package(-lock)?\.json|index\.html|vite\.config\.[cm]?[jt]s|tsconfig.*\.json|wrangler\.toml|_headers|_redirects)'; then
             echo "needs_preview=true" >> "$GITHUB_OUTPUT"
           else
             echo "needs_preview=false" >> "$GITHUB_OUTPUT"
