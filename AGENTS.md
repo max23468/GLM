@@ -339,6 +339,11 @@ Esegui `npm run smoke` solo quando il diff tocca o rischia di rompere flussi cop
 
 - Mantieni commit piccoli, atomici e coerenti con lo scope reale.
 - Usa Conventional Commit in inglese quando non ci sono regole più specifiche: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`.
+- Quando Codex apre una PR, non usare il nome branch `codex/<tema>` come titolo:
+  passa sempre un titolo PR Conventional Commit esplicito, per esempio
+  `gh pr create --title "docs: update GLM governance"`, oppure correggi subito
+  una PR già aperta con `gh pr edit --title "docs: ..."` prima di dichiararla
+  pronta o pubblicata.
 - Prima di commit o PR, fai self-review del diff e verifica che non includa modifiche estranee, file generati o allegati toccati per errore.
 - Se lavori su `main` direttamente, stage solo i file pertinenti alla richiesta.
 - Per lavori non banali o quando il worktree è già sporco, preferisci branch/worktree `codex/<tema>` e PR o merge esplicito verso `main`.

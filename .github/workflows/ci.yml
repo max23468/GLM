@@ -97,6 +97,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Classifica diff preview
+        id: preview_scope
+        run: |
+          set -euo pipefail
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          git fetch --no-tags --depth=1 origin "$base_sha"
+          changed_files="$(git diff --name-only "$base_sha" HEAD)"
+          printf 'File cambiati nella PR:\n%s\n' "$changed_files"
+
+          if printf '%s\n' "$changed_files" | grep -Eq '^(src/|public/|functions/|data/|scripts/(deploy-cloudflare|smoke)\.mjs|package(-lock)?\.json|index\.html|vite\.config\.[cm]?[jt]s|tsconfig.*\.json|wrangler\.toml|_headers|_redirects)'; then
+            echo "needs_preview=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_preview=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Preview Cloudflare saltata: diff solo documentale/governance."
+          fi
+
       - name: Determina se eseguire il fetch Doppler
         id: deploy_doppler_fetch_gate
         run: |
@@ -138,6 +154,7 @@ jobs:
         run: npm ci
 
       - name: Cache Playwright browser
+        if: ${{ steps.preview_scope.outputs.needs_preview == 'true' && env.CLOUDFLARE_ACCOUNT_ID != '' && env.CLOUDFLARE_API_TOKEN != '' }}
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
@@ -146,16 +163,21 @@ jobs:
             ${{ runner.os }}-playwright-
 
       - name: Install Playwright browser
+        if: ${{ steps.preview_scope.outputs.needs_preview == 'true' && env.CLOUDFLARE_ACCOUNT_ID != '' && env.CLOUDFLARE_API_TOKEN != '' }}
         run: npx playwright install chromium
 
       - name: Diagnosi credenziali deploy
-        if: ${{ env.CLOUDFLARE_ACCOUNT_ID != '' && env.CLOUDFLARE_API_TOKEN != '' }}
+        if: ${{ steps.preview_scope.outputs.needs_preview == 'true' && env.CLOUDFLARE_ACCOUNT_ID != '' && env.CLOUDFLARE_API_TOKEN != '' }}
         run: npm run deploy:doctor
 
       - name: Deploy preview e smoke
-        if: ${{ env.CLOUDFLARE_ACCOUNT_ID != '' && env.CLOUDFLARE_API_TOKEN != '' }}
+        if: ${{ steps.preview_scope.outputs.needs_preview == 'true' && env.CLOUDFLARE_ACCOUNT_ID != '' && env.CLOUDFLARE_API_TOKEN != '' }}
         run: npm run deploy:preview -- --branch "$GITHUB_HEAD_REF"
 
       - name: Preview non pubblicata
-        if: ${{ env.CLOUDFLARE_ACCOUNT_ID == '' || env.CLOUDFLARE_API_TOKEN == '' }}
+        if: ${{ steps.preview_scope.outputs.needs_preview == 'true' && (env.CLOUDFLARE_ACCOUNT_ID == '' || env.CLOUDFLARE_API_TOKEN == '') }}
         run: 'echo "::notice::Preview Cloudflare saltata: configura CLOUDFLARE_ACCOUNT_ID e CLOUDFLARE_API_TOKEN nei secrets GitHub."'
+
+      - name: Preview non necessaria
+        if: ${{ steps.preview_scope.outputs.needs_preview != 'true' }}
+        run: 'echo "::notice::Preview Cloudflare non necessaria per questo diff."'
