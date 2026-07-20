@@ -36,7 +36,6 @@
     "lucide-react": "^1.16.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.6",
-    "typescript": "^6.0.3",
     "vite": "^8.0.13"
   },
   "devDependencies": {
@@ -44,10 +43,11 @@
     "@types/react-dom": "^19.2.3",
     "@vitest/coverage-v8": "^4.1.7",
     "playwright": "^1.60.0",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.7",
     "wrangler": "^4.97.0"
   },
   "overrides": {
-    "ws": "8.20.1"
+    "ws": "8.21.0"
   }
 }
