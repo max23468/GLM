@@ -596,10 +596,23 @@ function getFirstCodexComment(thread) {
   );
 }
 
+// Strip HTML tags fino a punto fisso: una singola passata di replace è
+// incompleta perché rimuovere un tag può formarne uno nuovo dai caratteri
+// adiacenti (CodeQL js/incomplete-multi-character-sanitization).
+function stripTags(text) {
+  let current = text;
+  let previous;
+  do {
+    previous = current;
+    current = current.replace(/<[^>]+>/g, "");
+  } while (current !== previous);
+  return current;
+}
+
 function firstLine(value) {
   return value
     .split("\n")
-    .map((line) => line.replace(/<[^>]+>/g, "").trim())
+    .map((line) => stripTags(line).trim())
     .find(Boolean)
     ?.slice(0, 160);
 }
