@@ -1,3 +1,8 @@
+# Dependabot — aggiornamenti dipendenze settimanali, raggruppati per ridurre rumore.
+# Minor/patch: PR raggruppata e auto-mergiata (vedi dependabot-automerge.yml).
+# Major: PR singola, review manuale. I major che richiedono migrazione coordinata
+# sono ignorati finché non li affrontiamo a mano.
+# Documentazione: https://docs.github.com/code-security/dependabot/dependabot-version-updates
 version: 2
 updates:
   - package-ecosystem: npm
@@ -7,6 +12,48 @@ updates:
       day: monday
       time: "08:00"
       timezone: Europe/Rome
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      # Minor/patch in un'unica PR: meno frammentazione, auto-merge dopo CI verde.
+      npm-minor-and-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # Major React: lo stack è pinnato a React 19 (AGENTS.md), un salto major è
+      # una migrazione deliberata, non un bump automatico.
+      - dependency-name: react
+        update-types:
+          - version-update:semver-major
+      - dependency-name: react-dom
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "@types/react"
+        update-types:
+          - version-update:semver-major
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:20"
+      timezone: Europe/Rome
     open-pull-requests-limit: 2
     labels:
       - dependencies
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      actions-minor-and-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
