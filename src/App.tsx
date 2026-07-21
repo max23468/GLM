@@ -116,6 +116,13 @@ import {
   type ActivityNotificationInput,
 } from "./lib/activity-notifications";
 
+// Un input numerico vuoto o non valido produce NaN, che corromperebbe il
+// modello di punteggio: ripiega su 0.
+const toFiniteNumber = (value: string): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
 const euroFormatter = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 const euroPerKmFormatter = new Intl.NumberFormat("it-IT", {
   style: "currency",
@@ -2235,7 +2242,7 @@ function CriterionInspector({
                       min={0}
                       step={1}
                       value={quantityInput.numerator}
-                      onChange={(event) => onQuantityInputChange({ numerator: Number(event.target.value) })}
+                      onChange={(event) => onQuantityInputChange({ numerator: toFiniteNumber(event.target.value) })}
                     />
                   </label>
                   <label className="field compact">
@@ -2249,7 +2256,7 @@ function CriterionInspector({
                       min={0}
                       step={1}
                       value={quantityInput.denominator}
-                      onChange={(event) => onQuantityInputChange({ denominator: Number(event.target.value) })}
+                      onChange={(event) => onQuantityInputChange({ denominator: toFiniteNumber(event.target.value) })}
                     />
                   </label>
                 </div>
@@ -2271,7 +2278,7 @@ function CriterionInspector({
                   max={criterion.input === "ratio" ? 1 : undefined}
                   step={criterion.input === "ratio" ? 0.05 : criterion.input === "percent" ? 0.01 : 1}
                   value={Number(value)}
-                  onChange={(event) => onChange(Number(event.target.value))}
+                  onChange={(event) => onChange(toFiniteNumber(event.target.value))}
                 />
                 <span>{criterion.unit}</span>
               </div>
@@ -2287,7 +2294,7 @@ function CriterionInspector({
               </div>
             )}
             {criterion.kind === "D" && (
-              <select aria-label={`Coefficiente discrezionale ${criterion.id}`} value={Number(value)} onChange={(event) => onChange(Number(event.target.value))}>
+              <select aria-label={`Coefficiente discrezionale ${criterion.id}`} value={Number(value)} onChange={(event) => onChange(toFiniteNumber(event.target.value))}>
                 {!hasDiscretionaryScaleOption && (
                   <option value={currentDiscretionaryValue}>
                     Valore corrente - {formatDiscretionaryOption(criterion, currentDiscretionaryValue)}
@@ -2337,7 +2344,7 @@ function CriterionInspector({
                     step={criterion.quantityInput || criterion.input === "ratio" ? 1 : criterion.input === "percent" ? 0.01 : 1}
                   min={0}
                   value={tradeoff.deltaUnits}
-                  onChange={(event) => onTradeoffChange({ deltaUnits: Number(event.target.value) })}
+                  onChange={(event) => onTradeoffChange({ deltaUnits: toFiniteNumber(event.target.value) })}
                 />
               </label>
             )}
@@ -2353,7 +2360,7 @@ function CriterionInspector({
                     min={0}
                   step={1}
                   value={tradeoffDenominatorValue}
-                  onChange={(event) => onTradeoffChange({ denominator: Number(event.target.value) })}
+                  onChange={(event) => onTradeoffChange({ denominator: toFiniteNumber(event.target.value) })}
                 />
               </label>
             )}
@@ -2368,7 +2375,7 @@ function CriterionInspector({
                   min={0}
                 step={1000}
                 value={tradeoff.unitCost}
-                onChange={(event) => onTradeoffChange({ unitCost: Number(event.target.value) })}
+                onChange={(event) => onTradeoffChange({ unitCost: toFiniteNumber(event.target.value) })}
               />
             </label>
           </div>
@@ -2762,7 +2769,7 @@ function EconomicFormulaSections({
             max={30}
             step={0.5}
             value={targetEconomic}
-            onChange={(event) => setTargetEconomic(Math.min(30, Math.max(0, Number(event.target.value) || 0)))}
+            onChange={(event) => setTargetEconomic(Math.min(30, Math.max(0, toFiniteNumber(event.target.value) || 0)))}
           />
         </label>
         <div className="target-result">
@@ -3286,7 +3293,7 @@ function OptimizationLeverCatalog({
                           min={0}
                           step={1000}
                           value={lever.unitCost}
-                          onChange={(event) => onLeverChange(lotId, criterion.id, { unitCost: Math.max(0, Number(event.target.value) || 0) })}
+                          onChange={(event) => onLeverChange(lotId, criterion.id, { unitCost: Math.max(0, toFiniteNumber(event.target.value) || 0) })}
                         />
                       </td>
                       <td>
@@ -3297,7 +3304,7 @@ function OptimizationLeverCatalog({
                           step={criterion.kind === "T" ? 1 : 0.01}
                           value={lever.maxUnits}
                           disabled={criterion.kind === "T"}
-                          onChange={(event) => onLeverChange(lotId, criterion.id, { maxUnits: Math.max(0, Number(event.target.value) || 0) })}
+                          onChange={(event) => onLeverChange(lotId, criterion.id, { maxUnits: Math.max(0, toFiniteNumber(event.target.value) || 0) })}
                         />
                       </td>
                       <td>
@@ -3308,7 +3315,7 @@ function OptimizationLeverCatalog({
                             min={0}
                             step={1}
                             value={lever.denominator}
-                            onChange={(event) => onLeverChange(lotId, criterion.id, { denominator: Math.max(0, Number(event.target.value) || 0) })}
+                            onChange={(event) => onLeverChange(lotId, criterion.id, { denominator: Math.max(0, toFiniteNumber(event.target.value) || 0) })}
                           />
                         ) : (
                           <span className="not-applicable">non previsto</span>
@@ -3834,7 +3841,7 @@ function EconomicEditor({
             step={0.01}
             value={averageInput}
             disabled={disabled}
-            onChange={(event) => onAverageChange(Number(event.target.value))}
+            onChange={(event) => onAverageChange(toFiniteNumber(event.target.value))}
           />
           <small>
             Le tre fasi usano lo stesso valore. Il ribasso medio ponderato coincide con l&apos;input quando le basi sono
@@ -3854,7 +3861,7 @@ function EconomicEditor({
                 step={0.01}
                 value={offer.phaseDiscounts[index]}
                 disabled={disabled}
-                onChange={(event) => onPhaseChange(index, Number(event.target.value))}
+                onChange={(event) => onPhaseChange(index, toFiniteNumber(event.target.value))}
               />
             </label>
           ))}

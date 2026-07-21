@@ -1,0 +1,33 @@
+{
+  "ignore": {
+    "overrides": [
+      {
+        "files": ["src/App.tsx"],
+        "rules": [
+          "react-doctor/prefer-html-dialog",
+          "react-doctor/no-fetch-in-effect"
+        ]
+      },
+      {
+        "files": ["src/components/instructions-page.tsx"],
+        "rules": ["react-doctor/effect-needs-cleanup"]
+      },
+      {
+        "files": ["src/components/release-panel.tsx"],
+        "rules": ["react-doctor/no-array-index-as-key"]
+      },
+      {
+        "files": ["src/lib/cloudflare-web-analytics.ts"],
+        "rules": ["react-doctor/public-env-secret-name"]
+      },
+      {
+        "files": [".github/workflows/ci.yml"],
+        "rules": ["react-doctor/build-pipeline-secret-boundary"]
+      },
+      {
+        "files": ["src/lib/optimization.benchmark.ts"],
+        "rules": ["deslop/unused-file"]
+      }
+    ]
+  }
+}
