@@ -753,9 +753,10 @@ const bootstrapScenarioLibrary = (stored: SavedScenarioSnapshot[]): SavedScenari
   const hasPresetEntries = stored.some((scenario) => isPresetScenarioId(scenario.id));
   if (!hasPresetEntries) return [...hydrateScenarioLibrary([], hidden), ...stored];
 
+  const hiddenSet = new Set(hidden);
   return stored.filter((scenario) => {
     const presetBaseId = baseIdFromPresetScenarioId(scenario.id);
-    return !presetBaseId || !hidden.includes(presetBaseId);
+    return !presetBaseId || !hiddenSet.has(presetBaseId);
   });
 };
 
