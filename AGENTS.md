@@ -386,7 +386,12 @@ Un'attività è chiusa quando:
 
 ## Deploy e pubblicazione
 
-Deploy solo su richiesta esplicita.
+Il deploy di produzione su Cloudflare Pages (`gare-lotti-milanesi`) è
+**automatico**: il job `deploy-production` in `.github/workflows/ci.yml` parte a
+ogni push/merge su `main`, esegue `npm run deploy:cloudflare` (build, pubblica
+`dist`, smoke post-deploy). Il merge su `main` porta quindi in produzione da
+solo. `npm run deploy:cloudflare` locale resta valido per un redeploy manuale
+immediato; `npm run deploy:preview` per le preview su PR.
 
 Quando l'utente dice `pubblica`, `rilascia`, `deploya` o formule equivalenti, interpreta la richiesta come flusso completo di pubblicazione, non come solo comando locale: PR pronta/merge su `main`, eventuale deploy su Cloudflare Pages quando la modifica lo richiede o lo richiede l'utente, verifica finale, e pulizia esplicita del checkout (branch/worktree locali e remoti non più necessari). In questa repository il flusso resta specifico di GLM: Cloudflare Pages progetto `gare-lotti-milanesi`, output Vite `dist`, niente Vercel.
 
