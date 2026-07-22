@@ -15,7 +15,7 @@
     "deploy:cloudflare": "node scripts/deploy-cloudflare.mjs production",
     "deploy:doctor": "node scripts/deploy-doctor.mjs",
     "deploy:preview": "node scripts/deploy-cloudflare.mjs preview",
-    "quality:react-doctor": "npx --yes react-doctor@latest --full --fail-on error .",
+    "quality:react-doctor": "npx --yes react-doctor@latest --scope full --blocking error .",
     "preview": "vite preview --host 127.0.0.1",
     "prepublish:check": "git diff --check && npm run validate:data && npm test && npm run build && npm run smoke",
     "release": "node scripts/release.mjs",
