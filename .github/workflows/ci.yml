@@ -29,7 +29,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Check dati gara e scenari versionati
         run: npm run validate:data
@@ -49,11 +49,7 @@ jobs:
     needs: verify
     if: github.event_name == 'pull_request'
     env:
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      SMOKE_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
-      SMOKE_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-      VITE_CF_WEB_ANALYTICS_TOKEN: ${{ secrets.VITE_CF_WEB_ANALYTICS_TOKEN }}
+      CLOUDFLARE_CREDENTIALS_CONFIGURED: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' && secrets.CLOUDFLARE_API_TOKEN != '' }}
 
     steps:
       - name: Checkout
@@ -82,10 +78,10 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Cache Playwright browser
-        if: ${{ steps.preview_scope.outputs.needs_preview == 'true' && env.CLOUDFLARE_ACCOUNT_ID != '' && env.CLOUDFLARE_API_TOKEN != '' }}
+        if: ${{ steps.preview_scope.outputs.needs_preview == 'true' && env.CLOUDFLARE_CREDENTIALS_CONFIGURED == 'true' }}
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
@@ -94,19 +90,30 @@ jobs:
             ${{ runner.os }}-playwright-
 
       - name: Install Playwright browser
-        if: ${{ steps.preview_scope.outputs.needs_preview == 'true' && env.CLOUDFLARE_ACCOUNT_ID != '' && env.CLOUDFLARE_API_TOKEN != '' }}
+        if: ${{ steps.preview_scope.outputs.needs_preview == 'true' && env.CLOUDFLARE_CREDENTIALS_CONFIGURED == 'true' }}
         run: npx playwright install chromium
 
       - name: Diagnosi credenziali deploy
-        if: ${{ steps.preview_scope.outputs.needs_preview == 'true' && env.CLOUDFLARE_ACCOUNT_ID != '' && env.CLOUDFLARE_API_TOKEN != '' }}
+        if: ${{ steps.preview_scope.outputs.needs_preview == 'true' && env.CLOUDFLARE_CREDENTIALS_CONFIGURED == 'true' }}
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          SMOKE_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          SMOKE_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: npm run deploy:doctor
 
       - name: Deploy preview e smoke
-        if: ${{ steps.preview_scope.outputs.needs_preview == 'true' && env.CLOUDFLARE_ACCOUNT_ID != '' && env.CLOUDFLARE_API_TOKEN != '' }}
+        if: ${{ steps.preview_scope.outputs.needs_preview == 'true' && env.CLOUDFLARE_CREDENTIALS_CONFIGURED == 'true' }}
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          SMOKE_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          SMOKE_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          VITE_CF_WEB_ANALYTICS_TOKEN: ${{ secrets.VITE_CF_WEB_ANALYTICS_TOKEN }}
         run: npm run deploy:preview -- --branch "$GITHUB_HEAD_REF"
 
       - name: Preview non pubblicata
-        if: ${{ steps.preview_scope.outputs.needs_preview == 'true' && (env.CLOUDFLARE_ACCOUNT_ID == '' || env.CLOUDFLARE_API_TOKEN == '') }}
+        if: ${{ steps.preview_scope.outputs.needs_preview == 'true' && env.CLOUDFLARE_CREDENTIALS_CONFIGURED != 'true' }}
         run: 'echo "::notice::Preview Cloudflare saltata: configura CLOUDFLARE_ACCOUNT_ID e CLOUDFLARE_API_TOKEN nei secrets GitHub."'
 
       - name: Preview non necessaria
@@ -122,11 +129,7 @@ jobs:
       group: deploy-production
       cancel-in-progress: false
     env:
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      SMOKE_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
-      SMOKE_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-      VITE_CF_WEB_ANALYTICS_TOKEN: ${{ secrets.VITE_CF_WEB_ANALYTICS_TOKEN }}
+      CLOUDFLARE_CREDENTIALS_CONFIGURED: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' && secrets.CLOUDFLARE_API_TOKEN != '' }}
 
     steps:
       - name: Checkout
@@ -139,10 +142,10 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Credenziali Cloudflare mancanti
-        if: ${{ env.CLOUDFLARE_ACCOUNT_ID == '' || env.CLOUDFLARE_API_TOKEN == '' }}
+        if: ${{ env.CLOUDFLARE_CREDENTIALS_CONFIGURED != 'true' }}
         run: |
           echo "::error::Deploy produzione saltato: configura CLOUDFLARE_ACCOUNT_ID e CLOUDFLARE_API_TOKEN nei secrets GitHub."
           exit 1
@@ -160,6 +163,17 @@ jobs:
 
       - name: Diagnosi credenziali deploy
         run: npm run deploy:doctor
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          SMOKE_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          SMOKE_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
 
       - name: Deploy produzione e smoke
         run: npm run deploy:cloudflare
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          SMOKE_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          SMOKE_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          VITE_CF_WEB_ANALYTICS_TOKEN: ${{ secrets.VITE_CF_WEB_ANALYTICS_TOKEN }}
