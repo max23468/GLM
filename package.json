@@ -31,10 +31,10 @@
     "validate:excel-package": "node scripts/validate-excel-package.mjs"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "^6.0.3",
+    "@vitejs/plugin-react": "^6.0.4",
     "lucide-react": "^1.25.0",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "vite": "^8.1.5"
   },
   "devDependencies": {
@@ -44,10 +44,10 @@
     "playwright": "^1.61.1",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10",
-    "wrangler": "^4.112.0"
+    "wrangler": "^4.113.0"
   },
   "overrides": {
     "sharp": "0.35.3",
-    "ws": "8.21.0"
+    "ws": "8.21.1"
   }
 }
