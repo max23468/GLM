@@ -18,7 +18,7 @@ Una voce nel backlog non è scope approvato.
 - Mantenere allineati `engines.node`, `packageManager`, `.node-version` e CI
   quando cambiano dipendenze, action o versione runtime.
 
-## Pattern emersi dall'allineamento Atlas
+## Pattern emersi dall'allineamento documentale
 
 Questi elementi non vanno persi né copiati automaticamente in altre repo. Vanno classificati caso per caso.
 
@@ -32,7 +32,7 @@ Questi elementi non vanno persi né copiati automaticamente in altre repo. Vanno
 | Smoke browser proporzionato al rischio | Mantenere in GLM | Pattern trasversale: check più profondi solo quando il diff tocca flussi coperti. |
 | Codex feedback inbox già presente | Mantenere | Standard già trasversale nelle repo coordinate. |
 
-Prima di promuovere uno di questi pattern ad Atlas, verificare almeno una seconda repo comparabile.
+Prima di promuovere uno di questi pattern alle altre repo, verificare almeno una seconda repo comparabile.
 
 ## Bug
 
@@ -46,7 +46,6 @@ Prima di promuovere uno di questi pattern ad Atlas, verificare almeno una second
 ## Decisioni sospese
 
 - Definire se aggiungere branch protection/CODEOWNERS oltre alla baseline GitHub già presente.
-- Definire se Atlas deve avere una regola esplicita di discovery degli extra repo-specifici prima di ogni allineamento.
 
 ## Attività operative ricorrenti
 

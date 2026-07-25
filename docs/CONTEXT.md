@@ -33,8 +33,8 @@
 - Il remote locale `max23468/GLM` e l'alias `max23468/Gare-Lotti-Milanesi`
   sono stati verificati sullo stesso commit `main` il 2026-05-31.
 - La Codex feedback inbox GitHub non segnala thread actionable al controllo del 2026-05-24.
-- L'allineamento Atlas è documentale e di processo: non cambia logica, UI, allegati, release o deploy.
-- Durante l'allineamento non copiare ciecamente template Atlas: censire funzioni, documenti e regole GLM già mature, poi decidere se mantenerle specifiche, promuoverle ad Atlas, sostituirle con pattern più maturi o parcheggiarle in backlog.
+- L'allineamento documentale è di processo: non cambia logica, UI, allegati, release o deploy.
+- Durante l'allineamento non copiare ciecamente template generici: censire funzioni, documenti e regole GLM già mature, poi decidere se mantenerle specifiche, sostituirle con pattern più maturi o parcheggiarle in backlog.
 
 ## Vincoli repo-specifici
 
@@ -80,4 +80,4 @@ Durante handoff e migrazioni, non perdere contenuti: se una nota viene spostata,
 ## Prossimo passo
 
 - Scegliere dal backlog il primo debito prodotto/tecnico da promuovere, se serve.
-- Se un pattern GLM sembra utile ad altre repo, aggiornare prima Atlas e non applicarlo automaticamente repo-per-repo.
+- Se un pattern GLM sembra utile ad altre repo, valutarlo caso per caso e non applicarlo automaticamente repo-per-repo.

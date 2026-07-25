@@ -61,7 +61,7 @@
 - Non cambiare versione Node, package manager o deploy target senza aggiornare roadmap/backlog o ADR.
 - Per modifiche documentali pure basta `git diff --check`.
 - Per modifiche runtime seguire la matrice verifiche in `AGENTS.md`.
-- `npm run test:coverage:core` è il check mirato per Atlas: misura solo i moduli core del simulatore e applica le soglie minime `85%` linee e `75%` rami senza imporre coverage su UI, allegati o superfici non core.
+- `npm run test:coverage:core` è il check mirato di coverage core: misura solo i moduli core del simulatore e applica le soglie minime `85%` linee e `75%` rami senza imporre coverage su UI, allegati o superfici non core.
 
 ## Eccezioni e guardrail
 
