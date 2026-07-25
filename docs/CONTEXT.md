@@ -44,7 +44,8 @@
 - Non modificare, convertire o rinominare allegati Git LFS senza richiesta esplicita.
 - Non inviare allegati o dati di gara a provider esterni senza richiesta esplicita e valutazione del rischio.
 - Non introdurre backend, account, database remoto, autenticazione, Vercel o Supabase senza decisione esplicita.
-- Deploy produzione solo con `npm run deploy:cloudflare` e solo su richiesta esplicita.
+- Push o merge su `main` avviano automaticamente verifica, deploy produzione e
+  smoke; eseguirli solo nel flusso di pubblicazione autorizzato.
 
 ## Verifiche da ricordare
 

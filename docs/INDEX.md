@@ -7,7 +7,7 @@ La root resta il punto di ingresso operativo. `docs/` contiene governance, logic
 ## Ingresso
 
 - `README.md`: introduzione, mappa repository, comandi, fonti, sviluppo, versioning e deploy.
-- `AGENTS.md`: regole operative per Codex e agenti.
+- `AGENTS.md`: regole operative condivise dagli agenti.
 - `CHANGELOG.md`: changelog versionato mostrato nel frontend.
 
 ## Stato e lavoro
