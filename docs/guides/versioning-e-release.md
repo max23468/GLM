@@ -7,7 +7,9 @@ Questa guida descrive come preparare una nuova versione del **Simulatore gara TP
 In GLM ci sono due azioni diverse:
 
 1. **Preparare una release**: chiudere il blocco `## [Non rilasciato]` del changelog, aggiornare `package.json`, `package-lock.json` e la data build in `src/lib/version.ts`.
-2. **Pubblicare**: portare la modifica su `main` (PR/merge o commit diretto secondo policy), verificare l'assorbimento e, solo quando richiesto esplicitamente, distribuire `dist` su Cloudflare Pages progetto `gare-lotti-milanesi`.
+2. **Pubblicare**: portare la modifica su `main` (PR/merge o commit diretto
+   secondo policy); il job `deploy-production` distribuisce automaticamente
+   `dist` su Cloudflare Pages e lancia lo smoke.
 
 Documentazione interna, regole agenti, note operative e piani non esposti nel simulatore possono essere pubblicati nel repo senza bump SemVer. In quel caso usa `### Non versionato` nel changelog solo se serve tenere traccia del lavoro: queste note non devono comparire nel changelog pubblico del simulatore.
 
@@ -19,9 +21,8 @@ Per preparare la versione `X.Y.Z`:
 2. Esegui `npm run release`.
 3. Controlla il diff generato.
 4. Esegui i check proporzionati al diff secondo `AGENTS.md`.
-5. Se e solo se viene chiesto di pubblicare, usa il flusso Cloudflare Pages della
-   repo dopo PR/merge completo; alla fine completa il cleanup locale/remoto del
-   checkout usato per il flusso.
+5. Se e solo se viene chiesto di pubblicare, completa PR/merge su `main`, attendi
+   il deploy automatico e chiudi il checkout locale/remoto usato per il flusso.
 
 ## Quando bumpare quale numero
 
@@ -113,9 +114,13 @@ Scrivi le voci dal punto di vista di chi usa il simulatore:
 
 ## Deploy
 
-La release non pubblica automaticamente.
+Preparare la release localmente non pubblica. Il successivo push/merge su
+`main`, se autorizzato, avvia automaticamente il deploy produzione.
 
-Quando viene chiesto `pubblica`, `rilascia`, `deploya` o equivalente, segui `AGENTS.md`: controlla il diff, esegui le verifiche proporzionate, porta il codice su `main` con PR/merge quando previsto, distribuisci solo su Cloudflare Pages progetto `gare-lotti-milanesi` se la modifica lo richiede e completa la chiusura del checkout (branch/worktree locali e remoti) al termine.
+Quando viene chiesto `pubblica`, `rilascia`, `deploya` o equivalente, segui
+`AGENTS.md`: controlla il diff, esegui le verifiche proporzionate, porta il
+codice su `main`, attendi deploy e smoke Cloudflare, quindi completa la chiusura
+del checkout.
 
 ## Tag e GitHub Release
 
@@ -129,7 +134,8 @@ Per una release prodotto reale:
   versione in `package.json`;
 - la GitHub Release è parte del default di pubblicazione: parte da quel tag e
   usa note derivate dalla sezione rilasciata di `CHANGELOG.md`;
-- il deploy Cloudflare Pages resta separato e richiede il flusso dedicato;
+- il deploy Cloudflare Pages parte dal merge su `main`; tag e GitHub Release
+  restano passaggi separati;
 - documentazione interna, governance, piani e voci `### Non versionato` non
   generano tag e non generano GitHub Release.
 

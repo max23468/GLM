@@ -2,6 +2,8 @@
 
 Data: 2026-05-31
 
+Aggiornata: 2026-07-21
+
 Stato: Accettata
 
 ## Contesto
@@ -18,8 +20,10 @@ perimetro attuale del simulatore.
 
 Cloudflare Pages resta l'unico target deploy approvato per GLM.
 
-La produzione si pubblica solo con `npm run deploy:cloudflare`, da `main`, e
-solo su richiesta esplicita. Le preview usano `npm run deploy:preview`.
+Ogni push/merge autorizzato su `main` avvia il job `deploy-production`, che
+esegue `npm run deploy:cloudflare` e lo smoke. Il comando locale resta
+disponibile per redeploy manuali richiesti. Le preview usano
+`npm run deploy:preview`.
 Vercel, Supabase, backend, account, database remoto o autenticazione richiedono
 una nuova decisione esplicita prima di essere progettati o configurati.
 
@@ -36,7 +40,8 @@ una nuova decisione esplicita prima di essere progettati o configurati.
 - Prodotto: il simulatore resta una console locale/static-first senza account.
 - Tecnico: build e deploy restano Vite, Wrangler e Cloudflare Pages.
 - Dati/privacy: gli scenari restano nel browser o negli export dell'utente.
-- Deploy/release: release applicativa e deploy Cloudflare restano separati.
+- Deploy/release: preparazione della versione e deploy restano concetti
+  distinti; il merge su `main` avvia il deploy.
 - Documentazione: AGENTS, README, Toolchain e guida Cloudflare restano fonti
   operative coerenti con questa ADR.
 
@@ -44,6 +49,7 @@ una nuova decisione esplicita prima di essere progettati o configurati.
 
 - Non proporre provider alternativi per deploy o persistenza senza nuova ADR.
 - Non aggiungere configurazioni Vercel/Supabase o workflow paralleli.
+- Trattare push e merge su `main` come azioni di pubblicazione.
 - Verificare deploy/config con `npm run deploy:doctor` quando si tocca la
   configurazione Cloudflare.
 

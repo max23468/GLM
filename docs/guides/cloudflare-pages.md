@@ -36,12 +36,16 @@ Usa `--skip-smoke` solo quando devi isolare un problema di deploy e dichiara il 
 
 ## GitHub Actions
 
-Il workflow `.github/workflows/ci.yml` mantiene due livelli automatici:
+Il workflow `.github/workflows/ci.yml` mantiene tre livelli automatici:
 
-- `verify`: `npm run validate:data`, `npm test`, `npm run build`;
+- `verify`: `npm run validate:data`, `npm test`,
+  `npm run test:coverage:core`, `npm run build`;
 - `deploy-preview`: su pull request interne, esegue `npm run deploy:doctor`, pubblica una preview Cloudflare e lancia lo smoke sull'URL preview quando i secret necessari sono configurati.
+- `deploy-production`: dopo ogni push/merge su `main`, attende `verify`, esegue
+  `npm run deploy:doctor`, pubblica `dist` e lancia lo smoke in produzione.
 
-La produzione non parte più automaticamente da push a `main`: resta un'azione esplicita tramite `npm run deploy:cloudflare`, dopo review del diff e check proporzionati.
+Il comando locale `npm run deploy:cloudflare` resta disponibile per un redeploy
+manuale esplicitamente richiesto.
 
 I job di deploy cacheano il browser Playwright usato dallo smoke in `~/.cache/ms-playwright`, così i run successivi evitano il download completo di Chromium.
 
@@ -147,8 +151,12 @@ Prima di pubblicare:
 
 1. `git status --short`;
 2. controlla che il diff sia intenzionale;
-3. `npm run deploy:doctor`;
-4. `npm run prepublish:check` o controlli proporzionati al diff;
-5. `npm run deploy:cloudflare`;
+3. esegui i controlli proporzionati al diff;
+4. porta su `main` solo le modifiche autorizzate;
+5. attendi `verify` e `deploy-production`;
 6. verifica `/api/version`;
-6. se qualcosa non torna, rollback dal dashboard e poi diagnosi sul commit.
+7. se qualcosa non torna, esegui il rollback dal dashboard e diagnostica il
+   commit.
+
+Per un redeploy manuale richiesto, esegui prima `npm run deploy:doctor` e
+`npm run prepublish:check`, poi `npm run deploy:cloudflare`.

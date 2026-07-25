@@ -79,7 +79,7 @@ public/_headers                        Header Cloudflare Pages per sicurezza e c
 public/robots.txt                      Blocco robots per mantenere il sito fuori dall'indicizzazione
 public/_redirects                      Redirect canonico Cloudflare Pages per URL /istruzioni
 public/_routes.json                    Invocazione Pages Functions limitata a /api/*
-.github/workflows/ci.yml               CI GitHub Actions con validazione, build e preview PR
+.github/workflows/ci.yml               CI con validazione, build, preview PR e deploy produzione
 scripts/deploy-cloudflare.mjs          Deploy preview/produzione con guard, report e smoke post-deploy
 scripts/deploy-doctor.mjs              Diagnosi locale di prerequisiti e credenziali Cloudflare
 CHANGELOG.md                           Storico versionato in formato Keep a Changelog
@@ -127,9 +127,11 @@ npm run preview -- --port 4173
 
 Il repository espone controlli automatici e un changelog locale bundlato nel sito:
 
-- CI GitHub Actions su push, pull request e avvio manuale, con `npm run validate:data`, `npm test` e `npm run build`;
+- CI GitHub Actions su push, pull request e avvio manuale, con validazione dati,
+  test, coverage core e build;
 - deploy preview Cloudflare Pages su pull request interne, con smoke sull'URL pubblicato quando i secret Cloudflare sono configurati;
-- deploy produzione solo manuale con `npm run deploy:cloudflare`, quando richiesto esplicitamente;
+- deploy produzione automatico dopo ogni push/merge su `main`, con smoke
+  post-deploy;
 - validatori Vitest per coerenza di lotti, criteri, soglie, fonti, warning e scenari base;
 - pannello `Versione e changelog` con versione locale, data build e note lette da `CHANGELOG.md` a build time, senza link o rimandi a repository esterni nel frontend.
 
@@ -202,6 +204,10 @@ Il deploy ufficiale è Cloudflare Pages, progetto `gare-lotti-milanesi`.
 
 L'URL pubblico resta `https://gare-lotti-milanesi.pages.dev`: il project name Cloudflare e lo script di deploy non vanno rinominati senza richiesta esplicita.
 
+Il flusso ordinario passa da PR/merge su `main`: dopo i controlli, il job
+`deploy-production` compila, pubblica `dist` e lancia lo smoke. Il comando
+seguente resta disponibile per un redeploy manuale esplicitamente richiesto:
+
 ```bash
 npm run deploy:cloudflare
 ```
@@ -218,7 +224,9 @@ La preview usa un branch Pages separato, esegue lo smoke sull'URL preview e non 
 
 L'endpoint `https://gare-lotti-milanesi.pages.dev/api/version` espone lo stato runtime del deploy. Il routing SPA usa il fallback predefinito di Cloudflare Pages, senza un rewrite `/* /index.html 200`, per evitare loop con la normalizzazione `index.html`. I dettagli operativi completi, inclusi GitHub secrets, Access sulle preview, Web Analytics, header, Cache Rules, WAF/rate limiting e rollback, sono in [`docs/guides/cloudflare-pages.md`](docs/guides/cloudflare-pages.md).
 
-Eseguire il deploy solo quando richiesto esplicitamente. Quando la richiesta è `pubblica`, `rilascia`, `deploya` o equivalente, il flusso atteso è una pubblicazione completa ma proporzionata al tipo di diff:
+Eseguire push/merge su `main` o un redeploy manuale solo quando la pubblicazione
+è richiesta esplicitamente. Quando la richiesta è `pubblica`, `rilascia`,
+`deploya` o equivalente, il flusso atteso è completo ma proporzionato al diff:
 
 1. verificare `git status --short` e il diff;
 2. portare su `main` solo modifiche intenzionali, con commit e PR/merge se necessari;
@@ -229,7 +237,8 @@ Eseguire il deploy solo quando richiesto esplicitamente. Quando la richiesta è 
    - codice/logica/dati/persistenza: test mirati, `npm test` e `npm run build`;
    - configurazione deploy/build: `npm run build` e controllo della configurazione toccata;
 4. controllare che `dist/`, `tmp/`, allegati e file generati non contengano modifiche indesiderate;
-5. eseguire `npm run deploy:cloudflare` solo se il diff cambia l'app pubblicata, asset pubblici, routing o configurazione di build/deploy, oppure se viene chiesta esplicitamente una ridistribuzione anche per modifiche non runtime;
+5. attendere il job automatico `deploy-production` dopo il merge su `main`;
+   usare `npm run deploy:cloudflare` solo per un redeploy manuale richiesto;
 6. verificare la produzione su `https://gare-lotti-milanesi.pages.dev` in modo proporzionato: caricamento app sempre dopo un deploy, scenario base principale per modifiche runtime, flussi specifici e temi solo se coinvolti;
 7. comunicare risultato, controlli eseguiti, verifiche saltate intenzionalmente e rischi residui.
 

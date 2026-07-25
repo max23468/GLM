@@ -5,7 +5,7 @@
 | Area | Versione | Fonte |
 | --- | --- | --- |
 | Node | `>=24.15 <25` | `.node-version`, `package.json`, `.github/workflows/ci.yml` |
-| npm | `npm@11.14.1` con lockfile v3 | `package.json`, `package-lock.json` |
+| npm | `npm@11.18.0` con lockfile v3 | `package.json`, `package-lock.json` |
 | Python | `python3` con `openpyxl` | solo per rigenerare la base tecnica Excel con `scripts/build-excel-template.py` |
 
 ## Package manager e lockfile
@@ -45,11 +45,15 @@
 - release dry-run: `npm run release -- --dry-run`.
 - deploy doctor: `npm run deploy:doctor`.
 - deploy preview: `npm run deploy:preview -- --branch nome-branch`.
-- deploy produzione: `npm run deploy:cloudflare`, solo su richiesta esplicita.
+- deploy produzione ordinario: job `deploy-production` automatico dopo push o
+  merge su `main`;
+- redeploy manuale: `npm run deploy:cloudflare`, solo su richiesta esplicita.
 
 ## GitHub Actions
 
-- `.github/workflows/ci.yml`: validazione dati, test, build e preview Cloudflare su PR interne quando i secret sono configurati; usa `NODE_VERSION` condiviso per evitare divergenze fra job.
+- `.github/workflows/ci.yml`: validazione dati, test, coverage core, build,
+  preview Cloudflare su PR interne e deploy produzione su `main`; usa
+  `NODE_VERSION` condiviso per evitare divergenze fra job.
 - `.github/workflows/codex-pr-comments.yml`: sincronizza la Codex feedback inbox.
 - `.github/workflows/pr-title.yml`: verifica titolo PR in stile Conventional Commit.
 
@@ -57,7 +61,8 @@
 
 - Non introdurre Vercel, Supabase, backend, database remoto o autenticazione senza decisione esplicita.
 - Non pubblicare produzione da branch diverse da `main`.
-- Non eseguire deploy produzione senza richiesta esplicita.
+- Non eseguire push/merge su `main` o redeploy manuali senza richiesta
+  esplicita di pubblicazione.
 - Non cambiare versione Node, package manager o deploy target senza aggiornare roadmap/backlog o ADR.
 - Per modifiche documentali pure basta `git diff --check`.
 - Per modifiche runtime seguire la matrice verifiche in `AGENTS.md`.

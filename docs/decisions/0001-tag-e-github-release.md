@@ -2,6 +2,8 @@
 
 Data: 2026-05-26
 
+Aggiornata: 2026-07-21
+
 Stato: Accettata
 
 ## Contesto
@@ -9,9 +11,9 @@ Stato: Accettata
 GLM usa già versioning locale con `package.json`, `CHANGELOG.md`,
 `package-lock.json`, `src/lib/version.ts` e `npm run release`.
 
-Release prodotto e deploy Cloudflare Pages restano azioni separate: preparare
-una release non pubblica automaticamente su Cloudflare, e pubblicare documenti
-interni su GitHub non richiede una nuova versione visibile nel simulatore.
+Preparare una release non pubblica da solo. Il successivo push/merge su `main`
+avvia automaticamente il deploy Cloudflare; pubblicare documenti interni non
+richiede invece una nuova versione visibile nel simulatore.
 
 Esiste uno storico GitHub tag/Release `v1.0.0`, mentre la versione applicativa
 corrente è più avanti. Questo storico non va corretto retroattivamente con tag
@@ -27,8 +29,8 @@ Quando GLM prepara una release prodotto reale:
   versione in `package.json`;
 - la GitHub Release è parte del default di pubblicazione: deve partire da quel
   tag e usare note derivate dalla sezione rilasciata di `CHANGELOG.md`;
-- il deploy Cloudflare Pages resta separato e richiede il flusso dedicato della
-  repo;
+- il merge su `main` avvia il deploy Cloudflare; tag e GitHub Release restano
+  passaggi distinti dal job di deploy;
 - modifiche docs-only, governance-only o `### Non versionato` non creano tag e
   non creano GitHub Release.
 
@@ -51,7 +53,7 @@ decisione esplicita.
 - Tecnico: il comando locale `npm run release` resta il gate della versione.
 - Dati/privacy: nessun impatto sui dati di gara o sugli allegati.
 - Deploy/release: tag e GitHub Release diventano obbligatori per release
-  prodotto reali; deploy Cloudflare resta indipendente.
+  prodotto reali; il deploy Cloudflare è conseguenza del merge su `main`.
 - Documentazione: la guida versioning e l'indice decisioni chiudono la decisione
   pendente.
 
