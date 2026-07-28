@@ -7,6 +7,7 @@ L'app non produce offerte ufficiali: aiuta a confrontare operatori, lotti singol
 ## Avvio rapido
 
 ```bash
+npm install --global npm@12.0.1
 npm install
 npm run dev -- --port 4173
 ```

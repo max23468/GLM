@@ -5,7 +5,7 @@
 | Area | Versione | Fonte |
 | --- | --- | --- |
 | Node | `>=24.15 <25` | `.node-version`, `package.json`, `.github/workflows/ci.yml` |
-| npm | `npm@11.18.0` con lockfile v3 | `package.json`, `package-lock.json` |
+| npm | `npm@12.0.1` con lockfile v3 | `package.json`, `package-lock.json` |
 | Python | `python3` con `openpyxl` | solo per rigenerare la base tecnica Excel con `scripts/build-excel-template.py` |
 
 ## Package manager e lockfile
@@ -27,7 +27,9 @@
 
 ## Comandi
 
-- install/setup: `npm install` oppure `npm ci` in CI.
+- setup locale: `npm install --global npm@12.0.1`, poi `npm install`.
+- setup CI: installazione globale di npm `12.0.1`, verifica della versione e
+  `npm ci`.
 - dev: `npm run dev -- --port 4173`.
 - typecheck/build: `npm run build`.
 - test: `npm test`.

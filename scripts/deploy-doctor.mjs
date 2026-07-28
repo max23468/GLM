@@ -14,6 +14,14 @@ const check = (label, ok, detail) => {
 
 const hasEnv = (name) => Boolean(process.env[name]);
 
+const npmVersion = spawnSync("npm", ["--version"], { encoding: "utf8" });
+const npmVersionOutput = npmVersion.stdout?.trim() || npmVersion.stderr?.trim() || "npm non trovato";
+check(
+  "npm 12",
+  npmVersion.status === 0 && npmVersionOutput.split(".")[0] === "12",
+  npmVersionOutput,
+);
+
 try {
   accessSync(wranglerBin, constants.X_OK);
   const result = spawnSync(wranglerBin, ["--version"], { encoding: "utf8" });
