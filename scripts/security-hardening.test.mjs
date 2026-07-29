@@ -27,7 +27,9 @@ describe("security hardening operativo", () => {
 
   it("attende che alias pubblico e API versione espongano il commit atteso", async () => {
     let versionCalls = 0;
-    const fetchImpl = async (url) => {
+    const requestOptions = [];
+    const fetchImpl = async (url, options) => {
+      requestOptions.push(options);
       if (String(url).endsWith("/api/version")) {
         versionCalls += 1;
         return Response.json({ commit: versionCalls === 1 ? "stale" : "expected" });
@@ -39,6 +41,7 @@ describe("security hardening operativo", () => {
       commit: "expected",
     });
     expect(versionCalls).toBe(2);
+    expect(requestOptions.every((options) => options.headers === undefined)).toBe(true);
   });
 
   it("interrompe ogni richiesta di promozione che non completa", async () => {

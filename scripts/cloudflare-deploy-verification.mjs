@@ -21,11 +21,9 @@ export async function waitForProductionPromotion(
   let lastResult = "nessuna risposta";
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
-      const headers = cloudflareAccessHeaders();
       const [appResponse, versionResponse] = await Promise.all([
-        fetchImpl(productionUrl, { headers, redirect: "follow", signal: AbortSignal.timeout(requestTimeoutMs) }),
+        fetchImpl(productionUrl, { redirect: "follow", signal: AbortSignal.timeout(requestTimeoutMs) }),
         fetchImpl(new URL("/api/version", productionUrl), {
-          headers,
           redirect: "follow",
           signal: AbortSignal.timeout(requestTimeoutMs),
         }),

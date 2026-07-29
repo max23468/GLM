@@ -302,6 +302,7 @@ describe("scenario persistence normalization", () => {
   it("mantiene distinti gli ID Excel che collidono dopo la normalizzazione", () => {
     const report = normalizeScenarioSnapshotWithReport({
       format: "glm-excel-v1",
+      selectedBidderId: "a-b",
       offers: [
         { bidderId: "a b", bidderName: "Operatore A", lotId: "L1", discount: 3 },
         { bidderId: "a-b", bidderName: "Operatore B", lotId: "L2", discount: 7 },
@@ -313,6 +314,7 @@ describe("scenario persistence normalization", () => {
     });
 
     expect(report.snapshot?.bidders.map((bidder) => bidder.id)).toEqual(["a-b", "a-b-2"]);
+    expect(report.snapshot?.selectedBidderId).toBe("a-b-2");
     expect(report.snapshot?.bidders[0].lots.L1.averageDiscount).toBe(3);
     expect(report.snapshot?.bidders[1].lots.L2.averageDiscount).toBe(7);
     expect(report.snapshot?.bidders[0].lots.L1.tValues["C.2.2"]).toBe(true);
@@ -339,6 +341,13 @@ describe("scenario persistence normalization", () => {
       format: "glm-excel-v1",
       offers: Array.from({ length: 21 }, (_, index) => ({ bidderId: `bidder-${index}`, lotId: "L1" })),
     });
+    const excelWithStaleRows = normalizeScenarioSnapshotWithReport({
+      format: "glm-excel-v1",
+      offers: [
+        { bidderId: "valid", lotId: "L1" },
+        ...Array.from({ length: 20 }, (_, index) => ({ bidderId: `stale-${index}`, lotId: "non-valido" })),
+      ],
+    });
 
     expect(jsonReport.snapshot).toBeUndefined();
     expect(jsonReport.messages).toContain("Il JSON supera il limite di 20 concorrenti.");
@@ -346,6 +355,7 @@ describe("scenario persistence normalization", () => {
     expect(excelReport.messages).toContain("Il JSON Excel supera i limiti supportati di offerte, criteri o combinatorie.");
     expect(excelBidderReport.snapshot).toBeUndefined();
     expect(excelBidderReport.messages).toContain("Il JSON Excel supera il limite di 20 concorrenti.");
+    expect(excelWithStaleRows.snapshot?.bidders.map((bidder) => bidder.id)).toEqual(["valid"]);
   });
 
   it("neutralizza ID pericolosi e valori booleani testuali durante l'import", () => {
