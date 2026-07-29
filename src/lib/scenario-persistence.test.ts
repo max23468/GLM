@@ -299,6 +299,36 @@ describe("scenario persistence normalization", () => {
     expect(report.messages).toContain("Formato Excel importato con tecnico aggregato: i sub-criteri non erano presenti nel file.");
   });
 
+  it("mantiene distinti gli ID Excel che collidono dopo la normalizzazione", () => {
+    const report = normalizeScenarioSnapshotWithReport({
+      format: "glm-excel-v1",
+      selectedBidderId: "a-b",
+      offers: [
+        { bidderId: "a b", bidderName: "Operatore A", lotId: "L1", discount: 3 },
+        { bidderId: "a-b", bidderName: "Operatore B", lotId: "L2", discount: 7 },
+      ],
+      criteria: [
+        { bidderId: "a b", lotId: "L1", criterionId: "C.2.2", value: 1 },
+        { bidderId: "a-b", lotId: "L2", criterionId: "C.2.2", value: 0 },
+      ],
+    });
+
+    expect(report.snapshot?.bidders.map((bidder) => bidder.id)).toEqual(["a-b", "a-b-2"]);
+    expect(report.snapshot?.selectedBidderId).toBe("a-b-2");
+    expect(report.snapshot?.bidders[0].lots.L1.averageDiscount).toBe(3);
+    expect(report.snapshot?.bidders[1].lots.L2.averageDiscount).toBe(7);
+    expect(report.snapshot?.bidders[0].lots.L1.tValues["C.2.2"]).toBe(true);
+    expect(report.snapshot?.bidders[1].lots.L2.tValues["C.2.2"]).toBe(false);
+  });
+
+  it("non tronca i concorrenti già salvati nel workspace locale", () => {
+    const workspace = normalizeStoredWorkspace({
+      bidders: Array.from({ length: 21 }, (_, index) => ({ id: `bidder-${index}` })),
+    });
+
+    expect(workspace?.bidders).toHaveLength(21);
+  });
+
   it("rifiuta collezioni importate oltre i limiti operativi", () => {
     const jsonReport = normalizeScenarioSnapshotWithReport({
       bidders: Array.from({ length: 21 }, (_, index) => ({ id: `bidder-${index}` })),
@@ -307,11 +337,25 @@ describe("scenario persistence normalization", () => {
       format: "glm-excel-v1",
       offers: Array.from({ length: 81 }, (_, index) => ({ bidderId: `bidder-${index}`, lotId: "L1" })),
     });
+    const excelBidderReport = normalizeScenarioSnapshotWithReport({
+      format: "glm-excel-v1",
+      offers: Array.from({ length: 21 }, (_, index) => ({ bidderId: `bidder-${index}`, lotId: "L1" })),
+    });
+    const excelWithStaleRows = normalizeScenarioSnapshotWithReport({
+      format: "glm-excel-v1",
+      offers: [
+        { bidderId: "valid", lotId: "L1" },
+        ...Array.from({ length: 20 }, (_, index) => ({ bidderId: `stale-${index}`, lotId: "non-valido" })),
+      ],
+    });
 
     expect(jsonReport.snapshot).toBeUndefined();
     expect(jsonReport.messages).toContain("Il JSON supera il limite di 20 concorrenti.");
     expect(excelReport.snapshot).toBeUndefined();
     expect(excelReport.messages).toContain("Il JSON Excel supera i limiti supportati di offerte, criteri o combinatorie.");
+    expect(excelBidderReport.snapshot).toBeUndefined();
+    expect(excelBidderReport.messages).toContain("Il JSON Excel supera il limite di 20 concorrenti.");
+    expect(excelWithStaleRows.snapshot?.bidders.map((bidder) => bidder.id)).toEqual(["valid"]);
   });
 
   it("neutralizza ID pericolosi e valori booleani testuali durante l'import", () => {

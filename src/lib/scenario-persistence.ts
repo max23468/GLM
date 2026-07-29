@@ -436,32 +436,48 @@ const normalizeComboOffer = (value: unknown): ComboOffer => {
 
 const criterionById = new Map(CRITERIA.map((criterion) => [criterion.id, criterion]));
 
+const excelBidderReference = (idValue: unknown, nameValue?: unknown) => {
+  if (typeof idValue === "string" && idValue.trim()) return `id:${idValue.trim()}`;
+  if (typeof nameValue === "string" && nameValue.trim()) return `name:${nameValue.trim()}`;
+  return undefined;
+};
+
 const normalizeExcelScenarioSnapshot = (value: ExcelScenarioLike): { snapshot?: SavedScenarioSnapshot; hasCriteria: boolean } => {
   const baseScenarioId = normalizeBaseScenarioId(value.baseScenarioId);
   const fallbackScenario = getBaseScenario(baseScenarioId);
   const bidderMap = new Map<string, Bidder>();
+  const bidderIdsByReference = new Map<string, string>();
   let hasCriteria = false;
 
   const ensureBidder = (idValue: unknown, nameValue?: unknown) => {
     const fallbackId = `excel-${bidderMap.size + 1}`;
-    const id = normalizedId(idValue, fallbackId);
-    const existing = bidderMap.get(id);
+    const reference = excelBidderReference(idValue, nameValue) ?? `anonymous:${fallbackId}`;
+    const existing = bidderMap.get(bidderIdsByReference.get(reference) ?? "");
     if (existing) {
       const normalized = normalizedName(nameValue, existing.name);
       if (normalized && normalized !== existing.name) existing.name = normalized;
       return existing;
     }
+    const baseId = normalizedId(idValue, fallbackId);
+    let id = baseId;
+    for (let suffix = 2; bidderMap.has(id); suffix += 1) {
+      const ending = `-${suffix}`;
+      id = `${baseId.slice(0, 64 - ending.length)}${ending}`;
+    }
     const bidder = createBidder(id, normalizedName(nameValue, id));
     bidderMap.set(id, bidder);
+    bidderIdsByReference.set(reference, id);
     return bidder;
   };
 
   const offers = Array.isArray(value.offers) ? value.offers.slice(0, MAX_EXCEL_OFFERS) : [];
+  const offerKeys = new Set<string>();
   for (const row of offers) {
     if (!isRecord(row)) continue;
     const lotId = recordValue(row, "lotId") ?? recordValue(row, "lotto");
     if (!isLotId(lotId)) continue;
     const bidder = ensureBidder(recordValue(row, "bidderId"), recordValue(row, "bidderName") ?? recordValue(row, "bidderNome"));
+    offerKeys.add(`${bidder.id}:${lotId}`);
     const offer = bidder.lots[lotId];
     offer.enabled = normalizeBoolean(recordValue(row, "enabled") ?? recordValue(row, "attivo"), true);
     offer.technicalOverrideRaw = boundedNumber(
@@ -477,12 +493,6 @@ const normalizeExcelScenarioSnapshot = (value: ExcelScenarioLike): { snapshot?: 
   }
 
   const criteria = Array.isArray(value.criteria) ? value.criteria.slice(0, MAX_EXCEL_CRITERIA) : [];
-  const offerKeys = new Set<string>();
-  for (const row of offers) {
-    if (isRecord(row)) {
-      offerKeys.add(`${normalizedId(recordValue(row, "bidderId"), "")}:${recordValue(row, "lotId") ?? recordValue(row, "lotto")}`);
-    }
-  }
   for (const row of criteria) {
     if (!isRecord(row)) continue;
     const lotId = recordValue(row, "lotId") ?? recordValue(row, "lotto");
@@ -543,6 +553,10 @@ const normalizeExcelScenarioSnapshot = (value: ExcelScenarioLike): { snapshot?: 
     }
   }
   const firstBidderId = bidders[0]?.id ?? fallbackScenario.defaultBidderId;
+  const selectedBidderId =
+    typeof value.selectedBidderId === "string"
+      ? bidderIdsByReference.get(excelBidderReference(value.selectedBidderId) ?? "") ?? value.selectedBidderId
+      : undefined;
 
   return {
     hasCriteria,
@@ -555,10 +569,7 @@ const normalizeExcelScenarioSnapshot = (value: ExcelScenarioLike): { snapshot?: 
     bidders,
     settings: normalizeSettings(value.settings),
     optimization: fallbackScenario.buildOptimizationConfig(),
-    selectedBidderId:
-      typeof value.selectedBidderId === "string" && bidders.some((bidder) => bidder.id === value.selectedBidderId)
-        ? value.selectedBidderId
-        : firstBidderId,
+    selectedBidderId: selectedBidderId && bidders.some((bidder) => bidder.id === selectedBidderId) ? selectedBidderId : firstBidderId,
     selectedLotId: isLotId(value.selectedLotId) ? value.selectedLotId : fallbackScenario.defaultLotId,
     selectedPairId: isPairId(value.selectedPairId) ? value.selectedPairId : fallbackScenario.defaultPairId,
     },
@@ -585,7 +596,7 @@ const normalizeBidders = (value: unknown, baseScenarioId: BaseScenarioId): Bidde
   if (!Array.isArray(value) || !value.length) return fallbackBidders;
   const usedIds = new Set<string>();
   const nextSuffixById = new Map<string, number>();
-  return value.slice(0, MAX_IMPORTED_BIDDERS).map((item, index) => {
+  return value.map((item, index) => {
     const source = isRecord(item) ? item : {};
     const fallbackById = typeof source.id === "string" ? fallbackBidders.find((bidder) => bidder.id === source.id) : undefined;
     const bidder = normalizeBidder(item, index, fallbackById ?? fallbackBidders[index]);
@@ -668,6 +679,39 @@ export const normalizeScenarioSnapshotWithReport = (value: unknown): ScenarioImp
       return {
         snapshot: undefined,
         messages: ["Il JSON Excel supera i limiti supportati di offerte, criteri o combinatorie."],
+      };
+    }
+    const bidderReferences = new Set<string>();
+    let anonymousBidders = 0;
+    const countBidder = (row: Record<string, unknown>) => {
+      const reference = excelBidderReference(
+        recordValue(row, "bidderId"),
+        recordValue(row, "bidderName") ?? recordValue(row, "bidderNome"),
+      );
+      if (reference) bidderReferences.add(reference);
+      else anonymousBidders += 1;
+    };
+    if (Array.isArray(excelCandidate.offers)) {
+      for (const row of excelCandidate.offers) {
+        if (isRecord(row) && isLotId(recordValue(row, "lotId") ?? recordValue(row, "lotto"))) countBidder(row);
+      }
+    }
+    if (Array.isArray(excelCandidate.criteria)) {
+      for (const row of excelCandidate.criteria) {
+        if (!isRecord(row) || !isLotId(recordValue(row, "lotId") ?? recordValue(row, "lotto"))) continue;
+        const criterionId = recordValue(row, "criterionId") ?? recordValue(row, "criterioId") ?? recordValue(row, "criterio");
+        if (typeof criterionId === "string" && criterionById.has(criterionId)) countBidder(row);
+      }
+    }
+    if (Array.isArray(excelCandidate.combos)) {
+      for (const row of excelCandidate.combos) {
+        if (isRecord(row) && isPairId(recordValue(row, "pairId") ?? recordValue(row, "coppia"))) countBidder(row);
+      }
+    }
+    if (bidderReferences.size + anonymousBidders > MAX_IMPORTED_BIDDERS) {
+      return {
+        snapshot: undefined,
+        messages: [`Il JSON Excel supera il limite di ${MAX_IMPORTED_BIDDERS} concorrenti.`],
       };
     }
     const { snapshot, hasCriteria } = normalizeExcelScenarioSnapshot(excelCandidate);

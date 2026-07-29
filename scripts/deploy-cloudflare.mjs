@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import process from "node:process";
+import { cloudflareAccessHeaders, waitForProductionPromotion } from "./cloudflare-deploy-verification.mjs";
 
 const PROJECT_NAME = "gare-lotti-milanesi";
 const OUTPUT_DIR = "dist";
@@ -122,7 +123,8 @@ function extractPagesUrls(output) {
 const gitBranch = git(["rev-parse", "--abbrev-ref", "HEAD"], "");
 const envBranch = process.env.GITHUB_HEAD_REF || process.env.GITHUB_REF_NAME || process.env.CF_PAGES_BRANCH || "";
 const currentBranch = gitBranch && gitBranch !== "HEAD" ? gitBranch : envBranch;
-const commitSha = (process.env.GITHUB_SHA || git(["rev-parse", "HEAD"], "")).slice(0, 12) || "n/d";
+const fullCommitSha = process.env.GITHUB_SHA || git(["rev-parse", "HEAD"], "") || "n/d";
+const commitSha = fullCommitSha.slice(0, 12);
 const status = git(["status", "--short"], "");
 
 if (status && !options.allowDirty) {
@@ -162,14 +164,26 @@ const deployOutput = run(
 process.stdout.write(deployOutput);
 
 const pagesUrls = extractPagesUrls(deployOutput);
+const immutableDeploymentUrl = pagesUrls[0];
 const verificationUrl =
-  pagesUrls[0] ?? (mode === "production" ? PRODUCTION_URL : `https://${branch}.${PROJECT_NAME}.pages.dev`);
+  mode === "production"
+    ? PRODUCTION_URL
+    : immutableDeploymentUrl ?? `https://${branch}.${PROJECT_NAME}.pages.dev`;
 
 if (!options.skipSmoke) {
+  if (mode === "production" && immutableDeploymentUrl && cloudflareAccessHeaders()) {
+    run("npm", ["run", "smoke"], {
+      env: {
+        ...process.env,
+        SMOKE_URL: immutableDeploymentUrl,
+      },
+    });
+  }
+  if (mode === "production") await waitForProductionPromotion(fullCommitSha);
   run("npm", ["run", "smoke"], {
     env: {
       ...process.env,
-      SMOKE_URL: verificationUrl,
+      SMOKE_URL: mode === "production" ? PRODUCTION_URL : verificationUrl,
     },
   });
 }
