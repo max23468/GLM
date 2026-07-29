@@ -138,6 +138,10 @@ const branch =
     ? PRODUCTION_BRANCH
     : normalizePreviewBranch(options.branch || currentBranch || `preview-${commitSha}`);
 
+if (mode === "preview" && branch === PRODUCTION_BRANCH) {
+  fail(`la branch preview non può coincidere con ${PRODUCTION_BRANCH}.`);
+}
+
 if (!options.skipBuild) run("npm", ["run", "build"]);
 
 if (!existsSync(OUTPUT_DIR)) fail(`cartella ${OUTPUT_DIR} non trovata. Esegui prima npm run build.`);

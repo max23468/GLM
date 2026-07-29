@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { verifyVbaSourceBinding } from './vba-source-binding.mjs';
 
 const builtAt = new Date().toISOString().slice(0, 10);
 const workbookPath = 'public/downloads/Simulatore-TPL-Lotti-1-4.xlsm';
@@ -52,6 +53,7 @@ function validateMacroTemplate() {
 }
 
 validateMacroTemplate();
+verifyVbaSourceBinding(templatePath);
 const version = resolveVersion();
 mkdirSync('public/downloads', { recursive: true });
 rmSync(legacyZipPath, { force: true });

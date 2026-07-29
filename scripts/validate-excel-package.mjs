@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { verifyVbaSourceBinding } from './vba-source-binding.mjs';
 
 const workbookPath = 'public/downloads/Simulatore-TPL-Lotti-1-4.xlsm';
 const legacyZipPath = 'public/downloads/pacchetto-excel-vba.zip';
@@ -26,6 +27,7 @@ if (manifest.templateFile !== 'Simulatore-TPL-Lotti-1-4.xlsm') {
 
 const currentHash = createHash('sha256').update(readFileSync(workbookPath)).digest('hex');
 if (currentHash !== manifest.sha256) throw new Error('Hash XLSM non coerente con manifest');
+verifyVbaSourceBinding(workbookPath);
 
 function unzipList(filePath) {
   return execFileSync('unzip', ['-Z1', filePath], { encoding: 'utf8' })

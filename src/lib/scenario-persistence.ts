@@ -34,6 +34,10 @@ export const LEGACY_STORAGE_KEYS = {
 } as const;
 
 const PRESET_SCENARIO_PREFIX = "preset-";
+const MAX_IMPORTED_BIDDERS = 20;
+const MAX_EXCEL_OFFERS = 80;
+const MAX_EXCEL_CRITERIA = MAX_EXCEL_OFFERS * CRITERIA.length;
+const MAX_EXCEL_COMBOS = 80;
 
 const PRESET_SAVED_AT = "2026-01-01T00:00:00.000Z";
 
@@ -204,8 +208,13 @@ const boundedNumber = (value: unknown, min: number, max: number, fallback?: numb
 
 const normalizedId = (value: unknown, fallback: string) => {
   if (typeof value !== "string") return fallback;
-  const trimmed = value.trim();
-  return trimmed || fallback;
+  const normalized = value
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 64);
+  return normalized && !["__proto__", "prototype", "constructor"].includes(normalized) ? normalized : fallback;
 };
 
 const normalizedName = (value: unknown, fallback: string) => {
@@ -371,7 +380,7 @@ const normalizeLotOffer = (value: unknown, fallbackOffer?: LotOffer): LotOffer =
     }
 
     if (criterion.kind === "T") {
-      tValues[criterion.id] = Boolean(recordValue(source.tValues, criterion.id) ?? fallback.tValues[criterion.id]);
+      tValues[criterion.id] = normalizeBoolean(recordValue(source.tValues, criterion.id), fallback.tValues[criterion.id]);
       continue;
     }
 
@@ -447,7 +456,7 @@ const normalizeExcelScenarioSnapshot = (value: ExcelScenarioLike): { snapshot?: 
     return bidder;
   };
 
-  const offers = Array.isArray(value.offers) ? value.offers : [];
+  const offers = Array.isArray(value.offers) ? value.offers.slice(0, MAX_EXCEL_OFFERS) : [];
   for (const row of offers) {
     if (!isRecord(row)) continue;
     const lotId = recordValue(row, "lotId") ?? recordValue(row, "lotto");
@@ -467,7 +476,13 @@ const normalizeExcelScenarioSnapshot = (value: ExcelScenarioLike): { snapshot?: 
     offer.phaseDiscounts = [discount, discount, discount];
   }
 
-  const criteria = Array.isArray(value.criteria) ? value.criteria : [];
+  const criteria = Array.isArray(value.criteria) ? value.criteria.slice(0, MAX_EXCEL_CRITERIA) : [];
+  const offerKeys = new Set<string>();
+  for (const row of offers) {
+    if (isRecord(row)) {
+      offerKeys.add(`${normalizedId(recordValue(row, "bidderId"), "")}:${recordValue(row, "lotId") ?? recordValue(row, "lotto")}`);
+    }
+  }
   for (const row of criteria) {
     if (!isRecord(row)) continue;
     const lotId = recordValue(row, "lotId") ?? recordValue(row, "lotto");
@@ -478,9 +493,7 @@ const normalizeExcelScenarioSnapshot = (value: ExcelScenarioLike): { snapshot?: 
     if (!criterion) continue;
     const bidder = ensureBidder(recordValue(row, "bidderId"), recordValue(row, "bidderName") ?? recordValue(row, "bidderNome"));
     const offer = bidder.lots[lotId];
-    const keyHasOfferRow = offers.some((offerRow) =>
-      isRecord(offerRow) && recordValue(offerRow, "bidderId") === bidder.id && (recordValue(offerRow, "lotId") ?? recordValue(offerRow, "lotto")) === lotId,
-    );
+    const keyHasOfferRow = offerKeys.has(`${bidder.id}:${lotId}`);
     if (!keyHasOfferRow) offer.enabled = true;
 
     if (criterion.kind === "Q") {
@@ -506,7 +519,7 @@ const normalizeExcelScenarioSnapshot = (value: ExcelScenarioLike): { snapshot?: 
     hasCriteria = true;
   }
 
-  const combos = Array.isArray(value.combos) ? value.combos : [];
+  const combos = Array.isArray(value.combos) ? value.combos.slice(0, MAX_EXCEL_COMBOS) : [];
   for (const row of combos) {
     if (!isRecord(row)) continue;
     const pairId = recordValue(row, "pairId") ?? recordValue(row, "coppia");
@@ -571,17 +584,19 @@ const normalizeBidders = (value: unknown, baseScenarioId: BaseScenarioId): Bidde
   const fallbackBidders = getBaseScenario(baseScenarioId).buildBidders();
   if (!Array.isArray(value) || !value.length) return fallbackBidders;
   const usedIds = new Set<string>();
-  return value.map((item, index) => {
+  const nextSuffixById = new Map<string, number>();
+  return value.slice(0, MAX_IMPORTED_BIDDERS).map((item, index) => {
     const source = isRecord(item) ? item : {};
     const fallbackById = typeof source.id === "string" ? fallbackBidders.find((bidder) => bidder.id === source.id) : undefined;
     const bidder = normalizeBidder(item, index, fallbackById ?? fallbackBidders[index]);
     const baseId = bidder.id;
     let candidateId = baseId;
-    let suffix = 2;
+    let suffix = nextSuffixById.get(baseId) ?? 2;
     while (usedIds.has(candidateId)) {
       candidateId = `${baseId}-${suffix}`;
       suffix += 1;
     }
+    nextSuffixById.set(baseId, suffix);
     usedIds.add(candidateId);
     return { ...bidder, id: candidateId };
   });
@@ -645,6 +660,16 @@ const hasDuplicateBidderIds = (value: unknown) => {
 export const normalizeScenarioSnapshotWithReport = (value: unknown): ScenarioImportReport => {
   const excelCandidate = extractExcelImportCandidate(value);
   if (excelCandidate) {
+    if (
+      (Array.isArray(excelCandidate.offers) && excelCandidate.offers.length > MAX_EXCEL_OFFERS) ||
+      (Array.isArray(excelCandidate.criteria) && excelCandidate.criteria.length > MAX_EXCEL_CRITERIA) ||
+      (Array.isArray(excelCandidate.combos) && excelCandidate.combos.length > MAX_EXCEL_COMBOS)
+    ) {
+      return {
+        snapshot: undefined,
+        messages: ["Il JSON Excel supera i limiti supportati di offerte, criteri o combinatorie."],
+      };
+    }
     const { snapshot, hasCriteria } = normalizeExcelScenarioSnapshot(excelCandidate);
     return {
       snapshot,
@@ -667,6 +692,12 @@ export const normalizeScenarioSnapshotWithReport = (value: unknown): ScenarioImp
   }
 
   const candidate = importCandidate as LegacyScenarioLike;
+  if (Array.isArray(candidate.bidders) && candidate.bidders.length > MAX_IMPORTED_BIDDERS) {
+    return {
+      snapshot: undefined,
+      messages: [`Il JSON supera il limite di ${MAX_IMPORTED_BIDDERS} concorrenti.`],
+    };
+  }
   const snapshot = normalizeScenarioSnapshot(importCandidate);
   if (!snapshot) {
     return {
@@ -676,6 +707,10 @@ export const normalizeScenarioSnapshotWithReport = (value: unknown): ScenarioImp
   }
 
   const messages: string[] = [];
+  if (isPresetScenarioId(snapshot.id)) {
+    snapshot.id = `scenario-${Date.now()}`;
+    messages.push("ID riservato degli scenari base sostituito durante l'import.");
+  }
   if (importCandidate !== value) messages.push("Struttura JSON riconosciuta: importato il primo scenario disponibile.");
   if (candidate.schemaVersion !== 8) messages.push("Schema aggiornato alla versione corrente.");
   if (candidate.demoScenarioId || candidate.baseScenarioId) {

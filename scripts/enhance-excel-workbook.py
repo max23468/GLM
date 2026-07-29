@@ -44,6 +44,10 @@ SECTION = "EDF3F2"
 # senza rendere il file Excel lento o troppo pesante.
 MAX_OFFER_ROWS = 81
 MAX_COMBO_ROWS = 80
+MAX_ARCHIVE_ENTRIES = 2_000
+MAX_ARCHIVE_ENTRY_BYTES = 64 * 1024 * 1024
+MAX_ARCHIVE_UNCOMPRESSED_BYTES = 256 * 1024 * 1024
+MAX_ARCHIVE_COMPRESSION_RATIO = 200
 COMPILA_OFFER_START_ROW = 12
 TECHNICAL_START_ROW = 5
 AMBIT_MAX_POINTS = {
@@ -124,6 +128,20 @@ def dedupe_zip_entries(path: Path):
             info, data = latest[name]
             zout.writestr(info, data)
     tmp_path.replace(path)
+
+
+def validate_workbook_archive(path: Path):
+    with zipfile.ZipFile(path, "r") as archive:
+        entries = archive.infolist()
+        if len(entries) > MAX_ARCHIVE_ENTRIES:
+            raise ValueError(f"Archivio Excel con troppe entry: {len(entries)}")
+        if sum(entry.file_size for entry in entries) > MAX_ARCHIVE_UNCOMPRESSED_BYTES:
+            raise ValueError("Archivio Excel troppo grande dopo la decompressione")
+        for entry in entries:
+            if entry.file_size > MAX_ARCHIVE_ENTRY_BYTES:
+                raise ValueError(f"Entry Excel troppo grande: {entry.filename}")
+            if entry.file_size > 1024 * 1024 and entry.file_size / max(entry.compress_size, 1) > MAX_ARCHIVE_COMPRESSION_RATIO:
+                raise ValueError(f"Rapporto di compressione Excel sospetto: {entry.filename}")
 
 
 def title(ws, text: str, subtitle: str | None = None, end_col: str = "H"):
@@ -1571,6 +1589,7 @@ def clear_comments(wb):
 
 def main():
     path = workbook_path()
+    validate_workbook_archive(path)
     wb = load_workbook(path, keep_vba=True)
 
     create_dashboard(wb)

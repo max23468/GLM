@@ -785,7 +785,8 @@ const buildCandidates = (bidders: Bidder[], lotScores: Record<string, Record<Lot
   return candidates;
 };
 
-const scenarioKey = (assignments: AssignmentCandidate[]) => assignments.map((assignment) => assignment.id).sort().join("||");
+const scenarioKey = (assignments: AssignmentCandidate[]) =>
+  assignments.length ? JSON.stringify(assignments.map((assignment) => assignment.id).sort()) : "";
 
 const enumerateScenarios = (candidates: AssignmentCandidate[], allowAwardLimitDerogation: boolean): Scenario[] => {
   const scenarios = new Map<string, Scenario>();
@@ -794,7 +795,7 @@ const enumerateScenarios = (candidates: AssignmentCandidate[], allowAwardLimitDe
   const recurse = (
     processedLots: Set<LotId>,
     occupiedLots: Set<LotId>,
-    bidderCounts: Record<string, number>,
+    bidderCounts: Map<string, number>,
     assignments: AssignmentCandidate[],
   ) => {
     const nextLot = lots.find((lotId) => !processedLots.has(lotId));
@@ -810,7 +811,7 @@ const enumerateScenarios = (candidates: AssignmentCandidate[], allowAwardLimitDe
         technicalScore,
         unassignedLots,
         drawRequired: false,
-        awardLimitDerogationUsed: Object.values(bidderCounts).some((count) => count > 2),
+        awardLimitDerogationUsed: [...bidderCounts.values()].some((count) => count > 2),
       });
       return;
     }
@@ -824,7 +825,7 @@ const enumerateScenarios = (candidates: AssignmentCandidate[], allowAwardLimitDe
         if (occupiedLots.has(lotId)) hasOccupiedLot = true;
       }
       if (hasOccupiedLot) continue;
-      const currentCount = bidderCounts[candidate.bidderId] ?? 0;
+      const currentCount = bidderCounts.get(candidate.bidderId) ?? 0;
       const nextCount = currentCount + candidate.lotIds.length;
       if (!allowAwardLimitDerogation && nextCount > 2) continue;
       const nextProcessed = new Set(processedLots);
@@ -833,11 +834,11 @@ const enumerateScenarios = (candidates: AssignmentCandidate[], allowAwardLimitDe
         nextProcessed.add(lotId);
         nextOccupied.add(lotId);
       });
-      recurse(nextProcessed, nextOccupied, { ...bidderCounts, [candidate.bidderId]: nextCount }, [...assignments, candidate]);
+      recurse(nextProcessed, nextOccupied, new Map(bidderCounts).set(candidate.bidderId, nextCount), [...assignments, candidate]);
     }
   };
 
-  recurse(new Set(), new Set(), {}, []);
+  recurse(new Set(), new Set(), new Map(), []);
 
   const sorted = Array.from(scenarios.values());
   sorted.sort((a, b) => {
@@ -949,7 +950,9 @@ const uniqueWarningItems = (items: SimulationWarning[]) => {
     seen.add(key);
     result.push(item);
   }
-  return result.slice(0, 20);
+  return result
+    .sort((left, right) => Number(right.blocksAward) - Number(left.blocksAward))
+    .slice(0, 20);
 };
 
 const buildWarningItems = (

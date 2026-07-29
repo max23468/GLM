@@ -80,7 +80,7 @@ public/_headers                        Header Cloudflare Pages per sicurezza e c
 public/robots.txt                      Blocco robots per mantenere il sito fuori dall'indicizzazione
 public/_redirects                      Redirect canonico Cloudflare Pages per URL /istruzioni
 public/_routes.json                    Invocazione Pages Functions limitata a /api/*
-.github/workflows/ci.yml               CI con validazione, build, preview PR e deploy produzione
+.github/workflows/ci.yml               CI con validazione, build e deploy produzione
 scripts/deploy-cloudflare.mjs          Deploy preview/produzione con guard, report e smoke post-deploy
 scripts/deploy-doctor.mjs              Diagnosi locale di prerequisiti e credenziali Cloudflare
 CHANGELOG.md                           Storico versionato in formato Keep a Changelog
@@ -130,7 +130,7 @@ Il repository espone controlli automatici e un changelog locale bundlato nel sit
 
 - CI GitHub Actions su push, pull request e avvio manuale, con validazione dati,
   test, coverage core e build;
-- deploy preview Cloudflare Pages su pull request interne, con smoke sull'URL pubblicato quando i secret Cloudflare sono configurati;
+- preview Cloudflare Pages avviabili manualmente da un checkout revisionato, senza esporre credenziali al codice delle pull request;
 - deploy produzione automatico dopo ogni push/merge su `main`, con smoke
   post-deploy;
 - validatori Vitest per coerenza di lotti, criteri, soglie, fonti, warning e scenari base;

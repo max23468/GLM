@@ -1,0 +1,13 @@
+{
+  "vbaProjectSha256": "2cead3a316da643ea6b2ed5eee9d01bf809e6868ab0f6c1a21cd1b224bbc4336",
+  "modules": {
+    "excel-vba/src/modChecks.bas": "8f93c1cd9e318342abc84b8c642c3b3f50d888fc3959b5aeef793f335d9d9fff",
+    "excel-vba/src/modConfig.bas": "610f7627b3365f135cb275cf6d7f866ed079123a92dc976f53baa2e06c2f710d",
+    "excel-vba/src/modEngine.bas": "349ace87620cf99f22233a108c7631ec5bd1c5b80fb5c0ee40438362b82cb0fd",
+    "excel-vba/src/modOptimization.bas": "c23901bb3d2bebc9758237fe854579461025ca2feacdfc8fa348a3cf73002c8d",
+    "excel-vba/src/modScenario.bas": "1f4a2f3b31150c019b95dfd0eb153273a0ce7da61995c153d644e74dbdec3777",
+    "excel-vba/src/modSimulation.bas": "178b749379bd82b32a9ac82909cc7f4771163cd3217cbe7b950cde1d9f1b7a51",
+    "excel-vba/src/modTypes.bas": "c11bb51f83777fef06d07a8d7144d3208cc8aa643949a69b85a248a6ecb4cf21",
+    "excel-vba/src/modValidation.bas": "61ce5e1c3bf90215d3ed26d1bf1ffbc80ed108d613d8e80106374a6fb472c103"
+  }
+}
