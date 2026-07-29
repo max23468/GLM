@@ -163,9 +163,7 @@ process.stdout.write(deployOutput);
 
 const pagesUrls = extractPagesUrls(deployOutput);
 const verificationUrl =
-  mode === "production"
-    ? PRODUCTION_URL
-    : pagesUrls[0] ?? `https://${branch}.${PROJECT_NAME}.pages.dev`;
+  pagesUrls[0] ?? (mode === "production" ? PRODUCTION_URL : `https://${branch}.${PROJECT_NAME}.pages.dev`);
 
 if (!options.skipSmoke) {
   run("npm", ["run", "smoke"], {
