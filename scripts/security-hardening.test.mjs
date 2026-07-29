@@ -41,6 +41,18 @@ describe("security hardening operativo", () => {
     expect(versionCalls).toBe(2);
   });
 
+  it("interrompe ogni richiesta di promozione che non completa", async () => {
+    const fetchImpl = (_url, { signal }) => new Promise((_resolve, reject) => {
+      signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+    });
+
+    await expect(waitForProductionPromotion("expected", {
+      attempts: 1,
+      fetchImpl,
+      requestTimeoutMs: 1,
+    })).rejects.toThrow("Alias produzione non promosso");
+  });
+
   it("considera Access disponibile solo con la coppia completa", () => {
     expect(cloudflareAccessHeaders({ SMOKE_ACCESS_CLIENT_ID: "id" })).toBeUndefined();
     expect(cloudflareAccessHeaders({ SMOKE_ACCESS_CLIENT_ID: "id", SMOKE_ACCESS_CLIENT_SECRET: "secret" })).toEqual({
@@ -62,5 +74,11 @@ describe("security hardening operativo", () => {
 
     expect(smoke).not.toContain("extraHTTPHeaders");
     expect(smoke).toContain("new URL(request.url()).origin === smokeOrigin");
+  });
+
+  it("mantiene LF nei sorgenti VBA legati al package tramite hash", () => {
+    const attributes = readFileSync(".gitattributes", "utf8");
+
+    expect(attributes).toContain("excel-vba/src/** text eol=lf");
   });
 });

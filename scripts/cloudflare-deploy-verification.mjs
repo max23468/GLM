@@ -10,15 +10,25 @@ export function cloudflareAccessHeaders(env = process.env) {
 
 export async function waitForProductionPromotion(
   expectedCommit,
-  { attempts = 60, fetchImpl = fetch, intervalMs = 2_000, productionUrl = PRODUCTION_URL } = {},
+  {
+    attempts = 60,
+    fetchImpl = fetch,
+    intervalMs = 2_000,
+    productionUrl = PRODUCTION_URL,
+    requestTimeoutMs = 10_000,
+  } = {},
 ) {
   let lastResult = "nessuna risposta";
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
       const headers = cloudflareAccessHeaders();
       const [appResponse, versionResponse] = await Promise.all([
-        fetchImpl(productionUrl, { headers, redirect: "follow" }),
-        fetchImpl(new URL("/api/version", productionUrl), { headers, redirect: "follow" }),
+        fetchImpl(productionUrl, { headers, redirect: "follow", signal: AbortSignal.timeout(requestTimeoutMs) }),
+        fetchImpl(new URL("/api/version", productionUrl), {
+          headers,
+          redirect: "follow",
+          signal: AbortSignal.timeout(requestTimeoutMs),
+        }),
       ]);
       const version = versionResponse.ok ? await versionResponse.json() : {};
       if (appResponse.ok && versionResponse.ok && version.commit === expectedCommit) return version;

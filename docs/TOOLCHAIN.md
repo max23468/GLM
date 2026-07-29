@@ -21,15 +21,15 @@
 | --- | --- | --- |
 | `git` | locale | stato repository, branch e commit |
 | `gh` | locale | GitHub, PR, issue e Codex feedback inbox |
-| `wrangler` | `^4.95.0` | Cloudflare Pages deploy e diagnosi |
-| React Doctor | `npx --yes react-doctor@latest` via `npm run quality:react-doctor` | qualità React dopo release major/minor o modifiche React trasversali; canale `latest` intenzionale, senza dipendenza pinned nel repo e senza prompt interattivi |
-| Playwright | `^1.60.0` | smoke browser |
+| `wrangler` | `^4.114.0` | Cloudflare Pages deploy e diagnosi |
+| React Doctor | `0.9.2` via `npm run quality:react-doctor` | qualità React dopo release major/minor o modifiche React trasversali |
+| Playwright | `^1.62.0` | smoke browser |
 
 ## Comandi
 
 - setup locale: `npm install --global npm@12.0.1`, poi `npm install`.
 - setup CI: installazione globale di npm `12.0.1`, verifica della versione e
-  `npm ci`.
+  `npm ci --ignore-scripts`.
 - dev: `npm run dev -- --port 4173`.
 - typecheck/build: `npm run build`.
 - test: `npm test`.
@@ -53,9 +53,10 @@
 
 ## GitHub Actions
 
-- `.github/workflows/ci.yml`: validazione dati, test, coverage core, build,
-  preview Cloudflare su PR interne e deploy produzione su `main`; usa
-  `NODE_VERSION` condiviso per evitare divergenze fra job.
+- `.github/workflows/ci.yml`: validazione dati, test, coverage core e build
+  sulle PR; deploy produzione su `main`. Le preview Cloudflare si avviano
+  manualmente da un checkout revisionato; il workflow usa `NODE_VERSION`
+  condiviso per evitare divergenze fra job.
 - `.github/workflows/codex-pr-comments.yml`: sincronizza la Codex feedback inbox.
 - `.github/workflows/pr-title.yml`: verifica titolo PR in stile Conventional Commit.
 
