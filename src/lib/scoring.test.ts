@@ -312,4 +312,36 @@ describe("TPL tender scoring", () => {
       expect(result.comboScores[bidder.id][pair].warnings.some((warning) => warning.includes("sovrapposta"))).toBe(true);
     }
   });
+
+  it("mantiene il limite di due lotti anche per ID che coincidono con chiavi di prototipo", () => {
+    const bidder = createBidder("__proto__", "Operatore");
+    for (const lot of LOTS) fillOffer(bidder, lot.id, 8, 95);
+
+    const result = simulate([bidder], settings, bidder.id);
+
+    expect(assignedLotCount(result, bidder.id)).toBe(2);
+  });
+
+  it("serializza senza collisioni le chiavi degli scenari con ID contenenti delimitatori", () => {
+    const bidder = createBidder("a||b", "Operatore");
+    fillOffer(bidder, "L1", 8, 95);
+
+    const result = simulate([bidder], settings, bidder.id);
+    const nonEmptyIds = result.scenarios.filter((scenario) => scenario.assignments.length).map((scenario) => scenario.id);
+
+    expect(nonEmptyIds.every((id) => Array.isArray(JSON.parse(id)))).toBe(true);
+  });
+
+  it("mantiene visibili i warning bloccanti di scenario oltre il limite di visualizzazione", () => {
+    const bidders = Array.from({ length: 20 }, (_, index) => {
+      const bidder = createBidder(`bidder-${index}`, `Operatore ${index}`);
+      bidder.lots.L1.enabled = true;
+      bidder.lots.L1.technicalOverrideRaw = 42;
+      return bidder;
+    });
+
+    const result = simulate(bidders, settings, bidders[0].id);
+
+    expect(result.warningItems).toContainEqual(expect.objectContaining({ id: "scenario:unassigned:L2-L3-L4", blocksAward: true }));
+  });
 });

@@ -6,6 +6,13 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il v
 
 ## [Non rilasciato]
 
+## [1.11.2] — 2026-07-29
+
+### Correzioni
+
+- **Import JSON**: rifiutati file e collezioni oltre i limiti operativi, neutralizzati ID non sicuri e impedita la sostituzione degli scenari base.
+- **Criticità**: i warning bloccanti restano visibili anche quando molti avvisi concorrenti raggiungono il limite del pannello.
+
 ## [1.11.1] — 2026-05-31
 
 ### Correzioni

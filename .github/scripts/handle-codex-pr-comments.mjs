@@ -5,7 +5,7 @@ import process from "node:process";
 
 const repository = process.env.GITHUB_REPOSITORY;
 const token = process.env.GITHUB_TOKEN;
-const codexLoginPattern = new RegExp(process.env.CODEX_BOT_LOGIN_PATTERN ?? "codex", "i");
+const codexLoginPattern = new RegExp(process.env.CODEX_BOT_LOGIN_PATTERN ?? "^(chatgpt-codex-connector|codex)(\\[bot\\])?$", "i");
 const inboxIssueTitle = process.env.CODEX_INBOX_ISSUE_TITLE ?? "Codex feedback inbox";
 const inboxIssueLabel = process.env.CODEX_INBOX_ISSUE_LABEL ?? "codex-feedback-inbox";
 const repositoryName = repository?.split("/")[1] ?? "repository";

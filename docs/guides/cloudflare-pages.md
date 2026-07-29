@@ -29,6 +29,7 @@ Lo script blocca il deploy se:
 
 - il worktree non è pulito;
 - un deploy produzione viene lanciato fuori da `main`;
+- una preview tenta di usare la branch di produzione `main`;
 - `dist` non esiste dopo la build;
 - Wrangler non è installato localmente.
 
@@ -36,18 +37,22 @@ Usa `--skip-smoke` solo quando devi isolare un problema di deploy e dichiara il 
 
 ## GitHub Actions
 
-Il workflow `.github/workflows/ci.yml` mantiene tre livelli automatici:
+Il workflow `.github/workflows/ci.yml` mantiene due livelli automatici:
 
 - `verify`: `npm run validate:data`, `npm test`,
   `npm run test:coverage:core`, `npm run build`;
-- `deploy-preview`: su pull request interne, esegue `npm run deploy:doctor`, pubblica una preview Cloudflare e lancia lo smoke sull'URL preview quando i secret necessari sono configurati.
 - `deploy-production`: dopo ogni push/merge su `main`, attende `verify`, esegue
   `npm run deploy:doctor`, pubblica `dist` e lancia lo smoke in produzione.
 
 Il comando locale `npm run deploy:cloudflare` resta disponibile per un redeploy
 manuale esplicitamente richiesto.
 
-I job di deploy cacheano il browser Playwright usato dallo smoke in `~/.cache/ms-playwright`, così i run successivi evitano il download completo di Chromium.
+Il job di produzione cachea il browser Playwright usato dallo smoke in `~/.cache/ms-playwright`, così i run successivi evitano il download completo di Chromium.
+
+Le preview non vengono pubblicate automaticamente dalle pull request: in questo
+modo il codice della PR non viene eseguito con credenziali Cloudflare. Un
+manutentore può crearle esplicitamente da un checkout già revisionato con
+`npm run deploy:preview -- --branch nome-branch`.
 
 Configura questi repository secrets in GitHub:
 
@@ -56,8 +61,6 @@ Configura questi repository secrets in GitHub:
 - `VITE_CF_WEB_ANALYTICS_TOKEN`: opzionale, token pubblico Web Analytics se non usi l'iniezione automatica dal dashboard Pages;
 - `CF_ACCESS_CLIENT_ID`: opzionale, service token per smoke CI su preview protette da Access;
 - `CF_ACCESS_CLIENT_SECRET`: opzionale, secret del service token Access.
-
-Se i secret Cloudflare principali non sono presenti, il job preview non pubblica e mostra una notice nel log.
 
 ## Preview protette con Cloudflare Access
 

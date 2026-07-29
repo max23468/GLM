@@ -298,4 +298,45 @@ describe("scenario persistence normalization", () => {
     expect(report.snapshot?.bidders[0].lots.L1.technicalOverrideRaw).toBe(42.5);
     expect(report.messages).toContain("Formato Excel importato con tecnico aggregato: i sub-criteri non erano presenti nel file.");
   });
+
+  it("rifiuta collezioni importate oltre i limiti operativi", () => {
+    const jsonReport = normalizeScenarioSnapshotWithReport({
+      bidders: Array.from({ length: 21 }, (_, index) => ({ id: `bidder-${index}` })),
+    });
+    const excelReport = normalizeScenarioSnapshotWithReport({
+      format: "glm-excel-v1",
+      offers: Array.from({ length: 81 }, (_, index) => ({ bidderId: `bidder-${index}`, lotId: "L1" })),
+    });
+
+    expect(jsonReport.snapshot).toBeUndefined();
+    expect(jsonReport.messages).toContain("Il JSON supera il limite di 20 concorrenti.");
+    expect(excelReport.snapshot).toBeUndefined();
+    expect(excelReport.messages).toContain("Il JSON Excel supera i limiti supportati di offerte, criteri o combinatorie.");
+  });
+
+  it("neutralizza ID pericolosi e valori booleani testuali durante l'import", () => {
+    const report = normalizeScenarioSnapshotWithReport({
+      schemaVersion: 8,
+      id: "preset-market",
+      bidders: [
+        {
+          id: "__proto__",
+          lots: {
+            L1: {
+              enabled: true,
+              tValues: { "C.2.2": "false" },
+            },
+          },
+        },
+        { id: "a||b" },
+      ],
+      optimization: {},
+      settings: {},
+    });
+
+    expect(report.snapshot?.id).toMatch(/^scenario-/);
+    expect(report.messages).toContain("ID riservato degli scenari base sostituito durante l'import.");
+    expect(report.snapshot?.bidders.map((bidder) => bidder.id)).toEqual(["offerente-1", "a-b"]);
+    expect(report.snapshot?.bidders[0].lots.L1.tValues["C.2.2"]).toBe(false);
+  });
 });

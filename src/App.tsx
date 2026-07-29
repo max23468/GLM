@@ -1093,6 +1093,10 @@ function useSimulatorController() {
 
   const importScenarioFile = async (file: File) => {
     try {
+      if (file.size > 1_000_000) {
+        pushNotification({ tone: "error", title: "Import non riuscito", body: "Il file JSON supera il limite di 1 MB." });
+        return;
+      }
       const parsed = JSON.parse(await file.text());
       const { snapshot, messages } = normalizeScenarioSnapshotWithReport(parsed);
       if (!snapshot) {

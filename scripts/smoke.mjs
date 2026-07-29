@@ -17,6 +17,7 @@ const accessHeaders =
         "CF-Access-Client-Secret": accessClientSecret,
       }
     : undefined;
+const smokeOrigin = new URL(baseUrl).origin;
 const forbiddenTexts = [
   "Leva economica",
   "Step %",
@@ -168,6 +169,11 @@ const verifyImportExportAndComparison = async (page, suffix) => {
 
   const tempDir = await mkdtemp(path.join(tmpdir(), "glm-smoke-"));
   try {
+    const oversizedPath = path.join(tempDir, "oversized.json");
+    await writeFile(oversizedPath, " ".repeat(1_000_001));
+    await page.locator('input[type="file"]').setInputFiles(oversizedPath);
+    await waitForActivityNotification(page, "Import non riuscito", ["supera il limite di 1 MB"]);
+
     const importName = `Smoke import ${suffix}`;
     const importPath = path.join(tempDir, `${importName.replace(/\s+/g, "-").toLowerCase()}.json`);
     const payload = await page.evaluate((name) => {
@@ -392,7 +398,16 @@ const main = async () => {
       { suffix: "mobile-dark", viewport: { width: 390, height: 844 }, theme: "dark" },
     ];
     for (const check of checks) {
-      const page = await browser.newPage({ extraHTTPHeaders: accessHeaders, viewport: check.viewport });
+      const page = await browser.newPage({ viewport: check.viewport });
+      if (accessHeaders) {
+        await page.route("**/*", (route) => {
+          const request = route.request();
+          const headers = new URL(request.url()).origin === smokeOrigin
+            ? { ...request.headers(), ...accessHeaders }
+            : request.headers();
+          return route.continue({ headers });
+        });
+      }
       const messages = [];
       page.on("console", (msg) => {
         if (["error", "warning"].includes(msg.type())) messages.push(`${msg.type()}: ${msg.text()}`);
