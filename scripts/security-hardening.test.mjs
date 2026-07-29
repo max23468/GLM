@@ -24,6 +24,12 @@ describe("security hardening operativo", () => {
     expect(result.stderr).toContain("la branch preview non può coincidere con main");
   });
 
+  it("verifica il deploy sull'URL immutabile restituito da Cloudflare", () => {
+    const deploy = readFileSync("scripts/deploy-cloudflare.mjs", "utf8");
+
+    expect(deploy).toContain('pagesUrls[0] ?? (mode === "production" ? PRODUCTION_URL');
+  });
+
   it("limita gli header Access all'origine sottoposta a smoke", () => {
     const smoke = readFileSync("scripts/smoke.mjs", "utf8");
 
