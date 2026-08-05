@@ -1,4 +1,4 @@
-import viteConfig from "./vite.config";
+import viteConfig from "./vite.config.ts";
 import { defineConfig, mergeConfig } from "vitest/config";
 
 const CORE_COVERAGE_INCLUDE = [
