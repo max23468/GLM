@@ -4,16 +4,16 @@
 
 | Area | Versione | Fonte |
 | --- | --- | --- |
-| Node | `>=24.15 <25` | `.node-version`, `package.json`, `.github/workflows/ci.yml` |
-| npm | `npm@12.0.1` con lockfile v3 | `package.json`, `package-lock.json` |
-| Python | `python3` con `openpyxl` | solo per rigenerare la base tecnica Excel con `scripts/build-excel-template.py` |
+| Node | `>=24.19 <25` | `.node-version`, `package.json`, `.github/workflows/ci.yml` |
+| npm | `npm@12.0.2` con lockfile v3 | `package.json`, `package-lock.json` |
+| Python | `python3` con `openpyxl==3.1.5` | solo per rigenerare e rifinire la base tecnica Excel |
 
 ## Package manager e lockfile
 
 - JavaScript/TypeScript: npm.
 - Lockfile JS: `package-lock.json`.
-- Python: usato solo per generare una base tecnica `.xlsx` temporanea (`scripts/build-excel-template.py`) quando si manutiene il template.
-- Lockfile Python: non presente; il pacchetto distribuito usa il template `.xlsm` già incorporato in repository.
+- Python: usato solo per generare o rifinire la base tecnica Excel quando si manutiene il template.
+- Dipendenza Python: `requirements-excel.txt`, installata in un ambiente virtuale locale `.venv`.
 
 ## Tool esterni
 
@@ -21,15 +21,16 @@
 | --- | --- | --- |
 | `git` | locale | stato repository, branch e commit |
 | `gh` | locale | GitHub, PR, issue e Codex feedback inbox |
-| `wrangler` | `^4.114.0` | Cloudflare Pages deploy e diagnosi |
-| React Doctor | `0.9.2` via `npm run quality:react-doctor` | qualità React dopo release major/minor o modifiche React trasversali |
-| Playwright | `^1.62.0` | smoke browser |
+| `wrangler` | `^4.119.0` | Cloudflare Pages deploy e diagnosi |
+| React Doctor | `0.9.5` via `npm run quality:react-doctor` | qualità React dopo release major/minor o modifiche React trasversali |
+| Playwright | `^1.62.1` | smoke browser |
 
 ## Comandi
 
-- setup locale: `npm install --global npm@12.0.1`, poi `npm install`.
-- setup CI: installazione globale di npm `12.0.1`, verifica della versione e
+- setup locale: `npm install --global npm@12.0.2`, poi `npm install`.
+- setup CI: installazione globale di npm `12.0.2`, verifica della versione e
   `npm ci --ignore-scripts`.
+- setup Excel: `python3 -m venv .venv`, poi `.venv/bin/python -m pip install -r requirements-excel.txt`.
 - dev: `npm run dev -- --port 4173`.
 - typecheck/build: `npm run build`.
 - test: `npm test`.

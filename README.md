@@ -7,7 +7,7 @@ L'app non produce offerte ufficiali: aiuta a confrontare operatori, lotti singol
 ## Avvio rapido
 
 ```bash
-npm install --global npm@12.0.1
+npm install --global npm@12.0.2
 npm install
 npm run dev -- --port 4173
 ```
@@ -42,6 +42,13 @@ npm run preview -- --port 4173
 ## Toolkit Excel
 
 Il pacchetto `Pacchetto Excel` scarica un file `.xlsm` unico con macro, foglio guidato `Compila`, report leggibile, sub-criteri tecnici A-G, ottimizzazione, combinatorie configurabili, scambio JSON con il web e confronti golden. Il workbook è già macro-abilitato con fogli operativi coerenti con l'organizzazione della web app (`Scenario`, `Tecnica`, `Economica`, `Ottimizzazione`, `Combinatorie`, `Risultati`), README operativo integrato e moduli VBA incorporati. I fogli tecnici di supporto restano nel file ma sono nascosti e protetti per ridurre rumore; la web app resta la superficie più completa per warning documentali avanzati, persistenza/migrazioni e confronto scenari salvati.
+
+Per rigenerare o rifinire il template Excel, prepara l'ambiente Python dedicato:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-excel.txt
+```
 
 ## Scenari base
 
