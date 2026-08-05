@@ -4,7 +4,7 @@
 
 | Area | Versione | Fonte |
 | --- | --- | --- |
-| Node | `>=24.19 <25` | `.node-version`, `package.json`, `.github/workflows/ci.yml` |
+| Node | `>=26.7 <27` | `.node-version`, `package.json`, `.github/workflows/ci.yml` |
 | npm | `npm@12.0.2` con lockfile v3 | `package.json`, `package-lock.json` |
 | Python | `python3` con `openpyxl==3.1.5` | solo per rigenerare e rifinire la base tecnica Excel |
 

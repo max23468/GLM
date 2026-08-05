@@ -44,8 +44,8 @@ decisioni stabili stanno in `docs/decisions/` o nei documenti di dominio.
 - Gli allegati gara in Git LFS e la distinzione delle fonti sono preservati.
 - CI, smoke browser, React Doctor e changelog frontend sono disponibili secondo
   la policy locale.
-- La toolchain usa npm 12.0.2 con bootstrap esplicito in CI perché Node 24 può
-  includere ancora npm 11.
+- La toolchain usa Node 26.7.0 e npm 12.0.2, con bootstrap esplicito di npm in
+  CI per mantenere runtime e package manager allineati alle versioni dichiarate.
 
 ## Regole
 
