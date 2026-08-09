@@ -22,7 +22,7 @@
 | `git` | locale | stato repository, branch e commit |
 | `gh` | locale | GitHub, PR, issue e Codex feedback inbox |
 | `wrangler` | `^4.119.0` | Cloudflare Pages deploy e diagnosi |
-| React Doctor | `0.9.5` via `npm run quality:react-doctor` | qualità React dopo release major/minor o modifiche React trasversali |
+| React Doctor | `0.9.11` via `npm run quality:react-doctor` | gate su warning/errori e qualità React |
 | Playwright | `^1.62.1` | smoke browser |
 
 ## Comandi
@@ -43,7 +43,12 @@
 - package Excel: `npm run package:excel`.
 - validazione package Excel: `npm run validate:excel-package`.
 - finitura workbook Excel: `scripts/enhance-excel-workbook.py` con un Python che includa `openpyxl`.
-- React Doctor: `npm run quality:react-doctor`.
+- React Doctor: `npm run quality:react-doctor`; le PR pulite non ricevono
+  commenti. Un falso positivo va notificato nella PR, soppresso nel modo nativo
+  più stretto con motivazione committata e seguito da una riesecuzione verde.
+  L'eccezione `build-pipeline-secret-boundary` è limitata a `ci.yml`: il job PR
+  non riceve segreti, mentre le credenziali sono step-scoped nel solo deploy da
+  push su `main` e le dipendenze vengono installate con `--ignore-scripts`.
 - release locale: `npm run release`.
 - release dry-run: `npm run release -- --dry-run`.
 - deploy doctor: `npm run deploy:doctor`.
@@ -59,6 +64,10 @@
   manualmente da un checkout revisionato; il workflow usa `NODE_VERSION`
   condiviso per evitare divergenze fra job.
 - `.github/workflows/codex-pr-comments.yml`: sincronizza la Codex feedback inbox.
+- `.github/workflows/codex-review-gate.yml`: status exact-HEAD; blocca P0/P1 e
+  lascia P2/P3 advisory.
+- `.github/workflows/react-doctor.yml`: blocca warning/errori e pubblica solo
+  review inline quando trova diagnostiche.
 - `.github/workflows/pr-title.yml`: verifica titolo PR in stile Conventional Commit.
 
 ## Regole

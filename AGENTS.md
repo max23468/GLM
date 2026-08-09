@@ -133,8 +133,8 @@ una release major/minor React. Non eseguire smoke completi per diff docs-only.
 - Mantieni commit atomici e Conventional Commit in inglese. Il titolo PR deve
   essere esplicito, non il nome della branch.
 - Prima di commit o PR rileggi il diff e scarta file generati o fuori scope.
-- Prima di PR ready, merge, pubblicazione, deploy o release controlla la issue
-  `Codex feedback inbox` e gestisci i thread actionable.
+- Prima di PR ready, merge, pubblicazione, deploy o release verifica lo status
+  `codex-review` sull'HEAD esatto: P0/P1 bloccano, P2/P3 restano advisory.
 - `main` attiva automaticamente la pipeline in `.github/workflows/ci.yml`:
   `verify`, poi `deploy-production` con build, deploy Cloudflare e smoke.
 - Target produzione: progetto `gare-lotti-milanesi`, output `dist`, URL

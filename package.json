@@ -15,7 +15,7 @@
     "deploy:cloudflare": "node scripts/deploy-cloudflare.mjs production",
     "deploy:doctor": "node scripts/deploy-doctor.mjs",
     "deploy:preview": "node scripts/deploy-cloudflare.mjs preview",
-    "quality:react-doctor": "react-doctor --scope full --blocking error .",
+    "quality:react-doctor": "react-doctor --scope full --blocking warning .",
     "preview": "vite preview --host 127.0.0.1",
     "prepublish:check": "git diff --check && npm run validate:data && npm test && npm run build && npm run smoke",
     "release": "node scripts/release.mjs",
@@ -42,7 +42,7 @@
     "@types/react-dom": "^19.2.4",
     "@vitest/coverage-v8": "^4.1.10",
     "playwright": "^1.62.1",
-    "react-doctor": "0.9.5",
+    "react-doctor": "0.9.11",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10",
     "wrangler": "^4.119.0"
