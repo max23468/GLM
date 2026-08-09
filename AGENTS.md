@@ -21,16 +21,33 @@ target deploy approvato; Vercel e Supabase sono fuori perimetro.
   non distruttivi pertinenti.
 - Decidi autonomamente naming, formattazione, default e altre scelte locali
   equivalenti. Chiedi solo per azioni distruttive o difficili da annullare,
-  deploy/release e ambiguità che cambierebbero materialmente il lavoro.
+  deploy/release non già autorizzati da una richiesta di pubblicazione e
+  ambiguità che cambierebbero materialmente il lavoro.
 - Mantieni lo scope stretto. Non aggiungere astrazioni, dipendenze, workflow,
   compatibilità o documenti non richiesti.
 - Non sovrascrivere modifiche altrui. Se il checkout è sporco, lavora attorno
   ai file non pertinenti; fermati solo se devi sovrapporli.
-- Pubblicazione, merge, deploy e release richiedono richiesta esplicita; parole
-  come `pubblica`, `rilascia` o `deploya` autorizzano senza una seconda conferma
-  il flusso completo applicabile, inclusa la preparazione della versione quando
-  necessaria. Poiché il push/merge su `main` attiva il deploy produzione,
-  trattalo come pubblicazione.
+
+## Significato di `Pubblica`
+
+Quando il proprietario dice `Pubblica`, `pubblica`, parla di `pubblicare` o usa
+espressioni equivalenti, autorizza l'intero ciclo tecnico applicabile alla
+repository. L'agente non si ferma a stati intermedi: prepara e verifica la
+modifica; crea branch e commit; esegue push; apre o aggiorna la PR; attende e
+soddisfa i soli gate bloccanti; esegue il merge; completa deploy o promozione
+tecnica e verifica live quando applicabili; crea versione, tag e GitHub Release
+quando previsti dalla policy; infine aggiorna e verifica la branch di base,
+elimina branch e worktree temporanei locali e remoti già assorbiti e controlla
+stash e altri residui.
+
+Se un passaggio non è applicabile, lo dichiara e prosegue con gli altri. La
+richiesta di pubblicazione vale come autorizzazione a PR, merge, deploy tecnico
+e release previsti dal ciclo, senza una seconda conferma. Non autorizza
+pubblicazione di temi Shopify live, submission Shopify App Store, billing o
+nuove attivazioni produttive, TestFlight o App Store, invii Aruba, email o
+scansioni reali, né aggiornamenti Notion: queste azioni richiedono una richiesta
+esplicita separata. Non dichiarare `pubblicato` finché il ciclo applicabile e la
+rilettura finale di PR, check, deploy, release e stato Git non sono completi.
 
 ## Prima di modificare
 
@@ -141,9 +158,6 @@ una release major/minor React. Non eseguire smoke completi per diff docs-only.
   `https://gare-lotti-milanesi.pages.dev`. Il deploy manuale
   `npm run deploy:cloudflare` è solo per un redeploy esplicitamente richiesto;
   le preview usano `npm run deploy:preview -- --branch nome-branch`.
-- `pubblica`, `rilascia` o `deploya` indicano il flusso completo applicabile:
-  check, PR/merge su `main`, eventuale release/tag, verifica app e
-  `/api/version`, quindi pulizia di branch/worktree assorbiti.
 - Non pubblicare un worktree sporco o una branch feature come `main`. Se il
   checkout contiene cambi non correlati, isola il diff richiesto in un
   worktree pulito senza assorbirli; chiedi solo se i cambi si sovrappongono.
