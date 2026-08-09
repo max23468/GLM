@@ -20,7 +20,7 @@
 | Tool | Versione/canale | Uso |
 | --- | --- | --- |
 | `git` | locale | stato repository, branch e commit |
-| `gh` | locale | GitHub, PR, issue e Codex feedback inbox |
+| `gh` | locale | GitHub, PR, issue e workflow |
 | `wrangler` | `^4.119.0` | Cloudflare Pages deploy e diagnosi |
 | React Doctor | `0.9.11` via `npm run quality:react-doctor` | gate su warning/errori e qualità React |
 | Playwright | `^1.62.1` | smoke browser |
@@ -63,11 +63,12 @@
   sulle PR; deploy produzione su `main`. Le preview Cloudflare si avviano
   manualmente da un checkout revisionato; il workflow usa `NODE_VERSION`
   condiviso per evitare divergenze fra job.
-- `.github/workflows/codex-pr-comments.yml`: sincronizza la Codex feedback inbox.
 - `.github/workflows/codex-review-gate.yml`: status exact-HEAD; blocca P0/P1 e
-  lascia P2/P3 advisory.
+  lascia P2/P3 advisory. Il primo giro usa la review automatica; dopo un nuovo
+  commit l'agente richiede una sola `@codex review`.
 - `.github/workflows/react-doctor.yml`: blocca warning/errori e pubblica solo
-  review inline quando trova diagnostiche.
+  review inline quando trova diagnostiche; il gate GitHub usa sempre
+  `version: latest`, mentre il comando locale resta fissato dal lockfile.
 - `.github/workflows/pr-title.yml`: verifica titolo PR in stile Conventional Commit.
 
 ## Regole
