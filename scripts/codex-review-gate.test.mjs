@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "vitest";
 
-import { classifyCodexReview } from "./codex-review-gate.mjs";
+import { classifyCodexReview, latestCodexInvocation } from "./codex-review-gate.mjs";
 
 const headSha = "0123456789abcdef0123456789abcdef01234567";
 const bot = { login: "chatgpt-codex-connector[bot]" };
@@ -39,6 +39,16 @@ test("ignora segnali di un commit precedente", () => {
     reviews: [{ user: bot, commit_id: "abcdef0123456789abcdef0123456789abcdef01" }],
   });
   assert.equal(result.state, "pending");
+});
+
+test("non riusa la reaction di un'invocazione precedente al commit", () => {
+  assert.equal(
+    latestCodexInvocation(
+      [{ user: { login: "max23468" }, body: "@codex review", created_at: "2026-08-09T12:00:00Z" }],
+      "2026-08-09T12:01:00Z",
+    ),
+    undefined,
+  );
 });
 
 test("React Doctor è bloccante e silenzioso sulle scansioni pulite", async () => {

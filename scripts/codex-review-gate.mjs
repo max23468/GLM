@@ -6,6 +6,15 @@ const reviewedCommit = (body = "") =>
   body.match(/\*\*Reviewed commit:\*\*\s*`([0-9a-f]{10,40})`/i)?.[1];
 const matchesHead = (candidate, headSha) =>
   Boolean(candidate && headSha.startsWith(candidate));
+export const latestCodexInvocation = (comments, headCommittedAt) =>
+  comments
+    .filter(
+      (comment) =>
+        comment.user?.login !== BOT &&
+        /@codex\s+review\b/i.test(comment.body) &&
+        new Date(comment.created_at).getTime() >= new Date(headCommittedAt).getTime(),
+    )
+    .sort((left, right) => new Date(right.created_at) - new Date(left.created_at))[0];
 
 export function classifyCodexReview({
   headSha,
@@ -100,6 +109,8 @@ async function main() {
   if (!/^\d+$/.test(number)) throw new Error("Numero PR non valido");
   const pullRequest = await request(`/repos/${repository}/pulls/${number}`);
   const headSha = pullRequest.head.sha;
+  const headCommit = await request(`/repos/${repository}/commits/${headSha}`);
+  const headCommittedAt = headCommit.commit.committer.date;
   await setStatus(repository, headSha, "pending", "In attesa della review Codex");
   if (pullRequest.draft) return;
 
@@ -109,11 +120,7 @@ async function main() {
       all(`/repos/${repository}/pulls/${number}/reviews`),
       all(`/repos/${repository}/pulls/${number}/comments`),
     ]);
-    const invocation = comments
-      .filter(
-        (comment) => comment.user?.login !== BOT && /@codex\s+review\b/i.test(comment.body),
-      )
-      .sort((left, right) => new Date(right.created_at) - new Date(left.created_at))[0];
+    const invocation = latestCodexInvocation(comments, headCommittedAt);
     const invocationReactions = invocation
       ? await all(`/repos/${repository}/issues/comments/${invocation.id}/reactions`)
       : [];
