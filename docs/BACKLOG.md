@@ -30,7 +30,6 @@ Questi elementi non vanno persi né copiati automaticamente in altre repo. Vanno
 | Separazione nome prodotto / URL deploy | Mantenere e forse trasformare in ADR | Pattern utile per tutte le repo con brand visibile distinto da slug tecnico. |
 | Allegati gara Git LFS come fonti non modificabili | Mantenere in GLM | Pattern utile per repo con documenti ufficiali o dataset sorgente. |
 | Smoke browser proporzionato al rischio | Mantenere in GLM | Pattern trasversale: check più profondi solo quando il diff tocca flussi coperti. |
-| Codex feedback inbox già presente | Mantenere | Standard già trasversale nelle repo coordinate. |
 
 Prima di promuovere uno di questi pattern alle altre repo, verificare almeno una seconda repo comparabile.
 
@@ -49,7 +48,7 @@ Prima di promuovere uno di questi pattern alle altre repo, verificare almeno una
 
 ## Attività operative ricorrenti
 
-- Controllare `Codex feedback inbox` prima di PR ready, merge, pubblicazione o deploy.
+- Verificare `codex-review` sull'HEAD corrente prima di PR ready, merge, pubblicazione o deploy.
 - Eseguire verifiche proporzionate secondo `AGENTS.md`.
 - Non modificare allegati in `docs/milano-lotti-extraurbani-om/` senza richiesta esplicita.
 - Aggiornare `docs/ROADMAP.md` quando cambia priorità o fase.

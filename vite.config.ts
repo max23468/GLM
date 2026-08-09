@@ -7,4 +7,7 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(packageJson.version),
   },
   plugins: [react()],
+  test: {
+    include: ["src/**/*.test.ts", "scripts/security-hardening.test.mjs"],
+  },
 });

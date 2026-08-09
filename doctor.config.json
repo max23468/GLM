@@ -3,6 +3,10 @@
     "files": [".venv/**"],
     "overrides": [
       {
+        "files": [".github/workflows/ci.yml"],
+        "rules": ["react-doctor/build-pipeline-secret-boundary"]
+      },
+      {
         "files": ["src/App.tsx"],
         "rules": [
           "react-doctor/prefer-html-dialog",

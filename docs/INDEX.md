@@ -53,8 +53,7 @@ Le decisioni operative esistenti sono oggi documentate in `AGENTS.md`, `README.m
   punta allo stesso `main`; usare il remote locale salvo task GitHub che
   richiedano esplicitamente l'alias.
 - Branch principale: `main`
-- Codex feedback inbox: issue GitHub `Codex feedback inbox`.
-- Workflow principali: `.github/workflows/ci.yml`, `.github/workflows/codex-pr-comments.yml`, `.github/workflows/pr-title.yml`.
+- Workflow principali: `.github/workflows/ci.yml`, `.github/workflows/codex-review-gate.yml`, `.github/workflows/react-doctor.yml`, `.github/workflows/pr-title.yml`.
 
 ## Note di manutenzione
 
