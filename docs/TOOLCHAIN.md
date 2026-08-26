@@ -22,7 +22,7 @@
 | `git` | locale | stato repository, branch e commit |
 | `gh` | locale | GitHub, PR, issue e workflow |
 | `wrangler` | `^4.119.0` | Cloudflare Pages deploy e diagnosi |
-| React Doctor | `0.9.11` via `npm run quality:react-doctor` | gate su warning/errori e qualità React |
+| React Doctor | `0.9.12` via `npm run quality:react-doctor` | gate su warning/errori e qualità React |
 | Playwright | `^1.62.1` | smoke browser |
 
 ## Comandi
