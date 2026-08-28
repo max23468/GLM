@@ -32,7 +32,6 @@
 - Il nome visibile del prodotto è separato dallo slug deploy.
 - Il remote locale `max23468/GLM` e l'alias `max23468/Gare-Lotti-Milanesi`
   sono stati verificati sullo stesso commit `main` il 2026-05-31.
-- Il gate `codex-review` exact-HEAD sostituisce la precedente feedback inbox.
 - L'allineamento documentale è di processo: non cambia logica, UI, allegati, release o deploy.
 - Durante l'allineamento non copiare ciecamente template generici: censire funzioni, documenti e regole GLM già mature, poi decidere se mantenerle specifiche, sostituirle con pattern più maturi o parcheggiarle in backlog.
 
@@ -54,7 +53,6 @@
 - Build/runtime: `npm run build`.
 - Smoke browser completo: `npm run smoke` solo quando il diff può toccare flussi coperti dallo smoke.
 - Deploy doctor: `npm run deploy:doctor` quando si tocca deploy/configurazione o prima di pubblicare.
-- Review Codex: status `codex-review` sull'HEAD corrente.
 
 ## Handoff per nuova chat
 
@@ -65,8 +63,7 @@ Prima di procedere:
 3. leggere `README.md`;
 4. leggere `docs/INDEX.md`, `docs/CONTEXT.md`, `docs/ROADMAP.md`, `docs/BACKLOG.md` e `docs/TOOLCHAIN.md`;
 5. se la task riguarda logica, dati o UI, leggere `docs/LOGICA_SIMULATORE.md` e i file sorgenti indicati da `AGENTS.md`;
-6. verificare `codex-review` sull'HEAD corrente prima di merge, pubblicazione o deploy;
-7. identificare verifiche proporzionate.
+6. identificare verifiche proporzionate.
 
 Durante handoff e migrazioni, non perdere contenuti: se una nota viene spostata, indicare nuova posizione o motivo della rimozione.
 

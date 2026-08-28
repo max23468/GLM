@@ -63,9 +63,6 @@
   sulle PR; deploy produzione su `main`. Le preview Cloudflare si avviano
   manualmente da un checkout revisionato; il workflow usa `NODE_VERSION`
   condiviso per evitare divergenze fra job.
-- `.github/workflows/codex-review-gate.yml`: status exact-HEAD; blocca P0/P1 e
-  lascia P2/P3 advisory. Il primo giro usa la review automatica; dopo un nuovo
-  commit l'agente richiede una sola `@codex review`.
 - `.github/workflows/react-doctor.yml`: blocca warning/errori e pubblica solo
   review inline quando trova diagnostiche; il gate GitHub usa sempre
   `version: latest`, mentre il comando locale resta fissato dal lockfile.

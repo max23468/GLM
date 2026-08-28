@@ -48,7 +48,6 @@ Prima di promuovere uno di questi pattern alle altre repo, verificare almeno una
 
 ## Attività operative ricorrenti
 
-- Verificare `codex-review` sull'HEAD corrente prima di PR ready, merge, pubblicazione o deploy.
 - Eseguire verifiche proporzionate secondo `AGENTS.md`.
 - Non modificare allegati in `docs/milano-lotti-extraurbani-om/` senza richiesta esplicita.
 - Aggiornare `docs/ROADMAP.md` quando cambia priorità o fase.
