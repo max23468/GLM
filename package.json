@@ -44,7 +44,7 @@
     "playwright": "^1.62.1",
     "react-doctor": "0.9.13",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.11",
+    "vitest": "^5.0.0",
     "wrangler": "^4.129.0"
   },
   "overrides": {
