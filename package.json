@@ -32,20 +32,20 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "^6.1.2",
-    "lucide-react": "^1.54.0",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
+    "lucide-react": "^1.57.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "vite": "^8.3.4"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitest/coverage-v8": "^4.1.11",
-    "playwright": "^1.64.0",
-    "react-doctor": "0.9.17",
+    "playwright": "^1.64.1",
+    "react-doctor": "0.9.18",
     "typescript": "^7.0.2",
     "vitest": "^4.1.11",
-    "wrangler": "^4.149.0"
+    "wrangler": "^4.151.0"
   },
   "overrides": {
     "sharp": "0.35.5",
